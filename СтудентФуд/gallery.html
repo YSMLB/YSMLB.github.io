@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Галерея Ассетов СтудентФуд</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      padding: 15px;
+      text-align: center;
+    }
+    .card img {
+      max-width: 100%;
+      height: 120px;
+      object-fit: contain;
+      background: #eaeaea;
+      border-radius: 4px;
+    }
+    .file-name {
+      margin-top: 10px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      word-break: break-all;
+    }
+    .file-size {
+      color: #666;
+      font-size: 0.8rem;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Галерея Ассетов СтудентФуд</h1>
+  
+  <div class="gallery-grid" id="gallery-container">
+    <!-- Will be filled by script -->
+  </div>
+
+  <script>
+    // List of all organized assets
+    const assets = [];
+    for (let p = 1; p <= 9; p++) {
+      let count = 0;
+      if (p === 1) count = 2;
+      if (p === 2) count = 4;
+      if (p === 3) count = 6;
+      if (p === 4) count = 6;
+      if (p === 5) count = 1;
+      if (p === 6) count = 4;
+      if (p === 7) count = 4;
+      if (p === 8) count = 5;
+      if (p === 9) count = 8;
+      
+      for (let i = 1; i <= count; i++) {
+        assets.push(`./img/part${p}_img${i}.png`);
+      }
+    }
+
+    const container = document.getElementById('gallery-container');
+    assets.forEach(src => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = src;
+      
+      const label = document.createElement('div');
+      label.className = 'file-name';
+      label.textContent = src;
+      
+      card.appendChild(img);
+      card.appendChild(label);
+      container.appendChild(card);
+    });
+  </script>
+
+</body>
+</html>
