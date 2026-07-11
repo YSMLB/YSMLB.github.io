@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>СтудентФуд — Быстрая и дешевая еда для студентов с доставкой</title>
+  <meta name="description" content="Заказывай вкусную, быструю и недорогую еду для студентов с доставкой прямо в общежития и на кампусы. Скидка 10% по студенческому билету!">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:ital,wght@0,700;0,800;0,900;1,700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="./studentfood.css?v=84">
+</head>
+<body>
+
+  <!-- Top Navigation Header (On Yellow Background) -->
+  <header class="header" id="main-header">
+    <div class="header-container">
+      <a href="#" class="logo-link" id="logo">
+        <img src="./img/part1_img1.png?v=17" alt="СтудентФуд Лого" class="logo-icon">
+        <span class="logo-text">СтудентФуд</span>
+      </a>
+      
+      <nav class="nav-menu" id="nav-menu">
+        <a href="#menu-section" class="nav-item">Меню</a>
+        <a href="#combos-section" class="nav-item">Комбо</a>
+        <a href="#promo-section" class="nav-item">Акции</a>
+        <a href="#how-it-works-section" class="nav-item">Доставка</a>
+        <a href="#reviews-section" class="nav-item">О нас</a>
+      </nav>
+      
+      <div class="header-actions">
+        <button class="btn btn-text-login" id="btn-login">Войти</button>
+        <button class="btn btn-cart" id="btn-cart-toggle">
+          <svg class="cart-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
+            <circle cx="8" cy="21" r="1"></circle>
+            <circle cx="19" cy="21" r="1"></circle>
+            <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
+          </svg>
+          <span class="cart-btn-label">Корзина</span>
+          <span class="cart-badge" id="cart-badge-count">3</span>
+        </button>
+      </div>
+
+      <!-- Mobile Hamburger menu -->
+      <button class="hamburger-menu" id="hamburger-menu-btn" aria-label="Открыть меню">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Section (On Yellow Background Banner with Interactive HTML Overlay) -->
+    <section class="hero-section" id="hero">
+      <div class="hero-container">
+        <img src="./img/part1_img2.png?v=34" alt="Вкусно Быстро Дешево" class="hero-banner-img">
+        
+        <!-- Interactive HTML Buttons Overlay -->
+        <div class="hero-overlay-content">
+          <div class="hero-actions">
+            <button class="btn btn-primary btn-lg" id="hero-btn-build-combo">
+              Собрать комбо 
+              <span class="btn-arrow-right">&rarr;</span>
+            </button>
+            <a href="#combos-section" class="btn btn-secondary btn-lg" id="hero-btn-all-combo">Все комбо</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= BOXED MAIN CONTENT CARD ================= -->
+    <div class="main-content-card">
+      
+      <!-- Combos Section -->
+      <section class="combos-section" id="combos-section">
+        <div class="section-header-combos">
+          <h2 class="section-title">Комбо от 199 ₽ <span class="star-icon">★</span></h2>
+        </div>
+        
+        <div class="combos-grid">
+          <!-- Combo 1: Эконом -->
+          <div class="combo-card combo-econom" id="combo-econom-card">
+            <div class="combo-header">
+              <div class="combo-title">ЭКОНОМ<br><span class="combo-subprice">199 ₽</span></div>
+            </div>
+            <div class="combo-footer">
+              <button class="btn btn-add-combo" data-id="combo-econom" data-name="Комбо Эконом" data-price="199" data-img="./img/part2_img1.png?v=1">
+                <span class="btn-text">Добавить в корзину</span>
+                <span class="btn-separator"></span>
+                <span class="btn-icon-wrapper">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="9" cy="21" r="1"></circle>
+                    <circle cx="20" cy="21" r="1"></circle>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                  </svg>
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Combo 2: Классика -->
+          <div class="combo-card combo-classic" id="combo-classic-card">
+            <div class="combo-header">
+              <div class="combo-title">КЛАССИКА<br><span class="combo-subprice">249 ₽</span></div>
+            </div>
+            <div class="combo-footer">
+              <button class="btn btn-add-combo" data-id="combo-classic" data-name="Комбо Классика" data-price="249" data-img="./img/part2_img2.png?v=1">
+                <span class="btn-text">Добавить в корзину</span>
+                <span class="btn-separator"></span>
+                <span class="btn-icon-wrapper">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="9" cy="21" r="1"></circle>
+                    <circle cx="20" cy="21" r="1"></circle>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                  </svg>
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Combo 3: Макси -->
+          <div class="combo-card combo-maxi" id="combo-maxi-card">
+            <div class="combo-header">
+              <div class="combo-title">МАКСИ<br><span class="combo-subprice">299 ₽</span></div>
+            </div>
+            <div class="combo-footer">
+              <button class="btn btn-add-combo" data-id="combo-maxi" data-name="Комбо Макси" data-price="299" data-img="./img/part2_img3.png?v=1">
+                <span class="btn-text">Добавить в корзину</span>
+                <span class="btn-separator"></span>
+                <span class="btn-icon-wrapper">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="9" cy="21" r="1"></circle>
+                    <circle cx="20" cy="21" r="1"></circle>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                  </svg>
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Combo 4: Веги -->
+          <div class="combo-card combo-vegi" id="combo-vegi-card">
+            <div class="combo-header">
+              <div class="combo-title">ВЕГИ<br><span class="combo-subprice">229 ₽</span></div>
+            </div>
+            <div class="combo-footer">
+              <button class="btn btn-add-combo" data-id="combo-vegi" data-name="Комбо Веги" data-price="229" data-img="./img/part2_img4.png?v=1">
+                <span class="btn-text">Добавить в корзину</span>
+                <span class="btn-separator"></span>
+                <span class="btn-icon-wrapper">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="9" cy="21" r="1"></circle>
+                    <circle cx="20" cy="21" r="1"></circle>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                  </svg>
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Popular Section (White cards with borders, title at bottom, no plus button) -->
+      <section class="menu-section" id="menu-section">
+        <div class="menu-section-header">
+          <h2 class="section-title">Популярно среди студентов <img src="./img/arrow_popular.png?v=2" alt="arrow" class="arrow-popular-img"></h2>
+          <a href="#menu-section" class="btn-link" id="link-view-all-menu">Смотреть всё меню &rarr;</a>
+        </div>
+
+        <div class="menu-grid">
+          <!-- Item 1: Пицца -->
+          <div class="menu-card" data-id="item-pizza" data-name="Пицца Пепперони" data-price="450" data-img="./img/part3_img1.png?v=1">
+            <span class="menu-badge badge-hit">Хит</span>
+            <div class="menu-image-wrapper">
+              <img src="./img/part3_img1.png?v=1" alt="Пицца Пепперони" class="menu-image">
+            </div>
+            <div class="menu-card-body">
+              <h3 class="menu-item-title">Пицца Пепперони</h3>
+              <span class="menu-item-price">от 450 ₽</span>
+            </div>
+          </div>
+
+          <!-- Item 2: Бургер -->
+          <div class="menu-card" data-id="item-burger" data-name="Бургер Классик" data-price="290" data-img="./img/part3_img2.png?v=1">
+            <span class="menu-badge badge-hit">Хит</span>
+            <div class="menu-image-wrapper">
+              <img src="./img/part3_img2.png?v=1" alt="Бургер Классик" class="menu-image">
+            </div>
+            <div class="menu-card-body">
+              <h3 class="menu-item-title">Бургер Классик</h3>
+              <span class="menu-item-price">от 290 ₽</span>
+            </div>
+          </div>
+
+          <!-- Item 3: Ролл -->
+          <div class="menu-card" data-id="item-roll" data-name="Ролл Филадельфия" data-price="390" data-img="./img/part3_img3.png?v=1">
+            <span class="menu-badge badge-new">Новинка</span>
+            <div class="menu-image-wrapper">
+              <img src="./img/part3_img3.png?v=1" alt="Ролл Филадельфия" class="menu-image">
+            </div>
+            <div class="menu-card-body">
+              <h3 class="menu-item-title">Ролл Филадельфия</h3>
+              <span class="menu-item-price">от 390 ₽</span>
+            </div>
+          </div>
+
+          <!-- Item 4: Лапша -->
+          <div class="menu-card" data-id="item-noodles" data-name="Лапша с курицей" data-price="250" data-img="./img/part3_img4.png?v=1">
+            <span class="menu-badge badge-hit">Хит</span>
+            <div class="menu-image-wrapper">
+              <img src="./img/part3_img4.png?v=1" alt="Лапша с курицей" class="menu-image">
+            </div>
+            <div class="menu-card-body">
+              <h3 class="menu-item-title">Лапша с курицей</h3>
+              <span class="menu-item-price">от 250 ₽</span>
+            </div>
+          </div>
+
+          <!-- Item 5: Хот-дог -->
+          <div class="menu-card" data-id="item-hotdog" data-name="Хот-дог классик" data-price="150" data-img="./img/part3_img5.png?v=1">
+            <span class="menu-badge badge-cheap">Дёшево</span>
+            <div class="menu-image-wrapper">
+              <img src="./img/part3_img5.png?v=1" alt="Хот-дог классик" class="menu-image">
+            </div>
+            <div class="menu-card-body">
+              <h3 class="menu-item-title">Хот-дог классик</h3>
+              <span class="menu-item-price">от 150 ₽</span>
+            </div>
+          </div>
+
+          <!-- Item 6: Чизкейк -->
+          <div class="menu-card" data-id="item-cheesecake" data-name="Чизкейк Клубничный" data-price="190" data-img="./img/part3_img6.png?v=1">
+            <span class="menu-badge badge-new">Новинка</span>
+            <div class="menu-image-wrapper">
+              <img src="./img/part3_img6.png?v=1" alt="Чизкейк Клубничный" class="menu-image">
+            </div>
+            <div class="menu-card-body">
+              <h3 class="menu-item-title">Чизкейк Клубничный</h3>
+              <span class="menu-item-price">от 190 ₽</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Why Choose Us Section (5 cards horizontally) -->
+      <section class="why-us-section" id="why-us">
+        <h2 class="section-title">Почему студенты выбирают нас <img src="./img/part4_img3.png?v=2" alt="star" class="why-us-star-img"></h2>
+        
+        <div class="why-us-grid">
+          <!-- Card 1 -->
+          <div class="why-us-card">
+            <div class="why-us-icon-wrapper">
+              <img src="./img/part4_img1.png?v=2" alt="Доставка в общагу" class="why-us-icon">
+            </div>
+            <div class="why-us-info">
+              <h3 class="why-us-card-title">Доставка в общагу</h3>
+              <p class="why-us-card-text">Привезём куда скажешь — даже в общежитие.</p>
+            </div>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="why-us-card">
+            <div class="why-us-icon-wrapper">
+              <img src="./img/part4_img5.png" alt="Низкие цены" class="why-us-icon">
+            </div>
+            <div class="why-us-info">
+              <h3 class="why-us-card-title">Низкие цены</h3>
+              <p class="why-us-card-text">Вкусно и доступно каждый день для любого бюджета.</p>
+            </div>
+          </div>
+
+          <!-- Card 3 -->
+          <div class="why-us-card">
+            <div class="why-us-icon-wrapper">
+              <img src="./img/part4_img6.png" alt="Комбо и скидки" class="why-us-icon">
+            </div>
+            <div class="why-us-info">
+              <h3 class="why-us-card-title">Комбо и скидки</h3>
+              <p class="why-us-card-text">Выгодные комбо и постоянные скидки для студентов.</p>
+            </div>
+          </div>
+
+          <!-- Card 4 -->
+          <div class="why-us-card">
+            <div class="why-us-icon-wrapper">
+              <img src="./img/part4_img2.png" alt="Работаем допоздна" class="why-us-icon">
+            </div>
+            <div class="why-us-info">
+              <h3 class="why-us-card-title">Работаем допоздна</h3>
+              <p class="why-us-card-text">Мы с тобой до последней пары и после неё.</p>
+            </div>
+          </div>
+
+          <!-- Card 5 -->
+          <div class="why-us-card">
+            <div class="why-us-icon-wrapper">
+              <img src="./img/part4_img4.png" alt="Быстрый заказ" class="why-us-icon">
+            </div>
+            <div class="why-us-info">
+              <h3 class="why-us-card-title">Быстрый заказ</h3>
+              <p class="why-us-card-text">Удобный сайт и приложение. Заказ в пару кликов.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Promo Banner Section (Custom image background with overlay button) -->
+      <section class="promo-section" id="promo-section">
+        <div class="promo-banner">
+          <img src="./img/part5_img1.png?v=1" alt="Промо баннер" class="promo-banner-img">
+          <button class="btn-get-discount-overlay" id="btn-get-discount">Получить скидку</button>
+        </div>
+      </section>
+
+      <!-- Reviews Section (4 columns horizontally, no single card slider) -->
+      <section class="reviews-section" id="reviews-section">
+        <h2 class="section-title">Отзывы студентов <img src="./img/part4_img3.png?v=2" alt="Звезда" class="reviews-star-img"></h2>
+        
+        <div class="reviews-row-grid" id="reviews-grid-row">
+          <!-- Review 1 -->
+          <div class="review-grid-card">
+            <img src="./img/part7_img1.png?v=1" alt="Иван, МГТУ" class="review-card-img">
+          </div>
+
+          <!-- Review 2 -->
+          <div class="review-grid-card">
+            <img src="./img/part7_img2.png?v=1" alt="Аня, РАНХиГС" class="review-card-img">
+          </div>
+
+          <!-- Review 3 -->
+          <div class="review-grid-card">
+            <img src="./img/part7_img3.png?v=1" alt="Макс, ВШЭ" class="review-card-img">
+          </div>
+
+          <!-- Review 4 -->
+          <div class="review-grid-card">
+            <img src="./img/part7_img4.png?v=1" alt="Лена, СПбГУ" class="review-card-img">
+          </div>
+        </div>
+
+      </section>
+
+      <!-- App Promo Section (Yellow card layout) -->
+      <section class="app-section" id="app-section">
+        <div class="app-promo-card">
+          <!-- Text content -->
+          <div class="app-info-block">
+            <h2 class="app-title">
+              Скачай приложение <br>
+              СтудентФуд
+              <img src="./img/part4_img3.png" alt="Звезда" class="app-star-sticker">
+            </h2>
+            <p class="app-text">
+              Заказывай ещё быстрее и получай <br>эксклюзивные скидки в приложении!
+            </p>
+          </div>
+
+          <!-- QR code container -->
+          <div class="app-qr-container">
+            <img src="./img/part8_new_qr.png" alt="QR Код" class="app-qr-image">
+          </div>
+
+          <!-- Download badges stacked vertically -->
+          <div class="app-badges-container">
+            <a href="#" class="app-badge-link" aria-label="App Store">
+              <img src="./img/part8_img5.png" alt="Загрузите в App Store" class="app-badge-img">
+            </a>
+            <a href="#" class="app-badge-link" aria-label="Google Play">
+              <img src="./img/part8_img1.png" alt="Доступно в Google Play" class="app-badge-img">
+            </a>
+          </div>
+
+          <!-- Decorative stickers (Crown and Arrow pointer) -->
+          <div class="app-stickers-container">
+            <img src="./img/part8_new_banner_asset.png" alt="Корона" class="app-sticker-crown">
+          </div>
+
+          <!-- Phone mockup container -->
+          <div class="app-phones-container">
+            <img src="./img/part8_img3.png" alt="Экран 1" class="app-phone phone-left">
+            <img src="./img/part8_img4.png" alt="Экран 2" class="app-phone phone-right">
+          </div>
+        </div>
+      </section>
+      
+    </div>
+    <!-- ================= END OF MAIN CONTENT CARD ================= -->
+  </main>
+
+  <!-- Footer (Stretches Full Width at Bottom) -->
+  <footer class="footer" id="main-footer">
+    <div class="footer-container">
+      <div class="footer-row-main">
+        <!-- Col 1: Brand & Socials -->
+        <div class="footer-col footer-col-brand">
+          <a href="#" class="logo-link">
+            <img src="./img/part1_img1.png" alt="СтудентФуд Лого" class="logo-icon">
+            <span class="logo-text">СтудентФуд</span>
+          </a>
+          <p class="brand-description">
+            Вкусная еда для студентов. <br>Быстро, дёшево, с душой.
+          </p>
+          <div class="social-links">
+            <a href="#" class="social-link" aria-label="VK">
+              <img src="./img/part9_img5.png" alt="VK" class="social-icon-img">
+            </a>
+            <a href="#" class="social-link" aria-label="Telegram">
+              <img src="./img/part9_img2.png" alt="Telegram" class="social-icon-img">
+            </a>
+            <a href="#" class="social-link" aria-label="Instagram">
+              <img src="./img/part9_img6.png" alt="Instagram" class="social-icon-img">
+            </a>
+            <a href="#" class="social-link" aria-label="TikTok">
+              <img src="./img/part9_img3.png" alt="TikTok" class="social-icon-img">
+            </a>
+          </div>
+        </div>
+
+        <!-- Col 2: Menu Links -->
+        <div class="footer-col">
+          <h4 class="footer-col-title">Меню</h4>
+          <ul class="footer-links-list">
+            <li><a href="#menu-section">Все блюда</a></li>
+            <li><a href="#menu-section">Пицца</a></li>
+            <li><a href="#menu-section">Бургеры</a></li>
+            <li><a href="#menu-section">Роллы</a></li>
+            <li><a href="#menu-section">Напитки</a></li>
+            <li><a href="#menu-section">Десерты</a></li>
+          </ul>
+        </div>
+
+        <!-- Col 3: Combos Links -->
+        <div class="footer-col">
+          <h4 class="footer-col-title">Комбо</h4>
+          <ul class="footer-links-list">
+            <li><a href="#combos-section">Эконом</a></li>
+            <li><a href="#combos-section">Классика</a></li>
+            <li><a href="#combos-section">Макси</a></li>
+            <li><a href="#combos-section">Веги</a></li>
+          </ul>
+        </div>
+
+        <!-- Col 4: Company Links -->
+        <div class="footer-col">
+          <h4 class="footer-col-title">Компания</h4>
+          <ul class="footer-links-list">
+            <li><a href="#reviews-section">О нас</a></li>
+            <li><a href="#">Вакансии</a></li>
+            <li><a href="#">Блог</a></li>
+            <li><a href="#">Контакты</a></li>
+          </ul>
+        </div>
+
+        <!-- Col 5: Help & Policies -->
+        <div class="footer-col">
+          <h4 class="footer-col-title">Помощь</h4>
+          <ul class="footer-links-list">
+            <li><a href="#">Доставка и оплата</a></li>
+            <li><a href="#">Возврат</a></li>
+            <li><a href="#">Вопросы и ответы</a></li>
+            <li><a href="#">Пользовательское соглашение</a></li>
+          </ul>
+        </div>
+
+        <!-- Col 6: Contacts Info -->
+        <div class="footer-col footer-col-contacts">
+          <div class="contact-item">
+            <img src="./img/part9_img7.png" alt="Телефон" class="contact-icon-img">
+            <div class="contact-text">
+              <a href="tel:88001234567" class="phone-link">8 (800) 123-45-67</a>
+              <span class="sub-text">Ежедневно с 10:00 до 02:00</span>
+            </div>
+          </div>
+          
+          <div class="contact-item">
+            <img src="./img/part9_img4.png" alt="Email" class="contact-icon-img">
+            <div class="contact-text">
+              <a href="mailto:hello@studentfood.ru" class="email-link">hello@studentfood.ru</a>
+            </div>
+          </div>
+
+          <div class="contact-item">
+            <img src="./img/part9_img8.png" alt="Адрес" class="contact-icon-img">
+            <div class="contact-text">
+              <span>Москва, ул. Студенческая, 25</span>
+            </div>
+          </div>
+          
+          <div class="footer-copyright">&copy; СтудентФуд, 2024</div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ================= MODALS & INTERACTIVE POPUPS ================= -->
+
+  <!-- 1. Shopping Cart Modal Sidebar -->
+  <div class="modal-overlay" id="cart-modal-overlay">
+    <div class="cart-sidebar" id="cart-sidebar-content">
+      <div class="cart-sidebar-header">
+        <h3>Ваш заказ</h3>
+        <button class="btn-close-modal" id="btn-close-cart">&times;</button>
+      </div>
+
+      <!-- Cart Items List -->
+      <div class="cart-items-container" id="cart-items-list">
+        <div class="empty-cart-message">Ваша корзина пуста 🍕</div>
+      </div>
+
+      <!-- Cart Calculations -->
+      <div class="cart-summary">
+        <div class="summary-line">
+          <span>Сумма заказа:</span>
+          <span id="cart-subtotal">0 ₽</span>
+        </div>
+        <div class="summary-line" id="discount-row" style="display: none;">
+          <span class="discount-label">Скидка по студенческому (10%):</span>
+          <span class="discount-value" id="cart-discount">-0 ₽</span>
+        </div>
+        <div class="summary-line total-line">
+          <span>Итого к оплате:</span>
+          <span id="cart-total">0 ₽</span>
+        </div>
+        
+        <!-- Checkout Form -->
+        <form class="checkout-form" id="checkout-form">
+          <div class="form-group">
+            <label for="checkout-address">Адрес доставки (корпус/комната):</label>
+            <input type="text" id="checkout-address" placeholder="Напр. Общежитие №3, комната 405" required>
+          </div>
+          <div class="form-group">
+            <label for="checkout-phone">Номер телефона:</label>
+            <input type="tel" id="checkout-phone" placeholder="+7 (999) 000-00-00" required>
+          </div>
+          <div class="form-group">
+            <label for="checkout-payment">Способ оплаты:</label>
+            <select id="checkout-payment">
+              <option value="card-online">Картой на сайте</option>
+              <option value="sbp">СБП (Быстрый платеж)</option>
+              <option value="cash">Наличными курьеру</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block btn-lg" id="btn-submit-order">Подтвердить заказ</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Combo Builder Modal -->
+  <div class="modal-overlay" id="combo-builder-modal">
+    <div class="modal-content combo-builder-content">
+      <div class="modal-header">
+        <h3>Собери свой студенческий комбо! 🍕</h3>
+        <button class="btn-close-modal" id="btn-close-builder">&times;</button>
+      </div>
+      
+      <div class="builder-body">
+        <div class="builder-step">
+          <h4>Шаг 1: Выбери основное блюдо</h4>
+          <div class="builder-options-grid" id="builder-main-dish">
+            <label class="builder-option-card">
+              <input type="radio" name="builder-main" value="burger" checked data-price="150" data-name="Бургер Студент">
+              <span class="card-inner">
+                <span class="option-icon">🍔</span>
+                <span class="option-title">Бургер Студент</span>
+                <span class="option-price">+150 ₽</span>
+              </span>
+            </label>
+            <label class="builder-option-card">
+              <input type="radio" name="builder-main" value="pizza-slice" data-price="180" data-name="Пепперони Слайс">
+              <span class="card-inner">
+                <span class="option-icon">🍕</span>
+                <span class="option-title">Пепперони Слайс</span>
+                <span class="option-price">+180 ₽</span>
+              </span>
+            </label>
+            <label class="builder-option-card">
+              <input type="radio" name="builder-main" value="wrap" data-price="140" data-name="Мини-Шаурма">
+              <span class="card-inner">
+                <span class="option-icon">🌯</span>
+                <span class="option-title">Мини-Шаурма</span>
+                <span class="option-price">+140 ₽</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="builder-step">
+          <h4>Шаг 2: Выбери гарнир</h4>
+          <div class="builder-options-grid" id="builder-side-dish">
+            <label class="builder-option-card">
+              <input type="radio" name="builder-side" value="fries" checked data-price="70" data-name="Картошка Фри (М)">
+              <span class="card-inner">
+                <span class="option-icon">🍟</span>
+                <span class="option-title">Картошка Фри</span>
+                <span class="option-price">+70 ₽</span>
+              </span>
+            </label>
+            <label class="builder-option-card">
+              <input type="radio" name="builder-side" value="coleslaw" data-price="60" data-name="Салат Коул Слоу">
+              <span class="card-inner">
+                <span class="option-icon">🥗</span>
+                <span class="option-title">Коул Слоу</span>
+                <span class="option-price">+60 ₽</span>
+              </span>
+            </label>
+            <label class="builder-option-card">
+              <input type="radio" name="builder-side" value="none" data-price="0" data-name="Без гарнира">
+              <span class="card-inner">
+                <span class="option-icon">❌</span>
+                <span class="option-title">Без гарнира</span>
+                <span class="option-price">+0 ₽</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="builder-step">
+          <h4>Шаг 3: Выбери напиток</h4>
+          <div class="builder-options-grid" id="builder-drink">
+            <label class="builder-option-card">
+              <input type="radio" name="builder-drink" value="cola" checked data-price="60" data-name="Кола 0.33л">
+              <span class="card-inner">
+                <span class="option-icon">🥤</span>
+                <span class="option-title">Кола</span>
+                <span class="option-price">+60 ₽</span>
+              </span>
+            </label>
+            <label class="builder-option-card">
+              <input type="radio" name="builder-drink" value="tea" data-price="50" data-name="Липтон Лимон">
+              <span class="card-inner">
+                <span class="option-icon">🍵</span>
+                <span class="option-title">Чай Липтон</span>
+                <span class="option-price">+50 ₽</span>
+              </span>
+            </label>
+            <label class="builder-option-card">
+              <input type="radio" name="builder-drink" value="water" data-price="40" data-name="Вода без газа">
+              <span class="card-inner">
+                <span class="option-icon">💧</span>
+                <span class="option-title">Вода</span>
+                <span class="option-price">+40 ₽</span>
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="builder-footer">
+        <div class="builder-total-price">Цена комбо: <span id="builder-total-val">280 ₽</span> <span class="combo-builder-discount-badge">(Скидка -15% на комбо включена!)</span></div>
+        <button class="btn btn-primary btn-lg" id="btn-add-builder-to-cart">Добавить собранное комбо</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Student Card Upload Modal -->
+  <div class="modal-overlay" id="student-upload-modal">
+    <div class="modal-content student-upload-content">
+      <div class="modal-header">
+        <h3>Подтверждение студенческого статуса 🎓</h3>
+        <button class="btn-close-modal" id="btn-close-upload">&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <p class="modal-desc-text">
+          Загрузите фотографию вашего студенческого билета (или зачетки). Наша система проверит его за пару секунд и автоматически применит постоянную <strong>скидку 10%</strong> к вашей корзине!
+        </p>
+
+        <!-- Drag & Drop Zone -->
+        <div class="upload-drag-zone" id="upload-drag-zone">
+          <div class="zone-icon">📁</div>
+          <div class="zone-text">Перетащите сюда фото студенческого билета или нажмите для выбора файла</div>
+          <input type="file" id="student-file-input" accept="image/*" style="display: none;">
+          <div class="selected-file-name" id="selected-file-name"></div>
+        </div>
+
+        <!-- Progress bar container -->
+        <div class="upload-progress-container" id="upload-progress-container" style="display: none;">
+          <div class="progress-bar-label">Проверка файла ИИ...</div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="upload-progress-fill"></div>
+          </div>
+        </div>
+
+        <!-- Success screen -->
+        <div class="upload-success-screen" id="upload-success-screen" style="display: none;">
+          <div class="success-icon">🎉</div>
+          <h4>Студенческий успешно подтвержден!</h4>
+          <p>Скидка 10% теперь активна для всех ваших будущих заказов!</p>
+          <div class="promo-code-box">
+            <span>Ваш промокод:</span>
+            <strong id="promo-code-text">STUDENT10</strong>
+          </div>
+          <button class="btn btn-primary" id="btn-success-close">Отлично!</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JS Logic Script -->
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

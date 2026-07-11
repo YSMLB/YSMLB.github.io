@@ -1,0 +1,50 @@
+{
+  "project": "PC Config landing assets",
+  "format": "separate PNG product assets + separate SVG UI/icon assets",
+  "colors": {
+    "primary_blue": "#0B6BFF",
+    "soft_blue": "#6EA2FF",
+    "background": "#FFFFFF"
+  },
+  "folders": {
+    "hero": "main hero PC render",
+    "categories": "individual component/category product renders",
+    "builds": "individual popular-build PC renders",
+    "icons": "separate SVG feature/benefit icons",
+    "ui": "separate SVG interface elements and logo mark"
+  },
+  "assets": [
+    "builds/enthusiast-pro-build.png",
+    "builds/gaming-start-build.png",
+    "builds/optimal-game-build.png",
+    "categories/cooling-fan.png",
+    "categories/cpu-processor.png",
+    "categories/graphics-card.png",
+    "categories/monitor.png",
+    "categories/motherboard.png",
+    "categories/pc-case.png",
+    "categories/peripherals-keyboard-mouse.png",
+    "categories/power-supply.png",
+    "categories/ram-memory.png",
+    "categories/ssd-storage.png",
+    "hero/hero-pc-white-rgb.png",
+    "icons/compatibility-shield.svg",
+    "icons/delivery-box.svg",
+    "icons/expert-chat.svg",
+    "icons/fair-price-coin.svg",
+    "icons/happy-heart.svg",
+    "icons/price-layers.svg",
+    "icons/support-tools.svg",
+    "icons/trusted-badge.svg",
+    "ui/arrow-circle.svg",
+    "ui/button-arrow-right.svg",
+    "ui/logo-mark.svg",
+    "ui/play-button.svg",
+    "ui/step-1.svg",
+    "ui/step-2.svg",
+    "ui/step-3.svg",
+    "ui/steps-connector.svg",
+    "ui/theme-moon.svg",
+    "ui/theme-sun.svg"
+  ]
+}

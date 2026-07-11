@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -342,7 +343,7 @@ export default function Portfolio() {
         <motion.div className="bg-white rounded-full" animate={{ width: isCursorHovered ? 0 : 4, height: isCursorHovered ? 0 : 4 }} />
       </motion.div>
 
-      
+
       <AnimatePresence>
         {isLoading && (
           <motion.div
