@@ -9,11 +9,11 @@ import { EffectComposer, Bloom, Noise, ChromaticAberration } from "@react-three/
 import { BlendFunction } from "postprocessing";
 import * as THREE from "three";
 
-// вращение
+// Глобальные стейты для синхронизации вращения
 const sharedRotation = new THREE.Euler();
 let forceResetRotation = false;
 
-// 3д моделька буквы Y
+// 1. Идеальная монолитная буква Y (Адаптивный скейл)
 function SolidGlassY() {
   const group = useRef<THREE.Group>(null);
   const { viewport } = useThree();
@@ -52,8 +52,10 @@ function SolidGlassY() {
         group.current.rotation.y += delta * 2.8;
         group.current.rotation.x += delta * 1.5;
 
-        const targetX = (state.pointer.y * Math.PI) / 3;
-        const targetZ = -(state.pointer.x * Math.PI) / 3;
+        // На мобилках параллакс от мыши/тапа слабее
+        const isMobile = viewport.width < 5;
+        const targetX = (state.pointer.y * Math.PI) / (isMobile ? 6 : 3);
+        const targetZ = -(state.pointer.x * Math.PI) / (isMobile ? 6 : 3);
         group.current.rotation.x = THREE.MathUtils.lerp(group.current.rotation.x, group.current.rotation.x + targetX, 0.05);
         group.current.rotation.z = THREE.MathUtils.lerp(group.current.rotation.z, targetZ, 0.05);
       }
@@ -62,9 +64,13 @@ function SolidGlassY() {
     }
   });
 
+  // Динамический скейл: на телефоне делаем крупнее (относительно узкого экрана)
+  const isMobile = viewport.width < 5;
+  const scale = isMobile ? viewport.width / 3.5 : Math.min(viewport.width / 8, 1.5);
+
   return (
     <Float speed={2} rotationIntensity={0.1} floatIntensity={0.2}>
-      <group ref={group} scale={Math.min(viewport.width / 8, 1.5)}>
+      <group ref={group} scale={scale}>
         <mesh geometry={geometry}>
           <MeshTransmissionMaterial
             background={new THREE.Color("#000000")}
@@ -82,7 +88,7 @@ function SolidGlassY() {
   );
 }
 
-// Фон(ебал яч его рот)
+// 2. ФОН: LED Билборды
 const LedBillboardWall = () => {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
 
@@ -124,7 +130,6 @@ const LedBillboardWall = () => {
       float distToMouse = distance(vUv, mouseMapped);
 
       float ripple = sin(distToMouse * 15.0 - uTime * 3.0) * 0.5 + 0.5;
-      
       float glowIntensity = smoothstep(0.4, 0.0, distToMouse) * ripple;
 
       float rand = fract(sin(dot(panelId, vec2(12.9898, 78.233))) * 43758.5453);
@@ -160,18 +165,17 @@ const LedBillboardWall = () => {
 
 function BackgroundText() {
   const { viewport } = useThree();
+  const isMobile = viewport.width < 5;
   return (
     <Text
       position={[0, 0, -8]}
-      fontSize={viewport.width / 2.2}
+      fontSize={isMobile ? viewport.width / 1.5 : viewport.width / 2.2}
       color="#ffffff"
       font="https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuGKYMZhrib2Bg-4.ttf"
       fontWeight={900}
       letterSpacing={-0.08}
-      material-toneMapped={false}
       anchorX="center"
       anchorY="middle"
-      depthWrite={false}
       fillOpacity={0.8}
     >
       YSM
@@ -183,8 +187,11 @@ function TrackingAxes() {
   const { size } = useThree();
   const axesRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
-  const zoom = 50;
 
+  // На мобилках скрываем оси, чтобы не перегружать мелкий экран
+  if (size.width < 768) return null;
+
+  const zoom = 50;
   useFrame(() => {
     if (axesRef.current && !forceResetRotation) {
       axesRef.current.rotation.copy(sharedRotation);
@@ -224,13 +231,14 @@ function TrackingAxes() {
 }
 
 function PostEffects() {
-  return (
+  const effects = (
     <EffectComposer disableNormalPass>
       <Bloom luminanceThreshold={0.4} mipmapBlur intensity={1.5} />
       <ChromaticAberration blendFunction={BlendFunction.NORMAL} offset={new THREE.Vector2(0.003, 0.003)} />
       <Noise opacity={0.08} blendFunction={BlendFunction.OVERLAY} />
     </EffectComposer>
   );
+  return effects;
 }
 
 export default function Portfolio() {
@@ -240,7 +248,6 @@ export default function Portfolio() {
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isCursorHovered, setIsCursorHovered] = useState(false);
 
-  // эффект фонарика
   const [maskPos, setMaskPos] = useState({ x: 0, y: 0 });
   const [isPhotoHovered, setIsPhotoHovered] = useState(false);
   const [isPhotoClicked, setIsPhotoClicked] = useState(false);
@@ -311,6 +318,10 @@ export default function Portfolio() {
   }, [githubProjects]);
 
   useEffect(() => {
+    // Отключаем кастомный курсор на тач-устройствах, чтобы не ломать тапы
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (isTouchDevice) return;
+
     const handleMouseMove = (e: MouseEvent) => {
       cursorX.set(e.clientX - (isCursorHovered ? 24 : 16));
       cursorY.set(e.clientY - (isCursorHovered ? 24 : 16));
@@ -326,11 +337,11 @@ export default function Portfolio() {
   }));
 
   return (
-    <div className="bg-[#050505] text-[#f5f5f5] min-h-screen h-screen overflow-hidden font-sans selection:bg-[#ffffff] selection:text-black cursor-none">
+    <div className="bg-[#050505] text-[#f5f5f5] min-h-screen h-screen overflow-hidden font-sans selection:bg-[#ffffff] selection:text-black cursor-auto md:cursor-none">
 
-      {/* курсор*/}
+      {/* КУРСОР (Скрыт на мобильных устройствах) */}
       <motion.div
-        className="fixed top-0 left-0 border rounded-full pointer-events-none z-[999] mix-blend-difference flex items-center justify-center backdrop-invert-[0.1]"
+        className="hidden md:flex fixed top-0 left-0 border rounded-full pointer-events-none z-[999] mix-blend-difference items-center justify-center backdrop-invert-[0.1]"
         style={{ x: cursorX, y: cursorY }}
         animate={{
           width: isCursorHovered ? 48 : 32,
@@ -343,24 +354,24 @@ export default function Portfolio() {
         <motion.div className="bg-white rounded-full" animate={{ width: isCursorHovered ? 0 : 4, height: isCursorHovered ? 0 : 4 }} />
       </motion.div>
 
-
+      {/* ПРЕЛОАДЕР */}
       <AnimatePresence>
         {isLoading && (
           <motion.div
             exit={{ opacity: 0, scale: 1.02, transition: { duration: 1.5, ease: "easeInOut" } }}
-            className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#020202]"
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#020202] px-6"
           >
-            <div className="flex flex-col items-center justify-center w-full max-w-2xl px-6">
-              <div className="w-full flex justify-between items-end mb-4 font-mono text-xs uppercase tracking-widest text-gray-500">
+            <div className="flex flex-col items-center justify-center w-full max-w-2xl">
+              <div className="w-full flex justify-between items-end mb-4 font-mono text-[10px] md:text-xs uppercase tracking-widest text-gray-500">
                 <div className="flex flex-col gap-1">
                   <span>System Boot</span>
                   <span className="text-[#888888]">IP: {userData.ip}</span>
-                  <span className="text-[#888888]">LOC: {userData.loc}</span>
+                  <span className="text-[#888888] hidden md:block">LOC: {userData.loc}</span>
                 </div>
-                <span className="text-white text-2xl">{Math.floor(loadProgress)}%</span>
+                <span className="text-white text-xl md:text-2xl">{Math.floor(loadProgress)}%</span>
               </div>
 
-              <div className="w-full h-[1px] bg-gray-900 relative overflow-hidden mb-16">
+              <div className="w-full h-[1px] bg-gray-900 relative overflow-hidden mb-12 md:mb-16">
                 <motion.div
                   className="absolute top-0 left-0 h-full bg-white shadow-[0_0_15px_#ffffff]"
                   style={{ width: `${loadProgress}%` }}
@@ -373,12 +384,12 @@ export default function Portfolio() {
                 transition={{ delay: 1, duration: 1 }}
                 className="text-center"
               >
-                <h1 className="text-6xl md:text-8xl font-bold tracking-tighter text-white mb-6">AMIR</h1>
-                <h2 className="text-xl md:text-2xl font-light text-gray-400 mb-4 tracking-tight">Backend & Web Developer</h2>
+                <h1 className="text-5xl md:text-8xl font-bold tracking-tighter text-white mb-4 md:mb-6">AMIR</h1>
+                <h2 className="text-lg md:text-2xl font-light text-gray-400 mb-4 tracking-tight">Backend & Web Developer</h2>
 
-                <div className="flex flex-wrap justify-center gap-4 font-mono text-[10px] text-gray-500 uppercase tracking-[0.2em] mt-10">
-                  <span className="border border-gray-800 px-4 py-2 rounded-sm backdrop-blur-sm bg-white/5">GitHub: YSMLB</span>
-                  <span className="border border-gray-800 px-4 py-2 rounded-sm backdrop-blur-sm bg-white/5">Stack: Golang // C#</span>
+                <div className="flex flex-wrap justify-center gap-2 md:gap-4 font-mono text-[8px] md:text-[10px] text-gray-500 uppercase tracking-[0.2em] mt-8 md:mt-10">
+                  <span className="border border-gray-800 px-3 py-2 md:px-4 md:py-2 rounded-sm backdrop-blur-sm bg-white/5">GitHub: YSMLB</span>
+                  <span className="border border-gray-800 px-3 py-2 md:px-4 md:py-2 rounded-sm backdrop-blur-sm bg-white/5">Stack: Golang // C#</span>
                 </div>
               </motion.div>
             </div>
@@ -386,21 +397,17 @@ export default function Portfolio() {
         )}
       </AnimatePresence>
 
-      {/* сцена 3д*/}
+      {/* 3D СЦЕНА */}
       <div className="absolute inset-0 z-10 pointer-events-none">
         <Canvas camera={{ position: [0, 0, 15], fov: 40 }} dpr={[1, 2]}>
           <LedBillboardWall />
-
           <ambientLight intensity={0.5} />
           <directionalLight position={[10, 10, 10]} intensity={4} color="#ffffff" />
           <directionalLight position={[-10, -10, -10]} intensity={2} color="#ffffff" />
           <Environment preset="studio" environmentIntensity={1.0} />
-
           <BackgroundText />
           <SolidGlassY />
-
           <PostEffects />
-
           <Hud>
             <OrthographicCamera makeDefault position={[0, 0, 10]} zoom={50} />
             <ambientLight intensity={1} />
@@ -409,7 +416,7 @@ export default function Portfolio() {
         </Canvas>
       </div>
 
-      {/* затемнение */}
+      {/* ЗАТЕМНЕНИЕ */}
       <AnimatePresence>
         {activeSection !== 'hero' && (
           <motion.div
@@ -422,35 +429,39 @@ export default function Portfolio() {
         )}
       </AnimatePresence>
 
-      {/* навигация*/}
+      {/* АДАПТИВНАЯ НАВИГАЦИЯ */}
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: !isLoading ? 1 : 0 }} transition={{ duration: 1.5, delay: 0.2 }}
         className="fixed inset-0 pointer-events-none z-50 p-6 md:p-8 flex flex-col justify-between"
       >
-        <div className="flex justify-between items-start font-mono text-[10px] uppercase tracking-widest text-gray-400">
-          <button onClick={() => setActiveSection('hero')} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="p-6 -m-6 font-bold text-white text-sm tracking-[0.2em] pointer-events-auto cursor-none hover:text-white transition-colors">
+        <div className="flex flex-wrap md:flex-nowrap justify-between items-center md:items-start font-mono text-[10px] uppercase tracking-widest text-gray-400 gap-y-6">
+
+          <button onClick={() => setActiveSection('hero')} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="font-bold text-white text-sm tracking-[0.2em] pointer-events-auto cursor-auto md:cursor-none hover:text-white transition-colors">
             YSM.
           </button>
 
-          <div className="hidden md:flex gap-8 pointer-events-auto pr-32">
+          {/* Центр меню (переносится на новую строку на смартфонах) */}
+          <div className="flex gap-6 md:gap-8 pointer-events-auto w-full md:w-auto justify-center order-3 md:order-none md:pr-32 pt-4 md:pt-0">
             {['hero', 'bio', 'projects'].map((item) => (
-              <button key={item} onClick={() => setActiveSection(item as any)} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className={`p-6 -m-6 cursor-none transition-colors relative group ${activeSection === item ? 'text-white' : 'hover:text-white'}`}>
+              <button key={item} onClick={() => setActiveSection(item as any)} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className={`cursor-auto md:cursor-none transition-colors relative group text-[10px] ${activeSection === item ? 'text-white' : 'hover:text-white'}`}>
                 <span className="relative z-10">{item === 'hero' ? 'Home' : item}</span>
-                <span className={`absolute bottom-4 left-1/2 h-[1px] bg-white transition-all ${activeSection === item ? 'w-1/2 -translate-x-1/2' : 'w-0 group-hover:w-1/2 group-hover:-translate-x-1/2'}`} />
+                <span className={`absolute -bottom-2 left-1/2 h-[1px] bg-white transition-all ${activeSection === item ? 'w-full -translate-x-1/2' : 'w-0 group-hover:w-full group-hover:-translate-x-1/2'}`} />
               </button>
             ))}
           </div>
 
-          <button onClick={() => setIsContactOpen(true)} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="p-6 -m-6 pointer-events-auto cursor-none hover:text-white transition-colors">
-            Contact / Request
+          <button onClick={() => setIsContactOpen(true)} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="pointer-events-auto cursor-auto md:cursor-none hover:text-white transition-colors order-2 md:order-none">
+            Contact
           </button>
         </div>
 
-        {/* сука блять*/}
+        {/* НИЖНЯЯ ПАНЕЛЬ С НОВОСТЯМИ */}
         <AnimatePresence>
           {activeSection === 'hero' && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex justify-between items-end font-mono">
-              <div className="flex flex-col gap-1 text-[9px] uppercase tracking-[0.2em] text-gray-500">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex justify-between items-end font-mono w-full">
+
+              {/* Скрыто на мобилках */}
+              <div className="hidden md:flex flex-col gap-1 text-[9px] uppercase tracking-[0.2em] text-gray-500">
                 <span className="text-gray-300">System Core</span>
                 <div className="flex items-center gap-2 mt-4">
                   <div className="w-16 h-[1px] bg-gray-800 relative overflow-hidden">
@@ -460,11 +471,11 @@ export default function Portfolio() {
                 </div>
               </div>
 
-              {/* гитхабик */}
-              <div className="pointer-events-auto flex flex-col items-start w-64 border-l border-gray-800 pl-4 cursor-none" onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)}>
+              {/* РЕАЛЬНЫЙ GITHUB WIDGET (100% ширины на телефоне) */}
+              <div className="pointer-events-auto flex flex-col items-start w-full md:w-64 md:border-l border-gray-800 md:pl-4 cursor-auto md:cursor-none" onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)}>
                 <h4 className="text-[10px] text-white tracking-[0.2em] uppercase mb-4 border-b border-gray-800 pb-2 w-full">GitHub / YSMLB</h4>
 
-                <div className="relative h-24 w-full overflow-hidden">
+                <div className="relative h-20 md:h-24 w-full overflow-hidden">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={newsIndex}
@@ -475,7 +486,7 @@ export default function Portfolio() {
                       className="absolute inset-0 flex flex-col gap-1 hover:opacity-70 transition-opacity"
                     >
                       <span className="text-[9px] text-[#00ffcc] tracking-widest">{githubProjects[newsIndex]?.date}</span>
-                      <a href={githubProjects[newsIndex]?.url} target="_blank" rel="noreferrer" className="text-xs text-white uppercase tracking-wider font-bold truncate">
+                      <a href={githubProjects[newsIndex]?.url} target="_blank" rel="noreferrer" className="text-[10px] md:text-xs text-white uppercase tracking-wider font-bold truncate">
                         {githubProjects[newsIndex]?.title}
                       </a>
                       <p className="text-[10px] text-gray-400 mt-1 leading-relaxed line-clamp-2">
@@ -490,7 +501,7 @@ export default function Portfolio() {
         </AnimatePresence>
       </motion.div>
 
-      {/* разделы*/}
+      {/* КОНТЕНТ РАЗДЕЛОВ */}
       <AnimatePresence mode="wait">
         {activeSection === 'bio' && (
           <motion.section
@@ -498,26 +509,26 @@ export default function Portfolio() {
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.8 }}
             className="absolute inset-0 z-30 flex items-center justify-center px-6 md:px-20 pointer-events-auto overflow-y-auto"
           >
-            <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-12 items-center mt-20 md:mt-0 pb-20 md:pb-0">
+            {/* Добавлен большой отступ сверху для мобилок, чтобы текст не залезал под меню */}
+            <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center mt-40 md:mt-0 pb-20 md:pb-0">
 
-              {/* био*/}
               <div>
-                <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-gray-500 mb-8">01 / Biography</h2>
-                <h3 className="text-4xl md:text-5xl font-medium tracking-tight mb-8 text-white">
+                <h2 className="text-[10px] md:text-xs font-mono uppercase tracking-[0.2em] text-gray-500 mb-6 md:mb-8">01 / Biography</h2>
+                <h3 className="text-3xl md:text-5xl font-medium tracking-tight mb-6 md:mb-8 text-white leading-snug">
                   Я создаю продукты, которые решают задачи через чистый код и глубокую логику.
                 </h3>
-                <p className="text-gray-400 font-light text-lg mb-4">
+                <p className="text-gray-400 font-light text-sm md:text-lg mb-4">
                   Full-stack разработка — это не просто написание строчек на Go или React. Это проектирование миров, которые работают безупречно.
                 </p>
-                <button onClick={() => setIsContactOpen(true)} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="group relative px-8 py-4 bg-white text-black font-medium overflow-hidden rounded-sm cursor-none pointer-events-auto mt-10">
+                <button onClick={() => setIsContactOpen(true)} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="group relative px-6 py-3 md:px-8 md:py-4 bg-white text-black font-medium overflow-hidden rounded-sm cursor-auto md:cursor-none pointer-events-auto mt-6 md:mt-10 text-sm md:text-base">
                   <span className="relative z-10">Связаться со мной</span>
                   <div className="absolute inset-0 bg-gray-300 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out z-0"></div>
                 </button>
               </div>
 
-              {/* фоточка*/}
+              {/* ФОТО */}
               <div
-                className="relative w-full aspect-[4/5] bg-[#0a0a0a] rounded-lg overflow-hidden border border-gray-800 flex items-center justify-center pointer-events-auto cursor-none"
+                className="relative w-full aspect-square md:aspect-[4/5] bg-[#0a0a0a] rounded-lg overflow-hidden border border-gray-800 flex items-center justify-center pointer-events-auto cursor-auto md:cursor-none mt-8 md:mt-0"
                 onMouseEnter={() => { setIsCursorHovered(true); setIsPhotoHovered(true); }}
                 onMouseLeave={() => { setIsCursorHovered(false); setIsPhotoHovered(false); }}
                 onMouseMove={(e) => {
@@ -526,15 +537,11 @@ export default function Portfolio() {
                 }}
                 onClick={() => setIsPhotoClicked(!isPhotoClicked)}
               >
-
-                {/* первый слой на фото */}
                 <img
                   src="/my_photo.jpg"
                   alt="Amir Blurred"
                   className="absolute inset-0 w-full h-full object-cover grayscale blur-md opacity-60"
                 />
-
-                {/* второй слой */}
                 <img
                   src="/my_photo.jpg"
                   alt="Amir Clear"
@@ -543,20 +550,18 @@ export default function Portfolio() {
                     WebkitMaskImage: isPhotoClicked
                       ? 'none'
                       : isPhotoHovered
-                        ? `radial-gradient(circle 120px at ${maskPos.x}px ${maskPos.y}px, black 20%, transparent 100%)`
+                        ? `radial-gradient(circle 100px at ${maskPos.x}px ${maskPos.y}px, black 20%, transparent 100%)`
                         : 'none',
                     maskImage: isPhotoClicked
                       ? 'none'
                       : isPhotoHovered
-                        ? `radial-gradient(circle 120px at ${maskPos.x}px ${maskPos.y}px, black 20%, transparent 100%)`
+                        ? `radial-gradient(circle 100px at ${maskPos.x}px ${maskPos.y}px, black 20%, transparent 100%)`
                         : 'none',
                     opacity: isPhotoClicked || isPhotoHovered ? 1 : 0
                   }}
                 />
-
-                {/* подсказка*/}
                 {!isPhotoClicked && !isPhotoHovered && (
-                  <p className="font-mono text-gray-400 text-xs tracking-[0.2em] uppercase z-10 pointer-events-none absolute mix-blend-difference">
+                  <p className="font-mono text-gray-400 text-[10px] md:text-xs tracking-[0.2em] uppercase z-10 pointer-events-none absolute mix-blend-difference text-center px-4">
                     [ HOVER TO REVEAL / CLICK TO OPEN ]
                   </p>
                 )}
@@ -566,25 +571,25 @@ export default function Portfolio() {
           </motion.section>
         )}
 
-        {/* проекты-заголушки */}
+        {/* ПРОЕКТЫ */}
         {activeSection === 'projects' && (
           <motion.section
             key="projects"
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.8 }}
-            className="absolute inset-0 z-30 overflow-y-auto pt-32 px-6 md:px-20 pb-20 pointer-events-auto"
+            className="absolute inset-0 z-30 overflow-y-auto pt-32 md:pt-32 px-6 md:px-20 pb-20 pointer-events-auto"
           >
-            <div className="max-w-6xl mx-auto">
-              <h2 className="text-xs font-mono uppercase tracking-[0.2em] text-gray-500 mb-12">02 / Selected Works</h2>
+            <div className="max-w-6xl mx-auto mt-12 md:mt-0">
+              <h2 className="text-[10px] md:text-xs font-mono uppercase tracking-[0.2em] text-gray-500 mb-8 md:mb-12">02 / Selected Works</h2>
               <div className="flex flex-col border-t border-gray-800/50">
                 {projects.map((project) => (
-                  <div key={project.id} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="group flex flex-col md:flex-row justify-between items-start md:items-center py-8 md:py-10 border-b border-gray-800/50 cursor-none hover:bg-white/5 transition-colors duration-500 px-6 -mx-6 rounded-lg pointer-events-auto">
-                    <h4 className="text-3xl md:text-4xl font-medium tracking-tight text-gray-400 group-hover:text-white transition-colors duration-300">
-                      <span className="text-sm align-top mr-6 text-gray-600 font-light font-mono">0{project.id}</span>
+                  <div key={project.id} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="group flex flex-col md:flex-row justify-between items-start md:items-center py-6 md:py-10 border-b border-gray-800/50 cursor-auto md:cursor-none hover:bg-white/5 transition-colors duration-500 px-4 md:px-6 -mx-4 md:-mx-6 rounded-lg pointer-events-auto">
+                    <h4 className="text-xl md:text-4xl font-medium tracking-tight text-gray-400 group-hover:text-white transition-colors duration-300 flex items-center">
+                      <span className="text-[10px] md:text-sm mr-4 text-gray-600 font-light font-mono mt-1 md:mt-0">0{project.id}</span>
                       {project.title}
                     </h4>
-                    <div className="mt-4 md:mt-0 text-right">
-                      <p className="text-white font-mono uppercase tracking-[0.2em] text-xs mb-1 opacity-0 group-hover:opacity-100 transition-opacity">Launch</p>
-                      <p className="text-gray-500 font-light uppercase tracking-widest text-[10px]">{project.category}</p>
+                    <div className="mt-2 md:mt-0 text-left md:text-right w-full md:w-auto pl-8 md:pl-0">
+                      <p className="text-white font-mono uppercase tracking-[0.2em] text-[8px] md:text-xs mb-1 md:opacity-0 group-hover:opacity-100 transition-opacity">Launch</p>
+                      <p className="text-gray-500 font-light uppercase tracking-widest text-[8px] md:text-[10px]">{project.category}</p>
                     </div>
                   </div>
                 ))}
@@ -594,29 +599,26 @@ export default function Portfolio() {
         )}
       </AnimatePresence>
 
-      {/* контакты */}
+      {/* МОДАЛКА КОНТАКТОВ */}
       <AnimatePresence>
         {isContactOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-md pointer-events-auto cursor-none" onClick={() => setIsContactOpen(false)}>
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-[#050505] border border-gray-800 p-12 rounded-xl max-w-md w-full relative" onClick={(e) => e.stopPropagation()}>
-              <button onClick={() => setIsContactOpen(false)} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="absolute top-6 right-6 p-4 -m-4 text-gray-500 hover:text-white font-mono text-xs uppercase cursor-none pointer-events-auto">Close [x]</button>
-              <h2 className="text-2xl font-medium mb-8 text-white">Initialize Connection</h2>
-              <div className="flex flex-col gap-6 font-mono text-sm">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-md pointer-events-auto cursor-auto md:cursor-none px-4" onClick={() => setIsContactOpen(false)}>
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-[#050505] border border-gray-800 p-8 md:p-12 rounded-xl max-w-sm md:max-w-md w-full relative" onClick={(e) => e.stopPropagation()}>
+              <button onClick={() => setIsContactOpen(false)} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="absolute top-4 right-4 md:top-6 md:right-6 p-2 md:p-4 text-gray-500 hover:text-white font-mono text-[10px] md:text-xs uppercase cursor-auto md:cursor-none pointer-events-auto">Close [x]</button>
+              <h2 className="text-xl md:text-2xl font-medium mb-8 text-white">Initialize Connection</h2>
+              <div className="flex flex-col gap-6 font-mono text-xs md:text-sm">
 
-                {/* EMAIL  */}
-                <a href="mailto:amirsaga4@gmail.com?subject=Contact Request&body=Привет, Амир! Пишу с твоего портфолио." onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="pointer-events-auto group block cursor-none">
+                <a href="mailto:amirsaga4@gmail.com?subject=Contact Request&body=Привет, Амир! Пишу с твоего портфолио." onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="pointer-events-auto group block cursor-auto md:cursor-none">
                   <p className="text-gray-500 mb-1 transition-colors group-hover:text-[#00ffcc]">Email</p>
-                  <p className="text-white transition-colors group-hover:text-gray-300">amirsaga4@gmail.com</p>
+                  <p className="text-white transition-colors group-hover:text-gray-300 break-words">amirsaga4@gmail.com</p>
                 </a>
 
-                {/* TELEGRAM  */}
-                <a href="https://t.me/JAPYSM_vey?text=Привет,%20Амир!%20Пишу%20с%20твоего%20портфолио." target="_blank" rel="noreferrer" onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="pointer-events-auto group block cursor-none">
+                <a href="https://t.me/JAPYSM_vey?text=Привет,%20Амир!%20Пишу%20с%20твоего%20портфолио." target="_blank" rel="noreferrer" onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="pointer-events-auto group block cursor-auto md:cursor-none">
                   <p className="text-gray-500 mb-1 transition-colors group-hover:text-[#00ffcc]">Telegram</p>
                   <p className="text-white transition-colors group-hover:text-gray-300">@JAPYSM_vey</p>
                 </a>
 
-                {/* GITHUB  */}
-                <a href="https://github.com/YSMLB" target="_blank" rel="noreferrer" onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="pointer-events-auto group block cursor-none">
+                <a href="https://github.com/YSMLB" target="_blank" rel="noreferrer" onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="pointer-events-auto group block cursor-auto md:cursor-none">
                   <p className="text-gray-500 mb-1 transition-colors group-hover:text-[#00ffcc]">GitHub</p>
                   <p className="text-white transition-colors group-hover:text-gray-300">github.com/YSMLB</p>
                 </a>
