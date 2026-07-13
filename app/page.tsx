@@ -8,11 +8,12 @@ import { Environment, Float, MeshTransmissionMaterial, Text, Hud, OrthographicCa
 import { EffectComposer, Bloom, Noise, ChromaticAberration } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
 import * as THREE from "three";
+import { portfolioProjects } from "../data/projects";
 
 const sharedRotation = new THREE.Euler();
 let forceResetRotation = false;
 
-// 1. 3D Буква Y
+// 1. Идеальная монолитная буква Y
 function SolidGlassY() {
   const group = useRef<THREE.Group>(null);
   const { viewport } = useThree();
@@ -324,12 +325,6 @@ export default function Portfolio() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [cursorX, cursorY, isCursorHovered]);
 
-  const projects = Array.from({ length: 7 }, (_, i) => ({
-    id: i + 1,
-    title: `System Layer 0${i + 1}`,
-    category: "Backend / Logic",
-  }));
-
   return (
     <div className="bg-[#050505] text-[#f5f5f5] min-h-screen h-screen overflow-hidden font-sans selection:bg-[#ffffff] selection:text-black cursor-auto md:cursor-none flex flex-col">
 
@@ -412,11 +407,10 @@ export default function Portfolio() {
         )}
       </AnimatePresence>
 
-
-      {/* ==== НОВАЯ АРХИТЕКТУРА UI (ФИКС НАЛОЖЕНИЯ) ==== */}
+      {/* ==== АРХИТЕКТУРА UI ==== */}
       <div className="fixed inset-0 z-50 flex flex-col pointer-events-none">
 
-        {/* ШАПКА / МЕНЮ (Занимает фиксированную высоту сверху) */}
+        {/* ШАПКА / МЕНЮ */}
         <header className="w-full shrink-0 bg-[#050505]/95 backdrop-blur-xl border-b border-white/10 pointer-events-auto shadow-lg shadow-black/50">
           <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex justify-between items-center w-full md:w-auto">
@@ -443,7 +437,7 @@ export default function Portfolio() {
           </div>
         </header>
 
-        {/* ОСНОВНОЙ КОНТЕНТ (Начинается СТРОГО под шапкой) */}
+        {/* ОСНОВНОЙ КОНТЕНТ */}
         <main className="flex-1 relative w-full overflow-hidden">
 
           {/* НИЖНЯЯ ПАНЕЛЬ С GITHUB (Только на Главной) */}
@@ -529,25 +523,60 @@ export default function Portfolio() {
                       </p>
                     )}
                   </div>
-
                 </div>
               </motion.section>
             )}
           </AnimatePresence>
 
-          {/* PROJECTS */}
+          {/* PROJECTS С БАЗОЙ ИЗ ФАЙЛА + МАРШРУТИЗАЦИЯ */}
           <AnimatePresence mode="wait">
             {activeSection === 'projects' && (
               <motion.section
                 key="projects"
                 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.8 }}
-                className="absolute inset-0 overflow-y-auto pointer-events-auto px-6 md:px-20 py-10 md:py-16"
+                className="absolute inset-0 overflow-y-auto pointer-events-auto px-4 md:px-20 py-10 md:py-16 pt-[120px] md:pt-32"
               >
-                <div className="w-full max-w-6xl mx-auto">
+                <div className="w-full max-w-7xl mx-auto mt-4 md:mt-0">
                   <h2 className="text-[10px] md:text-xs font-mono uppercase tracking-[0.2em] text-gray-500 mb-8 md:mb-12">02 / Selected Works</h2>
+
+                  {/* РЕНДЕР ФЛАГМАНСКИХ ПРОЕКТОВ (КЛИКАБЕЛЬНО -> ведут на отдельную страницу) */}
+                  {portfolioProjects.filter((p: any) => p.isFlagship).map((project: any) => (
+                    <div
+                      key={project.id}
+                      onClick={() => window.location.href = '/poesh'}
+                      className="w-full bg-[#f4f4f4] text-black mb-16 pointer-events-auto cursor-pointer md:cursor-none border border-black hover:opacity-95 transition-opacity"
+                      onMouseEnter={() => setIsCursorHovered(true)}
+                      onMouseLeave={() => setIsCursorHovered(false)}
+                    >
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-end p-6 md:p-12 border-b border-black gap-6 md:gap-0">
+                        <h3 className="text-6xl md:text-9xl font-bold tracking-tighter uppercase leading-none">
+                          {project.title}
+                        </h3>
+                        <span className="font-mono text-[10px] md:text-xs font-bold uppercase tracking-widest text-left md:text-right">
+                          {project.category} <br className="hidden md:block" />// {project.location}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col md:flex-row">
+                        {project.features?.map((feat: any, i: number) => (
+                          <div
+                            key={i}
+                            className="flex-1 p-5 md:p-6 border-b md:border-b-0 md:border-r border-black last:border-0 flex flex-col justify-between min-h-[100px] md:min-h-[220px] hover:bg-black hover:text-white transition-colors duration-300"
+                          >
+                            <span className="font-mono text-[10px] font-bold">{feat.num}</span>
+                            <h4 className="font-bold text-base md:text-xl uppercase tracking-tighter mt-8 md:mt-0 leading-tight">
+                              {feat.name}
+                            </h4>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* РЕНДЕР ОСТАЛЬНЫХ ПРОЕКТОВ (Заглушки) */}
                   <div className="flex flex-col border-t border-gray-800/50">
-                    {projects.map((project) => (
-                      <div key={project.id} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="group flex flex-col md:flex-row justify-between items-start md:items-center py-6 md:py-10 border-b border-gray-800/50 cursor-auto md:cursor-none hover:bg-white/5 transition-colors duration-500 px-4 md:px-6 -mx-4 md:-mx-6 rounded-lg">
+                    {portfolioProjects.filter((p: any) => !p.isFlagship).map((project: any) => (
+                      <div key={project.id} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="group flex flex-col md:flex-row justify-between items-start md:items-center py-6 md:py-10 border-b border-gray-800/50 cursor-auto md:cursor-none hover:bg-white/5 transition-colors duration-500 px-4 md:px-6 -mx-4 md:-mx-6 rounded-lg pointer-events-auto">
                         <h4 className="text-xl md:text-4xl font-medium tracking-tight text-gray-400 group-hover:text-white transition-colors duration-300 flex items-center">
                           <span className="text-[10px] md:text-sm mr-4 text-gray-600 font-light font-mono mt-1 md:mt-0">0{project.id}</span>
                           {project.title}
@@ -563,7 +592,6 @@ export default function Portfolio() {
               </motion.section>
             )}
           </AnimatePresence>
-
         </main>
       </div>
 
