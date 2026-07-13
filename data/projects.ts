@@ -4,29 +4,37 @@ export const portfolioProjects = [
     {
         id: 1,
         title: "ПОЕШЬ",
-        category: "Food Delivery System",
-        location: "ORENBURG",
-        isFlagship: true,
-        features: [
-            { num: "00-1", name: "BACKEND (GO)" },
-            { num: "00-2", name: "REST API" },
-            { num: "00-3", name: "PAYMENT GATEWAY" },
-            { num: "00-4", name: "COURIER APP" },
-            { num: "00-5", name: "POSTGRESQL DB" }
-        ]
+        category: "Food Delivery System // Orenburg",
+        link: "/poesh" // Ссылка на наш новый белый сайт
     },
     {
         id: 2,
         title: "System Layer 02",
         category: "Backend / Logic",
-        isFlagship: false,
-        features: []
+        link: "#" // Заглушка (пока никуда не ведет)
     },
     {
         id: 3,
         title: "System Layer 03",
         category: "Architecture / C#",
-        isFlagship: false,
-        features: []
+        link: "#"
+    },
+    {
+        id: 4,
+        title: "System Layer 04",
+        category: "Backend / Logic",
+        link: "#"
+    },
+    {
+        id: 5,
+        title: "System Layer 05",
+        category: "Backend / Logic",
+        link: "#"
+    },
+    {
+        id: 6,
+        title: "System Layer 06",
+        category: "Backend / Logic",
+        link: "#"
     },
 ];

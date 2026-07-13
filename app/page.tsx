@@ -375,7 +375,7 @@ export default function Portfolio() {
         )}
       </AnimatePresence>
 
-      {/* 3D СЦЕНА (Остается на фоне) */}
+      {/* 3D СЦЕНА */}
       <div className="fixed inset-0 z-10 pointer-events-none">
         <Canvas camera={{ position: [0, 0, 15], fov: 40 }} dpr={[1, 2]}>
           <LedBillboardWall />
@@ -394,7 +394,7 @@ export default function Portfolio() {
         </Canvas>
       </div>
 
-      {/* ЗАТЕМНЕНИЕ ФОНА (Показывается только в разделах) */}
+      {/* ЗАТЕМНЕНИЕ ФОНА */}
       <AnimatePresence>
         {activeSection !== 'hero' && (
           <motion.div
@@ -528,7 +528,7 @@ export default function Portfolio() {
             )}
           </AnimatePresence>
 
-          {/* PROJECTS С БАЗОЙ ИЗ ФАЙЛА + МАРШРУТИЗАЦИЯ */}
+          {/* PROJECTS С БАЗОЙ ИЗ ФАЙЛА (СТРОГИЙ ТЕМНЫЙ СПИСОК) */}
           <AnimatePresence mode="wait">
             {activeSection === 'projects' && (
               <motion.section
@@ -539,55 +539,33 @@ export default function Portfolio() {
                 <div className="w-full max-w-7xl mx-auto mt-4 md:mt-0">
                   <h2 className="text-[10px] md:text-xs font-mono uppercase tracking-[0.2em] text-gray-500 mb-8 md:mb-12">02 / Selected Works</h2>
 
-                  {/* РЕНДЕР ФЛАГМАНСКИХ ПРОЕКТОВ (КЛИКАБЕЛЬНО -> ведут на отдельную страницу) */}
-                  {portfolioProjects.filter((p: any) => p.isFlagship).map((project: any) => (
-                    <div
-                      key={project.id}
-                      onClick={() => window.location.href = '/poesh'}
-                      className="w-full bg-[#f4f4f4] text-black mb-16 pointer-events-auto cursor-pointer md:cursor-none border border-black hover:opacity-95 transition-opacity"
-                      onMouseEnter={() => setIsCursorHovered(true)}
-                      onMouseLeave={() => setIsCursorHovered(false)}
-                    >
-                      <div className="flex flex-col md:flex-row justify-between items-start md:items-end p-6 md:p-12 border-b border-black gap-6 md:gap-0">
-                        <h3 className="text-6xl md:text-9xl font-bold tracking-tighter uppercase leading-none">
-                          {project.title}
-                        </h3>
-                        <span className="font-mono text-[10px] md:text-xs font-bold uppercase tracking-widest text-left md:text-right">
-                          {project.category} <br className="hidden md:block" />// {project.location}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-col md:flex-row">
-                        {project.features?.map((feat: any, i: number) => (
-                          <div
-                            key={i}
-                            className="flex-1 p-5 md:p-6 border-b md:border-b-0 md:border-r border-black last:border-0 flex flex-col justify-between min-h-[100px] md:min-h-[220px] hover:bg-black hover:text-white transition-colors duration-300"
-                          >
-                            <span className="font-mono text-[10px] font-bold">{feat.num}</span>
-                            <h4 className="font-bold text-base md:text-xl uppercase tracking-tighter mt-8 md:mt-0 leading-tight">
-                              {feat.name}
-                            </h4>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* РЕНДЕР ОСТАЛЬНЫХ ПРОЕКТОВ (Заглушки) */}
+                  {/* РЕНДЕР ВСЕХ ПРОЕКТОВ (ТОЛЬКО ТЕМНЫЕ ЗАГЛУШКИ) */}
                   <div className="flex flex-col border-t border-gray-800/50">
-                    {portfolioProjects.filter((p: any) => !p.isFlagship).map((project: any) => (
-                      <div key={project.id} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="group flex flex-col md:flex-row justify-between items-start md:items-center py-6 md:py-10 border-b border-gray-800/50 cursor-auto md:cursor-none hover:bg-white/5 transition-colors duration-500 px-4 md:px-6 -mx-4 md:-mx-6 rounded-lg pointer-events-auto">
-                        <h4 className="text-xl md:text-4xl font-medium tracking-tight text-gray-400 group-hover:text-white transition-colors duration-300 flex items-center">
-                          <span className="text-[10px] md:text-sm mr-4 text-gray-600 font-light font-mono mt-1 md:mt-0">0{project.id}</span>
-                          {project.title}
-                        </h4>
-                        <div className="mt-2 md:mt-0 text-left md:text-right w-full md:w-auto pl-8 md:pl-0">
-                          <p className="text-white font-mono uppercase tracking-[0.2em] text-[8px] md:text-xs mb-1 md:opacity-0 group-hover:opacity-100 transition-opacity">Launch</p>
-                          <p className="text-gray-500 font-light uppercase tracking-widest text-[8px] md:text-[10px]">{project.category}</p>
+                    {portfolioProjects.map((project: any) => {
+                      const isClickable = project.link && project.link !== "#";
+                      return (
+                        <div
+                          key={project.id}
+                          onClick={() => isClickable ? window.location.href = project.link : null}
+                          onMouseEnter={() => setIsCursorHovered(true)}
+                          onMouseLeave={() => setIsCursorHovered(false)}
+                          className={`group flex flex-col md:flex-row justify-between items-start md:items-center py-6 md:py-10 border-b border-gray-800/50 transition-colors duration-500 px-4 md:px-6 -mx-4 md:-mx-6 rounded-lg pointer-events-auto ${isClickable ? "hover:bg-white/5 cursor-pointer md:cursor-none" : "opacity-50 cursor-auto md:cursor-none"}`}
+                        >
+                          <h4 className="text-xl md:text-4xl font-medium tracking-tight text-gray-400 group-hover:text-white transition-colors duration-300 flex items-center">
+                            <span className="text-[10px] md:text-sm mr-4 text-gray-600 font-light font-mono mt-1 md:mt-0">0{project.id}</span>
+                            {project.title}
+                          </h4>
+                          <div className="mt-2 md:mt-0 text-left md:text-right w-full md:w-auto pl-8 md:pl-0">
+                            <p className="text-white font-mono uppercase tracking-[0.2em] text-[8px] md:text-xs mb-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                              {isClickable ? "View Case Study" : "In Progress"}
+                            </p>
+                            <p className="text-gray-500 font-light uppercase tracking-widest text-[8px] md:text-[10px]">{project.category}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
+
                 </div>
               </motion.section>
             )}
