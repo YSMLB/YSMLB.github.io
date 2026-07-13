@@ -12,7 +12,7 @@ import * as THREE from "three";
 const sharedRotation = new THREE.Euler();
 let forceResetRotation = false;
 
-// 1. Идеальная монолитная буква Y (Адаптивный скейл)
+// 1. Идеальная монолитная буква Y
 function SolidGlassY() {
   const group = useRef<THREE.Group>(null);
   const { viewport } = useThree();
@@ -51,7 +51,6 @@ function SolidGlassY() {
         group.current.rotation.y += delta * 2.8;
         group.current.rotation.x += delta * 1.5;
 
-        // На мобилках параллакс от мыши/тапа слабее
         const isMobile = viewport.width < 5;
         const targetX = (state.pointer.y * Math.PI) / (isMobile ? 6 : 3);
         const targetZ = -(state.pointer.x * Math.PI) / (isMobile ? 6 : 3);
@@ -420,17 +419,20 @@ export default function Portfolio() {
         )}
       </AnimatePresence>
 
+      {/* ОДНА БОЛЬШАЯ ОБЕРТКА ДЛЯ ВСЕХ UI ЭЛЕМЕНТОВ */}
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: !isLoading ? 1 : 0 }} transition={{ duration: 1.5, delay: 0.2 }}
-        className="fixed inset-0 pointer-events-none z-50 p-6 md:p-8 flex flex-col justify-between"
+        className="fixed inset-0 pointer-events-none z-50 flex flex-col justify-between"
       >
-        <div className="flex flex-wrap md:flex-nowrap justify-between items-center md:items-start font-mono text-[10px] uppercase tracking-widest text-gray-400 gap-y-6">
 
-          <button onClick={() => setActiveSection('hero')} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="font-bold text-white text-sm tracking-[0.2em] pointer-events-auto cursor-auto md:cursor-none hover:text-white transition-colors">
+        {/* ВЕРХНЕЕ СТЕКЛЯННОЕ МЕНЮ (Защищает текст от наложения) */}
+        <div className="w-full flex flex-wrap md:flex-nowrap justify-between items-center md:items-start font-mono text-[10px] uppercase tracking-widest text-gray-400 gap-y-4 p-5 md:p-8 bg-[#050505]/70 backdrop-blur-md border-b border-white/10 pointer-events-auto shadow-lg shadow-black/50">
+
+          <button onClick={() => setActiveSection('hero')} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="font-bold text-white text-sm tracking-[0.2em] cursor-auto md:cursor-none hover:text-[#00ffcc] transition-colors">
             YSM.
           </button>
 
-          <div className="flex gap-6 md:gap-8 pointer-events-auto w-full md:w-auto justify-center order-3 md:order-none md:pr-32 pt-4 md:pt-0">
+          <div className="flex gap-6 md:gap-8 w-full md:w-auto justify-center order-3 md:order-none pt-2 md:pt-0">
             {['hero', 'bio', 'projects'].map((item) => (
               <button key={item} onClick={() => setActiveSection(item as any)} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className={`cursor-auto md:cursor-none transition-colors relative group text-[10px] ${activeSection === item ? 'text-white' : 'hover:text-white'}`}>
                 <span className="relative z-10">{item === 'hero' ? 'Home' : item}</span>
@@ -439,14 +441,15 @@ export default function Portfolio() {
             ))}
           </div>
 
-          <button onClick={() => setIsContactOpen(true)} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="pointer-events-auto cursor-auto md:cursor-none hover:text-white transition-colors order-2 md:order-none">
+          <button onClick={() => setIsContactOpen(true)} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="cursor-auto md:cursor-none hover:text-[#00ffcc] transition-colors order-2 md:order-none">
             Contact
           </button>
         </div>
 
+        {/* НИЖНЯЯ ПАНЕЛЬ С GITHUB */}
         <AnimatePresence>
           {activeSection === 'hero' && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex justify-between items-end font-mono w-full">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex justify-between items-end font-mono w-full p-5 md:p-8">
 
               <div className="hidden md:flex flex-col gap-1 text-[9px] uppercase tracking-[0.2em] text-gray-500">
                 <span className="text-gray-300">System Core</span>
@@ -487,14 +490,15 @@ export default function Portfolio() {
         </AnimatePresence>
       </motion.div>
 
+      {/* КОНТЕНТ РАЗДЕЛОВ (Без Flexbox на мобилках) */}
       <AnimatePresence mode="wait">
         {activeSection === 'bio' && (
           <motion.section
             key="bio"
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.8 }}
-            className="absolute inset-0 z-30 flex items-start md:items-center justify-center px-6 md:px-20 pt-40 md:pt-0 pb-32 md:pb-0 pointer-events-auto overflow-y-auto"
+            className="absolute inset-0 z-30 pointer-events-auto overflow-y-auto overflow-x-hidden pt-[150px] md:pt-0 pb-24 md:pb-0 block md:flex md:items-center md:justify-center px-6 md:px-20"
           >
-            <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
+            <div className="w-full max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
 
               <div>
                 <h2 className="text-[10px] md:text-xs font-mono uppercase tracking-[0.2em] text-gray-500 mb-6 md:mb-8">01 / Biography</h2>
@@ -558,9 +562,9 @@ export default function Portfolio() {
           <motion.section
             key="projects"
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.8 }}
-            className="absolute inset-0 z-30 overflow-y-auto pt-32 md:pt-32 px-6 md:px-20 pb-20 pointer-events-auto"
+            className="absolute inset-0 z-30 pointer-events-auto overflow-y-auto overflow-x-hidden pt-[150px] md:pt-32 pb-24 px-6 md:px-20 block"
           >
-            <div className="max-w-6xl mx-auto mt-12 md:mt-0">
+            <div className="w-full max-w-6xl mx-auto mt-4 md:mt-0">
               <h2 className="text-[10px] md:text-xs font-mono uppercase tracking-[0.2em] text-gray-500 mb-8 md:mb-12">02 / Selected Works</h2>
               <div className="flex flex-col border-t border-gray-800/50">
                 {projects.map((project) => (
