@@ -13,7 +13,7 @@ import { portfolioProjects } from "../data/projects";
 const sharedRotation = new THREE.Euler();
 let forceResetRotation = false;
 
-// 1. Идеальная монолитная буква Y
+// 1. Идеальная монолитная буква Y (ОПТИМИЗИРОВАННЫЙ МАТЕРИАЛ)
 function SolidGlassY() {
   const group = useRef<THREE.Group>(null);
   const { viewport } = useThree();
@@ -34,7 +34,7 @@ function SolidGlassY() {
     return new THREE.ExtrudeGeometry(shape, {
       depth: 0.8,
       bevelEnabled: true,
-      bevelSegments: 5,
+      bevelSegments: 3, // Снижено количество сегментов фаски для оптимизации
       steps: 1,
       bevelSize: 0.05,
       bevelThickness: 0.05,
@@ -78,6 +78,8 @@ function SolidGlassY() {
             chromaticAberration={1.5}
             anisotropy={0.8}
             clearcoat={1}
+            resolution={128} // ОПТИМИЗАЦИЯ: Низкое разрешение для просчета преломлений
+            samples={3}      // ОПТИМИЗАЦИЯ: Меньше выборок (сильно экономит GPU)
           />
         </mesh>
       </group>
@@ -145,7 +147,7 @@ const LedBillboardWall = () => {
 
   return (
     <mesh position={[0, 0, 0]} rotation={[0, Math.PI, 0]}>
-      <cylinderGeometry args={[25, 25, 30, 64, 32, true, -Math.PI / 2.5, Math.PI / 1.25]} />
+      <cylinderGeometry args={[25, 25, 30, 32, 16, true, -Math.PI / 2.5, Math.PI / 1.25]} />
       <shaderMaterial
         ref={materialRef}
         vertexShader={vertexShader}
@@ -226,15 +228,21 @@ function TrackingAxes() {
   );
 }
 
+// ОПТИМИЗАЦИЯ: Умные пост-эффекты (Отключаются на мобилках)
 function PostEffects() {
-  const effects = (
-    <EffectComposer disableNormalPass>
-      <Bloom luminanceThreshold={0.4} mipmapBlur intensity={1.5} />
-      <ChromaticAberration blendFunction={BlendFunction.NORMAL} offset={new THREE.Vector2(0.003, 0.003)} />
-      <Noise opacity={0.08} blendFunction={BlendFunction.OVERLAY} />
+  const { viewport } = useThree();
+  const isMobile = viewport.width < 5;
+
+  // Если это мобилка, вообще не рендерим эти тяжелые эффекты
+  if (isMobile) return null;
+
+  return (
+    <EffectComposer disableNormalPass multisampling={0}>
+      <Bloom luminanceThreshold={0.4} mipmapBlur={false} intensity={1.5} resolutionScale={0.5} />
+      <ChromaticAberration blendFunction={BlendFunction.NORMAL} offset={new THREE.Vector2(0.002, 0.002)} />
+      <Noise opacity={0.05} blendFunction={BlendFunction.OVERLAY} />
     </EffectComposer>
   );
-  return effects;
 }
 
 export default function Portfolio() {
@@ -289,8 +297,9 @@ export default function Portfolio() {
       });
   }, []);
 
+  // ОПТИМИЗАЦИЯ: Ускоренный прелоадер (2.5 сек вместо 10 сек)
   useEffect(() => {
-    const duration = 10000;
+    const duration = 2500;
     const startTime = Date.now();
     const interval = setInterval(() => {
       const elapsed = Date.now() - startTime;
@@ -298,9 +307,9 @@ export default function Portfolio() {
       setLoadProgress(progress);
       if (progress >= 100) {
         clearInterval(interval);
-        setTimeout(() => setIsLoading(false), 500);
+        setTimeout(() => setIsLoading(false), 300);
       }
-    }, 50);
+    }, 30);
     return () => clearInterval(interval);
   }, []);
 
@@ -362,7 +371,7 @@ export default function Portfolio() {
               <div className="w-full h-[1px] bg-gray-900 relative overflow-hidden mb-12 md:mb-16">
                 <motion.div className="absolute top-0 left-0 h-full bg-white shadow-[0_0_15px_#ffffff]" style={{ width: `${loadProgress}%` }} />
               </div>
-              <motion.div initial={{ opacity: 0, filter: "blur(10px)" }} animate={{ opacity: 1, filter: "blur(0px)" }} transition={{ delay: 1, duration: 1 }} className="text-center">
+              <motion.div initial={{ opacity: 0, filter: "blur(10px)" }} animate={{ opacity: 1, filter: "blur(0px)" }} transition={{ delay: 0.5, duration: 1 }} className="text-center">
                 <h1 className="text-5xl md:text-8xl font-bold tracking-tighter text-white mb-4 md:mb-6">AMIR</h1>
                 <h2 className="text-lg md:text-2xl font-light text-gray-400 mb-4 tracking-tight">Backend & Web Developer</h2>
                 <div className="flex flex-wrap justify-center gap-2 md:gap-4 font-mono text-[8px] md:text-[10px] text-gray-500 uppercase tracking-[0.2em] mt-8 md:mt-10">
@@ -375,9 +384,9 @@ export default function Portfolio() {
         )}
       </AnimatePresence>
 
-      {/* 3D СЦЕНА */}
+      {/* 3D СЦЕНА (ОПТИМИЗИРОВАННАЯ: dpr ограничено для телефонов и ноутов) */}
       <div className="fixed inset-0 z-10 pointer-events-none">
-        <Canvas camera={{ position: [0, 0, 15], fov: 40 }} dpr={[1, 2]}>
+        <Canvas camera={{ position: [0, 0, 15], fov: 40 }} dpr={[1, 1.5]} performance={{ min: 0.5 }}>
           <LedBillboardWall />
           <ambientLight intensity={0.5} />
           <directionalLight position={[10, 10, 10]} intensity={4} color="#ffffff" />
@@ -440,7 +449,7 @@ export default function Portfolio() {
         {/* ОСНОВНОЙ КОНТЕНТ */}
         <main className="flex-1 relative w-full overflow-hidden">
 
-          {/* НИЖНЯЯ ПАНЕЛЬ С GITHUB (Только на Главной) */}
+          {/* НИЖНЯЯ ПАНЕЛЬ С GITHUB */}
           <AnimatePresence>
             {activeSection === 'hero' && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute bottom-0 left-0 w-full p-6 md:p-8 flex justify-between items-end pointer-events-none">
@@ -528,7 +537,7 @@ export default function Portfolio() {
             )}
           </AnimatePresence>
 
-          {/* PROJECTS С БАЗОЙ ИЗ ФАЙЛА (СТРОГИЙ ТЕМНЫЙ СПИСОК) */}
+          {/* PROJECTS С БАЗОЙ ИЗ ФАЙЛА */}
           <AnimatePresence mode="wait">
             {activeSection === 'projects' && (
               <motion.section
@@ -539,7 +548,6 @@ export default function Portfolio() {
                 <div className="w-full max-w-7xl mx-auto mt-4 md:mt-0">
                   <h2 className="text-[10px] md:text-xs font-mono uppercase tracking-[0.2em] text-gray-500 mb-8 md:mb-12">02 / Selected Works</h2>
 
-                  {/* РЕНДЕР ВСЕХ ПРОЕКТОВ (ТОЛЬКО ТЕМНЫЕ ЗАГЛУШКИ) */}
                   <div className="flex flex-col border-t border-gray-800/50">
                     {portfolioProjects.map((project: any) => {
                       const isClickable = project.link && project.link !== "#";
