@@ -9,7 +9,6 @@ import { EffectComposer, Bloom, Noise, ChromaticAberration } from "@react-three/
 import { BlendFunction } from "postprocessing";
 import * as THREE from "three";
 
-// Глобальные стейты для синхронизации вращения
 const sharedRotation = new THREE.Euler();
 let forceResetRotation = false;
 
@@ -59,12 +58,10 @@ function SolidGlassY() {
         group.current.rotation.x = THREE.MathUtils.lerp(group.current.rotation.x, group.current.rotation.x + targetX, 0.05);
         group.current.rotation.z = THREE.MathUtils.lerp(group.current.rotation.z, targetZ, 0.05);
       }
-
       sharedRotation.copy(group.current.rotation);
     }
   });
 
-  // Динамический скейл: на телефоне делаем крупнее (относительно узкого экрана)
   const isMobile = viewport.width < 5;
   const scale = isMobile ? viewport.width / 3.5 : Math.min(viewport.width / 8, 1.5);
 
@@ -188,7 +185,6 @@ function TrackingAxes() {
   const axesRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
 
-  // На мобилках скрываем оси, чтобы не перегружать мелкий экран
   if (size.width < 768) return null;
 
   const zoom = 50;
@@ -318,7 +314,6 @@ export default function Portfolio() {
   }, [githubProjects]);
 
   useEffect(() => {
-    // Отключаем кастомный курсор на тач-устройствах, чтобы не ломать тапы
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     if (isTouchDevice) return;
 
@@ -339,7 +334,6 @@ export default function Portfolio() {
   return (
     <div className="bg-[#050505] text-[#f5f5f5] min-h-screen h-screen overflow-hidden font-sans selection:bg-[#ffffff] selection:text-black cursor-auto md:cursor-none">
 
-      {/* КУРСОР (Скрыт на мобильных устройствах) */}
       <motion.div
         className="hidden md:flex fixed top-0 left-0 border rounded-full pointer-events-none z-[999] mix-blend-difference items-center justify-center backdrop-invert-[0.1]"
         style={{ x: cursorX, y: cursorY }}
@@ -354,7 +348,6 @@ export default function Portfolio() {
         <motion.div className="bg-white rounded-full" animate={{ width: isCursorHovered ? 0 : 4, height: isCursorHovered ? 0 : 4 }} />
       </motion.div>
 
-      {/* ПРЕЛОАДЕР */}
       <AnimatePresence>
         {isLoading && (
           <motion.div
@@ -397,7 +390,6 @@ export default function Portfolio() {
         )}
       </AnimatePresence>
 
-      {/* 3D СЦЕНА */}
       <div className="absolute inset-0 z-10 pointer-events-none">
         <Canvas camera={{ position: [0, 0, 15], fov: 40 }} dpr={[1, 2]}>
           <LedBillboardWall />
@@ -416,7 +408,6 @@ export default function Portfolio() {
         </Canvas>
       </div>
 
-      {/* ЗАТЕМНЕНИЕ */}
       <AnimatePresence>
         {activeSection !== 'hero' && (
           <motion.div
@@ -429,7 +420,6 @@ export default function Portfolio() {
         )}
       </AnimatePresence>
 
-      {/* АДАПТИВНАЯ НАВИГАЦИЯ */}
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: !isLoading ? 1 : 0 }} transition={{ duration: 1.5, delay: 0.2 }}
         className="fixed inset-0 pointer-events-none z-50 p-6 md:p-8 flex flex-col justify-between"
@@ -440,7 +430,6 @@ export default function Portfolio() {
             YSM.
           </button>
 
-          {/* Центр меню (переносится на новую строку на смартфонах) */}
           <div className="flex gap-6 md:gap-8 pointer-events-auto w-full md:w-auto justify-center order-3 md:order-none md:pr-32 pt-4 md:pt-0">
             {['hero', 'bio', 'projects'].map((item) => (
               <button key={item} onClick={() => setActiveSection(item as any)} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className={`cursor-auto md:cursor-none transition-colors relative group text-[10px] ${activeSection === item ? 'text-white' : 'hover:text-white'}`}>
@@ -455,12 +444,10 @@ export default function Portfolio() {
           </button>
         </div>
 
-        {/* НИЖНЯЯ ПАНЕЛЬ С НОВОСТЯМИ */}
         <AnimatePresence>
           {activeSection === 'hero' && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex justify-between items-end font-mono w-full">
 
-              {/* Скрыто на мобилках */}
               <div className="hidden md:flex flex-col gap-1 text-[9px] uppercase tracking-[0.2em] text-gray-500">
                 <span className="text-gray-300">System Core</span>
                 <div className="flex items-center gap-2 mt-4">
@@ -471,7 +458,6 @@ export default function Portfolio() {
                 </div>
               </div>
 
-              {/* РЕАЛЬНЫЙ GITHUB WIDGET (100% ширины на телефоне) */}
               <div className="pointer-events-auto flex flex-col items-start w-full md:w-64 md:border-l border-gray-800 md:pl-4 cursor-auto md:cursor-none" onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)}>
                 <h4 className="text-[10px] text-white tracking-[0.2em] uppercase mb-4 border-b border-gray-800 pb-2 w-full">GitHub / YSMLB</h4>
 
@@ -501,16 +487,14 @@ export default function Portfolio() {
         </AnimatePresence>
       </motion.div>
 
-      {/* КОНТЕНТ РАЗДЕЛОВ */}
       <AnimatePresence mode="wait">
         {activeSection === 'bio' && (
           <motion.section
             key="bio"
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.8 }}
-            className="absolute inset-0 z-30 flex items-center justify-center px-6 md:px-20 pointer-events-auto overflow-y-auto"
+            className="absolute inset-0 z-30 flex items-start md:items-center justify-center px-6 md:px-20 pt-40 md:pt-0 pb-32 md:pb-0 pointer-events-auto overflow-y-auto"
           >
-            {/* Добавлен большой отступ сверху для мобилок, чтобы текст не залезал под меню */}
-            <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center mt-40 md:mt-0 pb-20 md:pb-0">
+            <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
 
               <div>
                 <h2 className="text-[10px] md:text-xs font-mono uppercase tracking-[0.2em] text-gray-500 mb-6 md:mb-8">01 / Biography</h2>
@@ -520,15 +504,14 @@ export default function Portfolio() {
                 <p className="text-gray-400 font-light text-sm md:text-lg mb-4">
                   Full-stack разработка — это не просто написание строчек на Go или React. Это проектирование миров, которые работают безупречно.
                 </p>
-                <button onClick={() => setIsContactOpen(true)} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="group relative px-6 py-3 md:px-8 md:py-4 bg-white text-black font-medium overflow-hidden rounded-sm cursor-auto md:cursor-none pointer-events-auto mt-6 md:mt-10 text-sm md:text-base">
+                <button onClick={() => setIsContactOpen(true)} onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)} className="group relative px-6 py-3 md:px-8 md:py-4 bg-white text-black font-medium overflow-hidden rounded-sm cursor-auto md:cursor-none pointer-events-auto mt-6 md:mt-10 text-sm md:text-base w-full md:w-auto text-center">
                   <span className="relative z-10">Связаться со мной</span>
                   <div className="absolute inset-0 bg-gray-300 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out z-0"></div>
                 </button>
               </div>
 
-              {/* ФОТО */}
               <div
-                className="relative w-full aspect-square md:aspect-[4/5] bg-[#0a0a0a] rounded-lg overflow-hidden border border-gray-800 flex items-center justify-center pointer-events-auto cursor-auto md:cursor-none mt-8 md:mt-0"
+                className="relative w-full aspect-square md:aspect-[4/5] bg-[#0a0a0a] rounded-lg overflow-hidden border border-gray-800 flex items-center justify-center pointer-events-auto cursor-auto md:cursor-none mt-4 md:mt-0"
                 onMouseEnter={() => { setIsCursorHovered(true); setIsPhotoHovered(true); }}
                 onMouseLeave={() => { setIsCursorHovered(false); setIsPhotoHovered(false); }}
                 onMouseMove={(e) => {
@@ -571,7 +554,6 @@ export default function Portfolio() {
           </motion.section>
         )}
 
-        {/* ПРОЕКТЫ */}
         {activeSection === 'projects' && (
           <motion.section
             key="projects"
@@ -599,7 +581,6 @@ export default function Portfolio() {
         )}
       </AnimatePresence>
 
-      {/* МОДАЛКА КОНТАКТОВ */}
       <AnimatePresence>
         {isContactOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-md pointer-events-auto cursor-auto md:cursor-none px-4" onClick={() => setIsContactOpen(false)}>
