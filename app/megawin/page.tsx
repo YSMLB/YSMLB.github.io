@@ -157,8 +157,8 @@ export default function MegaWin() {
                                 key={cat}
                                 onClick={() => setActiveFilter(cat)}
                                 className={`whitespace-nowrap px-6 py-2.5 rounded-full text-sm font-bold transition-all ${activeFilter === cat
-                                        ? "bg-[#ff9900] text-[#0b0e14] shadow-[0_0_15px_rgba(255,153,0,0.3)]"
-                                        : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                                    ? "bg-[#ff9900] text-[#0b0e14] shadow-[0_0_15px_rgba(255,153,0,0.3)]"
+                                    : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
                                     }`}
                             >
                                 {cat}
