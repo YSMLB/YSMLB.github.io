@@ -66,28 +66,29 @@ export default function MegaWin() {
 
     // --- ОБЩАЯ СИСТЕМА ДВИЖКОВ ИГР ---
     const [activeGame, setActiveGame] = useState<any>(null);
-    const [gameStatus, setGameStatus] = useState('idle'); // idle, rolling, win, loss, bj_player_turn
+    const [gameStatus, setGameStatus] = useState('idle');
     const [gameResultInfo, setGameResultInfo] = useState('');
     const [betAmount, setBetAmount] = useState<number | "">(100);
 
-    // 1. Стейты для СЛОТОВ (id: 1, 7)
-    const [reelsGrid, setReelsGrid] = useState<string[][]>([]);
+    // 1. Стейты для СЛОТОВ
+    const generateGrid = () => Array(5).fill(0).map(() => Array(3).fill(0).map(() => slotSymbolsNormal[Math.floor(Math.random() * slotSymbolsNormal.length)]));
+    const [reelsGrid, setReelsGrid] = useState(() => generateGrid());
     const [showEpicWin, setShowEpicWin] = useState(false);
 
-    // 2. Стейты для РУЛЕТКИ / КОЛЕСА (id: 2, 8)
-    const [rouletteBetOption, setRouletteBetOption] = useState('red'); // red, black, zero
+    // 2. Стейты для РУЛЕТКИ / КОЛЕСА
+    const [rouletteBetOption, setRouletteBetOption] = useState('red');
     const [wheelRotation, setWheelRotation] = useState(0);
     const [winningColor, setWinningColor] = useState('');
 
-    // 3. Стейты для КАРТ / БЛЕКДЖЕКА (id: 3, 6)
+    // 3. Стейты для БЛЕКДЖЕКА
     const [playerHand, setPlayerHand] = useState<string[]>([]);
     const [dealerHand, setDealerHand] = useState<string[]>([]);
     const [playerScore, setPlayerScore] = useState(0);
     const [dealerScore, setDealerScore] = useState(0);
 
-    // 4. Стейты для КОСТЕЙ (id: 4, 5)
+    // 4. Стейты для КОСТЕЙ
     const [diceResult, setDiceResult] = useState<string[]>(["⚀", "⚀"]);
-    const [diceBetType, setDiceBetType] = useState('over'); // over (больше 7), under (меньше 7), seven (точно 7)
+    const [diceBetType, setDiceBetType] = useState('over');
 
     const rollIntervalRef = useRef<any>(null);
     const filteredGames = activeFilter === "Все игры" ? games : games.filter(game => game.category === activeFilter);
@@ -138,7 +139,6 @@ export default function MegaWin() {
         setGameResultInfo('');
         setShowEpicWin(false);
 
-        // Сброс под конкретный движок
         if (game.id === 1 || game.id === 7) {
             const symbols = game.id === 7 ? slotSymbolsEgypt : slotSymbolsNormal;
             setReelsGrid(Array(5).fill(0).map(() => Array(3).fill(0).map(() => symbols[Math.floor(Math.random() * symbols.length)])));
@@ -163,24 +163,16 @@ export default function MegaWin() {
             return;
         }
 
-        // Снимаем ставку
         if (activeBalanceType === 'real') setRealBalance(prev => prev - bet);
         else setDemoBalance(prev => prev - bet);
         setStats(prev => ({ ...prev, wagered: prev.wagered + bet }));
 
-        // ЗАПУСК КОНКРЕТНОГО ДВИЖКА
-        if (activeGame.id === 1 || activeGame.id === 7) {
-            runSlotsEngine(bet);
-        } else if (activeGame.id === 2 || activeGame.id === 8) {
-            runRouletteEngine(bet);
-        } else if (activeGame.id === 3 || activeGame.id === 6) {
-            runBlackjackEngine(bet);
-        } else {
-            runDiceEngine(bet);
-        }
+        if (activeGame.id === 1 || activeGame.id === 7) runSlotsEngine(bet);
+        else if (activeGame.id === 2 || activeGame.id === 8) runRouletteEngine(bet);
+        else if (activeGame.id === 3 || activeGame.id === 6) runBlackjackEngine(bet);
+        else runDiceEngine(bet);
     };
 
-    // 1. ДВИЖОК СЛОТОВ (5x3)
     const runSlotsEngine = (bet: number) => {
         setGameStatus('rolling');
         const symbols = activeGame.id === 7 ? slotSymbolsEgypt : slotSymbolsNormal;
@@ -213,14 +205,12 @@ export default function MegaWin() {
         }, 1500);
     };
 
-    // 2. ДВИЖОК РУЛЕТКИ / КОЛЕСА
     const runRouletteEngine = (bet: number) => {
         setGameStatus('rolling');
         const targetRotation = wheelRotation + 1440 + Math.floor(Math.random() * 360);
         setWheelRotation(targetRotation);
 
         setTimeout(() => {
-            const colors = ['red', 'black', 'zero'];
             const sectorRand = Math.random();
             let resultColor = 'black';
             if (sectorRand < 0.48) resultColor = 'red';
@@ -245,12 +235,9 @@ export default function MegaWin() {
         }, 2000);
     };
 
-    // 3. ДВИЖОК БЛЕКДЖЕКА
     const runBlackjackEngine = (bet: number) => {
         setGameStatus('bj_player_turn');
         setGameResultInfo('Твой ход! Бери карты или останавливайся.');
-
-        // Первичная раздача
         const p1 = Math.floor(Math.random() * 10) + 2;
         const p2 = Math.floor(Math.random() * 10) + 2;
         const d1 = Math.floor(Math.random() * 10) + 2;
@@ -277,7 +264,6 @@ export default function MegaWin() {
     const blackjackStand = () => {
         setGameStatus('rolling');
         setGameResultInfo('Дилер добирает карты...');
-
         let currentDealer = dealerScore;
         const dCards = [...dealerHand];
 
@@ -290,7 +276,6 @@ export default function MegaWin() {
                 setDealerScore(currentDealer);
             } else {
                 clearInterval(interval);
-                // Финал подсчетов
                 let isWin = false;
                 let winAmount = 0;
                 const bet = Number(betAmount);
@@ -302,7 +287,7 @@ export default function MegaWin() {
                     setGameStatus('win');
                     setGameResultInfo(`ПОБЕДА! У дилера: ${currentDealer}, у тебя: ${playerScore}. +${winAmount} ₽`);
                 } else if (playerScore === currentDealer) {
-                    addFunds(bet); // Возврат ставки
+                    addFunds(bet);
                     setGameStatus('idle');
                     setGameResultInfo(`НИЧЬЯ. Возврат ставки.`);
                 } else {
@@ -314,7 +299,6 @@ export default function MegaWin() {
         }, 700);
     };
 
-    // 4. ДВИЖОК КОСТЕЙ (DICE)
     const runDiceEngine = (bet: number) => {
         setGameStatus('rolling');
         rollIntervalRef.current = setInterval(() => {
@@ -348,7 +332,6 @@ export default function MegaWin() {
         }, 1200);
     };
 
-    // Вспомогательные утилиты ядра
     const addFunds = (amt: number) => {
         if (activeBalanceType === 'real') setRealBalance(prev => prev + amt);
         else setDemoBalance(prev => prev + amt);
@@ -366,6 +349,9 @@ export default function MegaWin() {
         setActiveFilter(filter);
         document.getElementById('games-section')?.scrollIntoView({ behavior: 'smooth' });
     };
+
+    const setMaxBet = () => setBetAmount(currentBalance > 0 ? currentBalance : 0);
+    const setMinBet = () => setBetAmount(10);
 
     return (
         <div className="bg-[#0b0e14] min-h-screen text-white font-sans selection:bg-[#ff9900] selection:text-white pb-20">
@@ -388,6 +374,7 @@ export default function MegaWin() {
                             <button onClick={() => handleNavClick("Все игры")} className={`hover:text-white transition-colors ${activeFilter === "Все игры" ? "text-white" : ""}`}>Казино</button>
                             <button onClick={() => handleNavClick("Слоты")} className={`hover:text-white transition-colors ${activeFilter === "Слоты" ? "text-white" : ""}`}>Слоты</button>
                             <button onClick={() => handleNavClick("Живые")} className={`hover:text-white transition-colors ${activeFilter === "Живые" ? "text-white" : ""}`}>Живое Казино</button>
+                            <button onClick={() => handleNavClick("Настольные")} className={`hover:text-white transition-colors ${activeFilter === "Настольные" ? "text-white" : ""}`}>Турниры</button>
                             <button onClick={() => document.getElementById('promo-section')?.scrollIntoView({ behavior: 'smooth' })} className="hover:text-white transition-colors">Промо</button>
                         </nav>
                     </div>
@@ -461,7 +448,9 @@ export default function MegaWin() {
                 <section id="games-section" className="mb-24 scroll-mt-28">
                     <div className="mb-10">
                         <h2 className="text-3xl font-bold mb-2">Популярные <span className="text-[#ff9900]">Игры</span></h2>
+                        <p className="text-gray-400 text-sm">Выбери свою удачу из тысяч игр</p>
                     </div>
+
                     <div className="flex gap-3 overflow-x-auto pb-4 mb-8 scrollbar-hide">
                         {categories.map(cat => (
                             <button key={cat} onClick={() => setActiveFilter(cat)} className={`whitespace-nowrap px-6 py-2.5 rounded-full text-sm font-bold transition-all ${activeFilter === cat ? "bg-[#ff9900] text-[#0b0e14] shadow-[0_0_15px_rgba(255,153,0,0.3)]" : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"}`}>
@@ -470,32 +459,38 @@ export default function MegaWin() {
                         ))}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        {filteredGames.map(game => (
-                            <div key={game.id} onClick={() => handlePlayGame(game)} className="group bg-[#12151f] rounded-2xl overflow-hidden border border-white/5 hover:border-white/20 transition-all hover:-translate-y-1 cursor-pointer">
-                                <div className="relative h-48 w-full overflow-hidden">
-                                    <img src={game.img} alt={game.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                                    <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-md px-2 py-1 rounded flex items-center gap-1 text-[10px] font-bold"><span className="text-[#ff9900]"><StarIcon /></span> {game.rating}</div>
-                                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-                                        <button className="bg-[#ff9900] text-[#0b0e14] px-6 py-3 rounded-full font-bold flex items-center gap-2 shadow-[0_0_20px_rgba(255,153,0,0.4)]">
-                                            <PlayIcon /> Играть
-                                        </button>
+                    <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        <AnimatePresence>
+                            {filteredGames.map(game => (
+                                <motion.div layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.2 }} key={game.id} className="group bg-[#12151f] rounded-2xl overflow-hidden border border-white/5 hover:border-white/20 transition-all hover:-translate-y-1 cursor-pointer" onClick={() => handlePlayGame(game)}>
+                                    <div className="relative h-48 w-full overflow-hidden">
+                                        <img src={game.img} alt={game.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                        <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-md px-2 py-1 rounded flex items-center gap-1 text-[10px] font-bold">
+                                            <span className="text-[#ff9900]"><StarIcon /></span> {game.rating}
+                                        </div>
+                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                                            <button className="bg-[#ff9900] text-[#0b0e14] px-6 py-3 rounded-full font-bold flex items-center gap-2 shadow-[0_0_20px_rgba(255,153,0,0.4)]">
+                                                <PlayIcon /> Играть
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="p-4">
-                                    <h3 className="font-bold text-lg leading-tight mb-1">{game.title}</h3>
-                                    <p className="text-xs text-gray-500">{game.provider}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                                    <div className="p-4">
+                                        <h3 className="font-bold text-lg leading-tight mb-1">{game.title}</h3>
+                                        <p className="text-xs text-gray-500">{game.provider}</p>
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </AnimatePresence>
+                    </motion.div>
                 </section>
 
                 {/* ================= ЩЕДРЫЕ БОНУСЫ ================= */}
                 <section id="promo-section" className="mb-24 scroll-mt-28">
                     <div className="text-center mb-12">
                         <h2 className="text-3xl font-bold mb-2">Щедрые <span className="text-[#ff9900]">Бонусы</span></h2>
+                        <p className="text-gray-400 text-sm">Больше бонусов, больше выигрышей!</p>
                     </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {bonuses.map(bonus => (
                             <div key={bonus.id} className="bg-[#12151f] p-8 rounded-[24px] border border-white/5 flex flex-col justify-between min-h-[260px] bg-gradient-to-b from-[#12151f] to-transparent">
@@ -517,12 +512,12 @@ export default function MegaWin() {
                             <div className="inline-flex items-center bg-black/30 text-[#ff9900] border border-[#ff9900]/30 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest mb-6">Специальное предложение</div>
                             <h2 className="text-4xl md:text-5xl font-black mb-6 leading-tight">VIP-программа<br />лояльности</h2>
                             <p className="text-gray-300 mb-8 max-w-md leading-relaxed text-sm">Эксклюзивные бонусы, персональный менеджер и приоритетный вывод средств для наших VIP-игроков.</p>
-                            <button onClick={() => setIsVipModalOpen(true)} className="bg-[#ff9900] hover:bg-[#e68a00] text-[#0b0e14] px-8 py-3.5 rounded-xl font-bold">Узнать больше</button>
+                            <button onClick={() => setIsVipModalOpen(true)} className="bg-[#ff9900] hover:bg-[#e68a00] text-[#0b0e14] px-8 py-3.5 rounded-xl font-bold transition-colors">Узнать больше</button>
                         </div>
                         <div className="flex-1 w-full bg-[#161318]/80 backdrop-blur-md rounded-3xl p-8 border border-white/5 shadow-inner">
                             <div className="flex flex-col gap-2">
                                 {[{ level: "Уровень 1 - Бронза", val: "+5% кэшбэк" }, { level: "Уровень 2 - Серебро", val: "+10% кэшбэк" }, { level: "Уровень 3 - Золото", val: "+15% кэшбэк" }].map((item, i) => (
-                                    <div key={i} className="flex justify-between items-center py-4 px-4 hover:bg-white/5 rounded-xl">
+                                    <div key={i} className="flex justify-between items-center py-4 px-4 hover:bg-white/5 rounded-xl transition-colors">
                                         <span className="text-gray-300 text-sm font-medium">{item.level}</span><span className="text-[#ff9900] font-bold text-sm">{item.val}</span>
                                     </div>
                                 ))}
@@ -535,11 +530,67 @@ export default function MegaWin() {
                 </section>
             </main>
 
-            <footer className="border-t border-white/10 bg-[#080a0e] pt-12 pb-8 text-center text-xs text-gray-600">
-                <p>© 2026 MegaWin. Все права защищены.</p>
+            {/* ================= ВЕЛИКИЙ И МОГУЧИЙ ФУТЕР (ВЕРНУЛСЯ) ================= */}
+            <footer className="border-t border-white/10 bg-[#080a0e] pt-16 pb-8 mt-auto">
+                <div className="max-w-[1400px] mx-auto px-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+                        <div>
+                            <Link href="/" className="flex items-center gap-3 text-[#ff9900] mb-6 hover:opacity-80 transition-opacity">
+                                <div className="bg-[#ff9900] text-[#0b0e14] w-10 h-10 flex items-center justify-center rounded-[10px]">
+                                    <CrownIcon />
+                                </div>
+                                <div className="flex flex-col justify-center mt-1">
+                                    <span className="text-xl font-black leading-none tracking-tight text-white mb-0.5">MegaWin</span>
+                                    <span className="text-[9px] text-[#ff9900] font-bold tracking-[0.15em] uppercase leading-none">Casino Online</span>
+                                </div>
+                            </Link>
+                            <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+                                Лучшее онлайн-казино с мгновенными выплатами и честной игрой.
+                            </p>
+                        </div>
+                        <div>
+                            <h4 className="text-white font-bold mb-6">Быстрые ссылки</h4>
+                            <ul className="flex flex-col gap-3 text-sm text-gray-400">
+                                <li><a href="#" className="hover:text-[#ff9900] transition-colors">О нас</a></li>
+                                <li><a href="#" className="hover:text-[#ff9900] transition-colors">Правила</a></li>
+                                <li><a href="#" className="hover:text-[#ff9900] transition-colors">Ответственная игра</a></li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 className="text-white font-bold mb-6">Игры</h4>
+                            <ul className="flex flex-col gap-3 text-sm text-gray-400">
+                                <li><a href="#" className="hover:text-[#ff9900] transition-colors">Слоты</a></li>
+                                <li><a href="#" className="hover:text-[#ff9900] transition-colors">Живое казино</a></li>
+                                <li><a href="#" className="hover:text-[#ff9900] transition-colors">Турниры</a></li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 className="text-white font-bold mb-6">Контакты</h4>
+                            <ul className="flex flex-col gap-4 text-sm text-gray-400 mb-6">
+                                <li className="flex items-center gap-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="#ff9900" strokeWidth="2"><rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
+                                    support@megawin.com
+                                </li>
+                            </ul>
+                            <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center justify-between">
+                                <div>
+                                    <p className="text-[#ff9900] font-bold text-sm">Поддержка 24/7</p>
+                                    <p className="text-xs text-gray-500">Мы всегда на связи</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="border-t border-white/10 mt-8 pt-6 flex flex-col md:flex-row justify-between items-center text-xs text-gray-600 gap-4">
+                        <p>© 2026 MegaWin. Все права защищены.</p>
+                        <div className="flex gap-6">
+                            <a href="#" className="hover:text-gray-400 transition-colors">Политика конфиденциальности</a>
+                            <a href="#" className="hover:text-gray-400 transition-colors">Условия использования</a>
+                        </div>
+                    </div>
+                </div>
             </footer>
 
-            {/* --- МОДАЛКА БОНУСОВ --- */}
+            {/* ================= ВСЕ МОДАЛКИ (ПРОФИЛЬ, КАССА, БОНУСЫ) ================= */}
             <AnimatePresence>
                 {selectedBonus && (
                     <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center p-4">
@@ -555,7 +606,6 @@ export default function MegaWin() {
                 )}
             </AnimatePresence>
 
-            {/* --- МОДАЛКА VIP --- */}
             <AnimatePresence>
                 {isVipModalOpen && (
                     <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center p-4">
@@ -573,7 +623,6 @@ export default function MegaWin() {
                 )}
             </AnimatePresence>
 
-            {/* --- МОДАЛКА: АВТОРИЗАЦИЯ --- */}
             <AnimatePresence>
                 {isAuthOpen && (
                     <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center p-4">
@@ -598,7 +647,6 @@ export default function MegaWin() {
                 )}
             </AnimatePresence>
 
-            {/* --- МОДАЛКА: ПОПОЛНЕНИЕ --- */}
             <AnimatePresence>
                 {isDepositOpen && (
                     <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center p-4">
@@ -606,16 +654,15 @@ export default function MegaWin() {
                             <button onClick={() => setIsDepositOpen(false)} className="absolute top-6 right-6 text-gray-500"><CloseIcon /></button>
                             <h2 className="text-3xl font-black uppercase mb-6 text-[#ff9900]">Касса</h2>
                             <div className="grid grid-cols-3 gap-3 mb-4">
-                                {[1000, 5000, 10000].map(amt => <button key={amt} onClick={() => setDepositAmount(amt)} className={`py-3 rounded-lg border font-bold ${depositAmount === amt ? 'bg-[#ff9900] text-black' : 'bg-[#0b0e14]'}`}>{amt} ₽</button>)}
+                                {[1000, 5000, 10000].map(amt => <button key={amt} onClick={() => setDepositAmount(amt)} className={`py-3 rounded-lg border font-bold ${depositAmount === amt ? 'bg-[#ff9900] text-black border-[#ff9900]' : 'bg-[#0b0e14] text-white border-white/10'}`}>{amt} ₽</button>)}
                             </div>
-                            <input type="number" placeholder="Другая сумма" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value as any)} className="w-full bg-[#0b0e14] border border-white/10 rounded-xl px-4 py-4 text-white text-center font-bold text-lg mb-6" />
-                            <button onClick={handleDeposit} disabled={!depositAmount} className="w-full bg-white text-[#0b0e14] py-4 rounded-xl font-bold uppercase">Оплатить</button>
+                            <input type="number" placeholder="Другая сумма" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value as any)} className="w-full bg-[#0b0e14] border border-white/10 rounded-xl px-4 py-4 text-white text-center font-bold text-lg mb-6 focus:border-[#ff9900] focus:outline-none" />
+                            <button onClick={handleDeposit} disabled={!depositAmount} className="w-full bg-white text-[#0b0e14] py-4 rounded-xl font-bold uppercase disabled:opacity-50">Оплатить</button>
                         </div>
                     </div>
                 )}
             </AnimatePresence>
 
-            {/* --- МОДАЛКА: ПРОФИЛЬ --- */}
             <AnimatePresence>
                 {isProfileOpen && (
                     <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex justify-end">
@@ -628,7 +675,7 @@ export default function MegaWin() {
                                 <button onClick={() => setActiveBalanceType('demo')} className={`w-full flex justify-between p-4 rounded-xl border ${activeBalanceType === 'demo' ? 'border-white bg-white/10' : 'border-white/10'}`}><span>Демо</span><span className="font-bold">{demoBalance} ₽</span></button>
                             </div>
                             <div className="flex-1 overflow-y-auto"><h3 className="font-bold mb-3">История</h3>
-                                {history.map(h => <div key={item.id} className="bg-[#0b0e14] p-3 rounded-xl mb-2 flex justify-between text-sm"><div><p>{h.game}</p><span className="text-xs text-gray-500">{h.time}</span></div><span className={h.amount > 0 ? 'text-green-500' : 'text-red-500'}>{h.amount}₽</span></div>)}
+                                {history.map(h => <div key={h.id} className="bg-[#0b0e14] p-3 rounded-xl mb-2 flex justify-between text-sm"><div><p>{h.game}</p><span className="text-xs text-gray-500">{h.time}</span></div><span className={h.amount > 0 ? 'text-green-500' : 'text-red-500'}>{h.amount}₽</span></div>)}
                             </div>
                             <button onClick={() => { setIsLoggedIn(false); setIsProfileOpen(false); }} className="bg-red-500/10 text-red-500 py-4 rounded-xl font-bold uppercase w-full mt-6">Выйти</button>
                         </div>
@@ -643,19 +690,17 @@ export default function MegaWin() {
                 {activeGame && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black z-[110] flex flex-col">
 
-                        {/* Топ-панель игры */}
-                        <div className="h-16 bg-[#0b0e14] border-b border-white/10 flex justify-between items-center px-6 shrink-0 z-50">
+                        <div className="h-16 bg-[#0b0e14] border-b border-white/10 flex justify-between items-center px-4 md:px-6 shrink-0 z-50">
                             <div className="flex items-center gap-4">
                                 <button onClick={() => setActiveGame(null)} className="text-gray-400 hover:text-white p-2"><CloseIcon /></button>
-                                <h3 className="font-bold text-white text-base">{activeGame.title}</h3>
+                                <h3 className="font-bold text-white text-base hidden md:block">{activeGame.title}</h3>
                             </div>
                             <div className="flex items-center gap-2 bg-black rounded-lg border border-white/10 p-1">
-                                <button onClick={() => setActiveBalanceType('real')} className={`px-3 py-1 rounded text-xs font-bold ${activeBalanceType === 'real' ? 'bg-[#ff9900] text-black' : 'text-gray-500'}`}>Реал: {realBalance}₽</button>
-                                <button onClick={() => setActiveBalanceType('demo')} className={`px-3 py-1 rounded text-xs font-bold ${activeBalanceType === 'demo' ? 'bg-white text-black' : 'text-gray-500'}`}>Демо: {demoBalance}₽</button>
+                                <button onClick={() => setActiveBalanceType('real')} className={`px-3 py-1 rounded text-xs font-bold transition-colors ${activeBalanceType === 'real' ? 'bg-[#ff9900] text-black' : 'text-gray-500 hover:text-white'}`}>Реал: {realBalance}₽</button>
+                                <button onClick={() => setActiveBalanceType('demo')} className={`px-3 py-1 rounded text-xs font-bold transition-colors ${activeBalanceType === 'demo' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}>Демо: {demoBalance}₽</button>
                             </div>
                         </div>
 
-                        {/* Главная арена геймплея */}
                         <div className="flex-1 relative flex flex-col items-center justify-center p-4" style={{ backgroundImage: `linear-gradient(rgba(11, 14, 20, 0.85), rgba(11, 14, 20, 0.95)), url(${activeGame.img})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
 
                             <div className="w-full max-w-4xl flex flex-col items-center">
@@ -665,24 +710,24 @@ export default function MegaWin() {
                                     <div className="w-full flex flex-col items-center">
                                         {activeGame.id === 1 && (
                                             <div className="flex flex-col items-center mb-4 w-full">
-                                                <div className="bg-red-800/90 border-2 border-yellow-400 rounded-full px-8 py-1.5 shadow-[0_0_20px_rgba(220,38,38,0.6)]"><span className="text-yellow-400 font-black text-xl md:text-3xl uppercase">GRAND 8,329,565 ₽</span></div>
-                                                <div className="flex gap-2 mt-1"><div className="bg-purple-900/90 border border-yellow-400 rounded-full px-4 py-1 text-xs text-yellow-400 font-bold">MAJOR 9,882,129 ₽</div><div className="bg-blue-900/90 border border-yellow-400 rounded-full px-4 py-1 text-xs text-yellow-400 font-bold">MINOR 1,985,882 ₽</div></div>
+                                                <div className="bg-red-800/90 border-2 border-yellow-400 rounded-full px-8 py-1.5 shadow-[0_0_20px_rgba(220,38,38,0.6)]"><span className="text-yellow-400 font-black text-xl md:text-3xl uppercase tracking-widest drop-shadow-md">GRAND 8,329,565</span></div>
+                                                <div className="flex gap-2 mt-1"><div className="bg-purple-900/90 border border-yellow-400 rounded-full px-4 py-1 text-xs text-yellow-400 font-bold">MAJOR 9,882,129</div><div className="bg-blue-900/90 border border-yellow-400 rounded-full px-4 py-1 text-xs text-yellow-400 font-bold">MINOR 1,985,882</div></div>
                                             </div>
                                         )}
                                         <div className="relative bg-gradient-to-b from-red-950 to-black border-4 border-yellow-500 rounded-[30px] p-4 shadow-2xl w-full">
-                                            <div className="grid grid-cols-5 gap-2 bg-black/60 p-3 rounded-2xl relative min-h-[220px]">
+                                            <div className="grid grid-cols-5 gap-2 bg-black/60 p-3 rounded-2xl relative min-h-[220px] shadow-[inset_0_10px_20px_rgba(0,0,0,0.8)]">
                                                 <AnimatePresence>
                                                     {showEpicWin && (
-                                                        <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 backdrop-blur-xs rounded-2xl">
-                                                            <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="bg-gradient-to-b from-yellow-300 to-yellow-600 border-4 border-white text-red-800 font-black text-5xl md:text-8xl px-12 py-3 rounded-full shadow-[0_0_50px_rgba(255,215,0,1)]">WILD</motion.div>
+                                                        <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 backdrop-blur-xs rounded-2xl">
+                                                            <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 1 }} className="bg-gradient-to-b from-yellow-300 to-yellow-600 border-4 border-white text-red-800 font-black text-5xl md:text-8xl px-12 py-3 rounded-[50px] shadow-[0_0_50px_rgba(255,215,0,1)] tracking-tighter" style={{ WebkitTextStroke: '2px white' }}>WILD</motion.div>
                                                         </motion.div>
                                                     )}
                                                 </AnimatePresence>
                                                 {reelsGrid.map((col, cIdx) => (
                                                     <div key={cIdx} className="flex flex-col gap-2">
                                                         {col.map((symbol, rIdx) => (
-                                                            <div key={rIdx} className="w-full aspect-square bg-gradient-to-b from-gray-800 to-gray-900 rounded-xl flex items-center justify-center shadow-md relative overflow-hidden border border-white/5">
-                                                                <motion.span animate={gameStatus === 'rolling' ? { y: [40, -40], transition: { repeat: Infinity, duration: 0.1, ease: "linear" } } : { y: 0 }} className="text-3xl md:text-5xl absolute">{symbol}</motion.span>
+                                                            <div key={rIdx} className="w-full aspect-square bg-gradient-to-b from-gray-800 to-gray-900 rounded-xl flex items-center justify-center shadow-inner relative overflow-hidden border border-white/5">
+                                                                <motion.span animate={gameStatus === 'rolling' ? { y: [40, -40], transition: { repeat: Infinity, duration: 0.1, ease: "linear" } } : { y: 0 }} className="text-3xl md:text-5xl absolute drop-shadow-md">{symbol}</motion.span>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -692,133 +737,89 @@ export default function MegaWin() {
                                     </div>
                                 )}
 
-                                {/* ---------------- ИНТЕРФЕЙС 2: НАСТОЯЩАЯ РУЛЕТКА (Royal Roulette // Golden Wheel) ---------------- */}
+                                {/* ---------------- ИНТЕРФЕЙС 2: РУЛЕТКА (Royal Roulette // Golden Wheel) ---------------- */}
                                 {(activeGame.id === 2 || activeGame.id === 8) && (
                                     <div className="w-full flex flex-col items-center gap-8">
-                                        {/* Крутящееся колесо */}
-                                        <motion.div
-                                            animate={{ rotate: wheelRotation }}
-                                            transition={{ type: "spring", damping: 30, stiffness: 40 }}
-                                            className="w-56 h-56 md:w-72 md:h-72 rounded-full border-8 border-amber-700 bg-gradient-to-tr from-green-900 to-green-950 shadow-[0_0_40px_rgba(0,0,0,0.8)] flex items-center justify-center relative"
-                                        >
+                                        <motion.div animate={{ rotate: wheelRotation }} transition={{ type: "spring", damping: 30, stiffness: 40 }} className="w-56 h-56 md:w-72 md:h-72 rounded-full border-8 border-amber-700 bg-gradient-to-tr from-green-900 to-green-950 shadow-[0_0_40px_rgba(0,0,0,0.8)] flex items-center justify-center relative">
                                             <div className="absolute inset-2 rounded-full border-4 border-dashed border-white/20" />
                                             <div className="w-4 h-4 bg-white rounded-full absolute top-4 z-20 shadow-md animate-bounce" />
-                                            <div className="text-center font-black text-xs md:text-sm tracking-widest text-white/40">MEGA ROULETTE</div>
-                                            {/* Спицы */}
-                                            <div className="w-full h-1 bg-amber-800/40 absolute" />
-                                            <div className="w-full h-1 bg-amber-800/40 absolute rotate-45" />
-                                            <div className="w-full h-1 bg-amber-800/40 absolute rotate-90" />
-                                            <div className="w-full h-1 bg-amber-800/40 absolute rotate-[135deg]" />
-                                            <div className="w-16 h-16 bg-neutral-900 rounded-full border-4 border-amber-600 z-10 flex items-center justify-center shadow-lg">
-                                                <span className="text-lg font-bold text-[#ff9900]">★</span>
-                                            </div>
+                                            <div className="text-center font-black text-xs md:text-sm tracking-widest text-white/40 uppercase">MEGA<br />ROULETTE</div>
+                                            <div className="w-full h-1 bg-amber-800/40 absolute" /><div className="w-full h-1 bg-amber-800/40 absolute rotate-45" /><div className="w-full h-1 bg-amber-800/40 absolute rotate-90" /><div className="w-full h-1 bg-amber-800/40 absolute rotate-[135deg]" />
+                                            <div className="w-16 h-16 bg-neutral-900 rounded-full border-4 border-amber-600 z-10 flex items-center justify-center shadow-lg"><span className="text-lg font-bold text-[#ff9900]">★</span></div>
                                         </motion.div>
-
-                                        {/* Доска ставок */}
                                         <div className="bg-[#12151f] p-4 rounded-2xl border border-white/10 flex gap-4 w-full max-w-md justify-center">
-                                            <button onClick={() => setRouletteBetOption('red')} className={`flex-1 py-4 rounded-xl font-black uppercase tracking-wider text-sm transition-all border-2 ${rouletteBetOption === 'red' ? 'bg-red-600 border-white scale-105 shadow-lg' : 'bg-red-900/40 border-transparent text-red-400'}`}>Красное (x2)</button>
-                                            <button onClick={() => setRouletteBetOption('black')} className={`flex-1 py-4 rounded-xl font-black uppercase tracking-wider text-sm transition-all border-2 ${rouletteBetOption === 'black' ? 'bg-neutral-800 border-white scale-105 shadow-lg' : 'bg-neutral-900/40 border-transparent text-neutral-400'}`}>Черное (x2)</button>
-                                            <button onClick={() => setRouletteBetOption('zero')} className={`flex-1 py-4 rounded-xl font-black uppercase tracking-wider text-sm transition-all border-2 ${rouletteBetOption === 'zero' ? 'bg-green-600 border-white scale-105 shadow-lg' : 'bg-green-900/40 border-transparent text-green-400'}`}>Зеро (x35)</button>
+                                            <button onClick={() => setRouletteBetOption('red')} disabled={gameStatus === 'rolling'} className={`flex-1 py-4 rounded-xl font-black uppercase tracking-wider text-sm transition-all border-2 ${rouletteBetOption === 'red' ? 'bg-red-600 border-white scale-105 shadow-lg' : 'bg-red-900/40 border-transparent text-red-400 hover:bg-red-800/50'}`}>Красное (x2)</button>
+                                            <button onClick={() => setRouletteBetOption('black')} disabled={gameStatus === 'rolling'} className={`flex-1 py-4 rounded-xl font-black uppercase tracking-wider text-sm transition-all border-2 ${rouletteBetOption === 'black' ? 'bg-neutral-800 border-white scale-105 shadow-lg' : 'bg-neutral-900/40 border-transparent text-neutral-400 hover:bg-neutral-800/50'}`}>Черное (x2)</button>
+                                            <button onClick={() => setRouletteBetOption('zero')} disabled={gameStatus === 'rolling'} className={`flex-1 py-4 rounded-xl font-black uppercase tracking-wider text-sm transition-all border-2 ${rouletteBetOption === 'zero' ? 'bg-green-600 border-white scale-105 shadow-lg' : 'bg-green-900/40 border-transparent text-green-400 hover:bg-green-800/50'}`}>Зеро (x35)</button>
                                         </div>
                                     </div>
                                 )}
 
-                                {/* ---------------- ИНТЕРФЕЙС 3: КАРТОЧНЫЙ СТОЛ (Poker Master // Blackjack Pro) ---------------- */}
+                                {/* ---------------- ИНТЕРФЕЙС 3: БЛЕКДЖЕК (Poker Master // Blackjack Pro) ---------------- */}
                                 {(activeGame.id === 3 || activeGame.id === 6) && (
-                                    <div className="w-full flex flex-col gap-6 max-w-2xl bg-green-950/60 backdrop-blur-md p-6 md:p-8 rounded-[32px] border-2 border-emerald-600/30 relative shadow-inner">
+                                    <div className="w-full flex flex-col gap-6 max-w-2xl bg-green-950/80 backdrop-blur-md p-6 md:p-8 rounded-[32px] border-2 border-emerald-600/30 relative shadow-2xl">
                                         <div className="absolute inset-4 border border-dashed border-emerald-500/20 rounded-[24px] pointer-events-none" />
-
-                                        {/* Рука Дилера */}
                                         <div className="flex flex-col items-center">
                                             <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-2">Рука Дилера ({dealerScore})</span>
                                             <div className="flex gap-3 h-24">
-                                                {dealerHand.map((card, i) => (
-                                                    <motion.div initial={{ scale: 0, y: -20 }} animate={{ scale: 1, y: 0 }} key={i} className="w-16 h-24 bg-white rounded-lg flex items-center justify-center text-4xl text-black font-serif shadow-lg">{card}</motion.div>
-                                                ))}
-                                                {gameStatus === 'bj_player_turn' && (
-                                                    <div className="w-16 h-24 bg-gradient-to-b from-red-800 to-red-950 rounded-lg border-2 border-white shadow-lg flex items-center justify-center font-bold text-white text-xl">♠</div>
-                                                )}
+                                                {dealerHand.map((card, i) => (<motion.div initial={{ scale: 0, y: -20 }} animate={{ scale: 1, y: 0 }} key={i} className="w-16 h-24 bg-white rounded-lg flex items-center justify-center text-4xl text-black font-serif shadow-lg border border-gray-300">{card}</motion.div>))}
+                                                {gameStatus === 'bj_player_turn' && (<div className="w-16 h-24 bg-gradient-to-b from-red-800 to-red-950 rounded-lg border-2 border-white/50 shadow-lg flex items-center justify-center font-bold text-white/50 text-xl">♠</div>)}
                                             </div>
                                         </div>
-
-                                        {/* Рука Игрока */}
                                         <div className="flex flex-col items-center mt-6">
                                             <div className="flex gap-3 h-24 mb-2">
-                                                {playerHand.map((card, i) => (
-                                                    <motion.div initial={{ scale: 0, y: 20 }} animate={{ scale: 1, y: 0 }} key={i} className="w-16 h-24 bg-white rounded-lg flex items-center justify-center text-4xl text-black font-serif shadow-lg">{card}</motion.div>
-                                                ))}
+                                                {playerHand.map((card, i) => (<motion.div initial={{ scale: 0, y: 20 }} animate={{ scale: 1, y: 0 }} key={i} className="w-16 h-24 bg-white rounded-lg flex items-center justify-center text-4xl text-black font-serif shadow-lg border border-gray-300">{card}</motion.div>))}
                                             </div>
                                             <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">Твоя Рука ({playerScore})</span>
                                         </div>
-
-                                        {/* Интерактивные кнопки Блекджека */}
                                         {gameStatus === 'bj_player_turn' && (
                                             <div className="flex justify-center gap-4 mt-4 z-20">
-                                                <button onClick={blackjackHit} className="bg-blue-600 hover:bg-blue-500 text-white font-black uppercase px-8 py-3 rounded-xl tracking-wider text-sm shadow-lg">Ещё (Hit)</button>
-                                                <button onClick={blackjackStand} className="bg-amber-500 hover:bg-amber-400 text-black font-black uppercase px-8 py-3 rounded-xl tracking-wider text-sm shadow-lg">Хватит (Stand)</button>
+                                                <button onClick={blackjackHit} className="bg-blue-600 hover:bg-blue-500 text-white font-black uppercase px-8 py-3 rounded-xl tracking-wider text-sm shadow-lg hover:scale-105 transition-transform">Ещё (Hit)</button>
+                                                <button onClick={blackjackStand} className="bg-amber-500 hover:bg-amber-400 text-black font-black uppercase px-8 py-3 rounded-xl tracking-wider text-sm shadow-lg hover:scale-105 transition-transform">Хватит (Stand)</button>
                                             </div>
                                         )}
                                     </div>
                                 )}
 
-                                {/* ---------------- ИНТЕРФЕЙС 4: НАСТОЯЩИЕ КОСТИ (Dice Paradise // Neon Chips) ---------------- */}
+                                {/* ---------------- ИНТЕРФЕЙС 4: КОСТИ (Dice Paradise // Neon Chips) ---------------- */}
                                 {(activeGame.id === 4 || activeGame.id === 5) && (
                                     <div className="w-full flex flex-col items-center gap-8">
-                                        {/* Кубики костей */}
                                         <div className="flex gap-6 justify-center">
                                             {diceResult.map((face, i) => (
-                                                <motion.div
-                                                    key={i + gameStatus}
-                                                    animate={gameStatus === 'rolling' ? { rotate: [0, 20, -20, 0], y: [0, -10, 10, 0] } : { rotate: 0, y: 0 }}
-                                                    transition={{ repeat: gameStatus === 'rolling' ? Infinity : 0, duration: 0.15 }}
-                                                    className="w-24 h-24 md:w-32 md:h-32 bg-white rounded-2xl border-b-8 border-gray-300 flex items-center justify-center text-7xl md:text-9xl text-neutral-900 shadow-2xl"
-                                                >
+                                                <motion.div key={i + gameStatus} animate={gameStatus === 'rolling' ? { rotate: [0, 20, -20, 0], y: [0, -10, 10, 0] } : { rotate: 0, y: 0 }} transition={{ repeat: gameStatus === 'rolling' ? Infinity : 0, duration: 0.15 }} className="w-24 h-24 md:w-32 md:h-32 bg-gradient-to-b from-white to-gray-200 rounded-2xl border-b-8 border-gray-400 flex items-center justify-center text-7xl md:text-9xl text-neutral-900 shadow-2xl">
                                                     {face}
                                                 </motion.div>
                                             ))}
                                         </div>
-
-                                        {/* Варианты ставок для костей */}
                                         <div className="bg-[#12151f] p-3 rounded-2xl border border-white/10 flex gap-2 w-full max-w-md justify-center">
-                                            <button onClick={() => setDiceBetType('under')} className={`flex-1 py-3 rounded-xl font-bold text-xs uppercase border ${diceBetType === 'under' ? 'bg-[#ff9900] text-black border-[#ff9900]' : 'bg-transparent text-gray-400 border-white/10'}`}>Меньше 7 (x2)</button>
-                                            <button onClick={() => setDiceBetType('seven')} className={`flex-1 py-3 rounded-xl font-bold text-xs uppercase border ${diceBetType === 'seven' ? 'bg-[#ff9900] text-black border-[#ff9900]' : 'bg-transparent text-gray-400 border-white/10'}`}>Точно 7 (x4)</button>
-                                            <button onClick={() => setDiceBetType('over')} className={`flex-1 py-3 rounded-xl font-bold text-xs uppercase border ${diceBetType === 'over' ? 'bg-[#ff9900] text-black border-[#ff9900]' : 'bg-transparent text-gray-400 border-white/10'}`}>Больше 7 (x2)</button>
+                                            <button onClick={() => setDiceBetType('under')} disabled={gameStatus === 'rolling'} className={`flex-1 py-3 rounded-xl font-bold text-xs uppercase border transition-colors ${diceBetType === 'under' ? 'bg-[#ff9900] text-black border-[#ff9900]' : 'bg-transparent text-gray-400 border-white/10 hover:bg-white/5'}`}>Меньше 7 (x2)</button>
+                                            <button onClick={() => setDiceBetType('seven')} disabled={gameStatus === 'rolling'} className={`flex-1 py-3 rounded-xl font-bold text-xs uppercase border transition-colors ${diceBetType === 'seven' ? 'bg-[#ff9900] text-black border-[#ff9900]' : 'bg-transparent text-gray-400 border-white/10 hover:bg-white/5'}`}>Точно 7 (x4)</button>
+                                            <button onClick={() => setDiceBetType('over')} disabled={gameStatus === 'rolling'} className={`flex-1 py-3 rounded-xl font-bold text-xs uppercase border transition-colors ${diceBetType === 'over' ? 'bg-[#ff9900] text-black border-[#ff9900]' : 'bg-transparent text-gray-400 border-white/10 hover:bg-white/5'}`}>Больше 7 (x2)</button>
                                         </div>
                                     </div>
                                 )}
 
-                                {/* ИНФОРМАЦИОННОЕ ТАБЛО ХОДА */}
+                                {/* ИНФОРМАЦИОННОЕ ТАБЛО */}
                                 <div className="h-16 flex items-center justify-center mt-6">
                                     {gameStatus === 'win' && <span className="text-[#ff9900] text-xl md:text-3xl font-black uppercase drop-shadow-[0_0_15px_rgba(255,153,0,0.8)]">{gameResultInfo}</span>}
                                     {gameStatus === 'loss' && <span className="text-gray-400 text-sm md:text-lg font-bold uppercase">{gameResultInfo}</span>}
                                     {gameStatus === 'idle' && <span className="text-gray-500 font-medium text-xs md:text-sm tracking-widest uppercase">Готовы к игре</span>}
-                                    {gameStatus === 'rolling' && <span className="text-yellow-500 font-medium text-xs md:text-sm tracking-widest uppercase animate-pulse">Генерация секторов...</span>}
+                                    {gameStatus === 'rolling' && <span className="text-yellow-500 font-medium text-xs md:text-sm tracking-widest uppercase animate-pulse">Генерация результатов...</span>}
                                 </div>
 
-                                {/* ЕДИНАЯ ПАНЕЛЬ СТАВОК (С ТВОИМ КУСТОМНЫМ ВВОДОМ) */}
+                                {/* ЕДИНАЯ ПАНЕЛЬ СТАВОК */}
                                 {gameStatus !== 'bj_player_turn' && (
                                     <div className="bg-[#12151f]/95 backdrop-blur-md border border-white/10 rounded-2xl md:rounded-3xl p-4 w-full flex flex-col md:flex-row items-center justify-between gap-4 mt-4">
                                         <div className="flex flex-col w-full md:w-auto gap-2">
-                                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Ставка (₽)</span>
+                                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest px-1">Ставка (₽)</span>
                                             <div className="flex gap-2">
-                                                <button onClick={setMinBet} disabled={gameStatus === 'rolling'} className="bg-white/5 hover:bg-white/10 border border-white/10 px-3 md:px-4 rounded-xl text-xs md:text-sm font-bold text-gray-400">MIN</button>
-                                                <input
-                                                    type="number"
-                                                    value={betAmount}
-                                                    onChange={(e) => setBetAmount(e.target.value as any)}
-                                                    disabled={gameStatus === 'rolling'}
-                                                    className="bg-[#0b0e14] border border-white/10 rounded-xl w-20 md:w-28 text-center font-bold text-white focus:border-[#ff9900] focus:outline-none"
-                                                />
-                                                <button onClick={() => setBetAmount(500)} disabled={gameStatus === 'rolling'} className="hidden md:block bg-white/5 hover:bg-white/10 border border-white/10 px-4 rounded-xl text-sm font-bold">500</button>
-                                                <button onClick={setMaxBet} disabled={gameStatus === 'rolling'} className="bg-[#ff9900]/20 hover:bg-[#ff9900]/40 text-[#ff9900] border border-[#ff9900]/30 px-3 md:px-4 rounded-xl text-xs md:text-sm font-bold">MAX</button>
+                                                <button onClick={setMinBet} disabled={gameStatus === 'rolling'} className="bg-white/5 hover:bg-white/10 border border-white/10 px-3 md:px-4 rounded-xl text-xs md:text-sm font-bold text-gray-400 disabled:opacity-50">MIN</button>
+                                                <input type="number" value={betAmount} onChange={(e) => setBetAmount(e.target.value as any)} disabled={gameStatus === 'rolling'} className="bg-[#0b0e14] border border-white/10 rounded-xl w-20 md:w-28 text-center font-bold text-white focus:border-[#ff9900] focus:outline-none" />
+                                                <button onClick={() => setBetAmount(500)} disabled={gameStatus === 'rolling'} className="hidden md:block bg-white/5 hover:bg-white/10 border border-white/10 px-4 rounded-xl text-sm font-bold disabled:opacity-50">500</button>
+                                                <button onClick={setMaxBet} disabled={gameStatus === 'rolling'} className="bg-[#ff9900]/20 hover:bg-[#ff9900]/40 text-[#ff9900] border border-[#ff9900]/30 px-3 md:px-4 rounded-xl text-xs md:text-sm font-bold disabled:opacity-50">MAX</button>
                                             </div>
                                         </div>
-
-                                        <button
-                                            onClick={startAction}
-                                            disabled={gameStatus === 'rolling'}
-                                            className={`w-full md:w-64 py-4 md:py-5 rounded-xl font-black uppercase tracking-widest text-base md:text-lg transition-all ${gameStatus === 'rolling' ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gradient-to-t from-[#e68a00] to-[#ff9900] text-[#0b0e14] shadow-[0_10px_0_#b36b00,0_15px_20px_rgba(255,153,0,0.4)] hover:translate-y-1 active:translate-y-2'}`}
-                                        >
+                                        <button onClick={startAction} disabled={gameStatus === 'rolling'} className={`w-full md:w-64 py-4 md:py-5 rounded-xl font-black uppercase tracking-widest text-base md:text-lg transition-all ${gameStatus === 'rolling' ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gradient-to-t from-[#e68a00] to-[#ff9900] text-[#0b0e14] shadow-[0_10px_0_#b36b00,0_15px_20px_rgba(255,153,0,0.4)] hover:translate-y-1 active:translate-y-2'}`}>
                                             {gameStatus === 'rolling' ? 'ЗАПУСК...' : activeGame.category === 'Слоты' ? 'SPIN 🎰' : 'ИГРАТЬ 🎲'}
                                         </button>
                                     </div>
