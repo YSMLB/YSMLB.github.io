@@ -5,13 +5,13 @@ export const portfolioProjects = [
         id: 1,
         title: "ПОЕШЬ",
         category: "Food Delivery System // Orenburg",
-        link: "/poesh" // Ссылка на наш новый белый сайт
+        link: "/poesh" 
     },
     {
         id: 2,
-        title: "System Layer 02",
-        category: "Backend / Logic",
-        link: "#" // Заглушка (пока никуда не ведет)
+        title: "MegaWin",
+        category: "Casino Platform // UI/UX",
+        link: "/megawin" 
     },
     {
         id: 3,
