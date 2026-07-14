@@ -51,7 +51,7 @@ export default function MegaWin() {
     const [isAuthOpen, setIsAuthOpen] = useState(false);
     const [authStep, setAuthStep] = useState(1);
     const [isDepositOpen, setIsDepositOpen] = useState(false);
-    const [depositAmount, setDepositAmount] = useState<number | "">(""); // Пустое поле для своего ввода
+    const [depositAmount, setDepositAmount] = useState<number | "">("");
 
     // Игровая система (Слоты)
     const [activeGame, setActiveGame] = useState(null);
@@ -87,9 +87,9 @@ export default function MegaWin() {
     // --- ЛОГИКА АВТОРИЗАЦИИ ---
     const handleAuthSubmit = () => {
         if (authStep === 1) {
-            if (inputPhone.replace(/\D/g, '').length < 11) return; // Проверка длины
+            if (inputPhone.replace(/\D/g, '').length < 11) return;
             setPhone(inputPhone);
-            setSmsCode(""); // ИСПРАВЛЕНИЕ: Очищаем поле кода
+            setSmsCode("");
             setAuthStep(2);
         } else {
             setIsLoggedIn(true);
@@ -101,13 +101,13 @@ export default function MegaWin() {
         }
     };
 
-    // --- ЛОГИКА ПОПОЛНЕНИЯ (НА РЕАЛЬНЫЙ СЧЕТ) ---
+    // --- ЛОГИКА ПОПОЛНЕНИЯ ---
     const handleDeposit = () => {
         const amount = Number(depositAmount);
         if (amount <= 0) return;
 
         setRealBalance(prev => prev + amount);
-        setActiveBalanceType('real'); // Автоматически переключаем на реал
+        setActiveBalanceType('real');
         setIsDepositOpen(false);
 
         setHistory(prev => [{
@@ -137,7 +137,6 @@ export default function MegaWin() {
             return;
         }
 
-        // Списание ставки
         if (activeBalanceType === 'real') {
             setRealBalance(prev => prev - betAmount);
         } else {
@@ -242,7 +241,6 @@ export default function MegaWin() {
                     <div className="flex items-center gap-4">
                         {isLoggedIn ? (
                             <>
-                                {/* Кнопка кошелька показывает текущий активный баланс */}
                                 <button onClick={() => setIsDepositOpen(true)} className="hidden md:flex items-center gap-2 bg-white/5 hover:bg-white/10 px-4 py-2.5 rounded-lg border border-white/10 transition-colors group">
                                     <WalletIcon />
                                     <span className="font-bold text-sm text-[#ff9900] group-hover:text-white transition-colors">
@@ -329,7 +327,6 @@ export default function MegaWin() {
                                         <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-md px-2 py-1 rounded flex items-center gap-1 text-[10px] font-bold">
                                             <span className="text-[#ff9900]"><StarIcon /></span> {game.rating}
                                         </div>
-
                                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
                                             <button className="bg-[#ff9900] hover:bg-[#e68a00] text-[#0b0e14] px-6 py-3 rounded-full font-bold flex items-center gap-2 transform translate-y-4 group-hover:translate-y-0 transition-all shadow-[0_0_20px_rgba(255,153,0,0.4)]">
                                                 <PlayIcon /> Играть
@@ -346,7 +343,7 @@ export default function MegaWin() {
                     </motion.div>
                 </section>
 
-                {/* ЩЕДРЫЕ БОНУСЫ (ДИЗАЙН ИЗ ФИГМЫ) */}
+                {/* ЩЕДРЫЕ БОНУСЫ */}
                 <section id="promo-section" className="mb-24 scroll-mt-28">
                     <div className="text-center mb-12">
                         <h2 className="text-3xl font-bold mb-2">Щедрые <span className="text-[#ff9900]">Бонусы</span></h2>
@@ -354,7 +351,6 @@ export default function MegaWin() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {/* Карточка 1 */}
                         <div className="bg-[#1f1207] p-8 rounded-[24px] border border-white/5 relative overflow-hidden flex flex-col justify-between min-h-[260px]">
                             <div>
                                 <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-6 bg-[#ff9900]/10 text-[#ff9900]">
@@ -366,7 +362,6 @@ export default function MegaWin() {
                             <button className="w-full bg-white text-[#0b0e14] hover:bg-gray-200 py-3 mt-6 rounded-xl font-bold text-sm transition-colors">Подробнее</button>
                         </div>
 
-                        {/* Карточка 2 */}
                         <div className="bg-[#0b1724] p-8 rounded-[24px] border border-white/5 relative overflow-hidden flex flex-col justify-between min-h-[260px]">
                             <div>
                                 <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-6 bg-blue-500/10 text-blue-500">
@@ -378,7 +373,6 @@ export default function MegaWin() {
                             <button className="w-full bg-white text-[#0b0e14] hover:bg-gray-200 py-3 mt-6 rounded-xl font-bold text-sm transition-colors">Подробнее</button>
                         </div>
 
-                        {/* Карточка 3 */}
                         <div className="bg-[#190a23] p-8 rounded-[24px] border border-white/5 relative overflow-hidden flex flex-col justify-between min-h-[260px]">
                             <div>
                                 <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-6 bg-purple-500/10 text-purple-500">
@@ -390,7 +384,6 @@ export default function MegaWin() {
                             <button className="w-full bg-white text-[#0b0e14] hover:bg-gray-200 py-3 mt-6 rounded-xl font-bold text-sm transition-colors">Подробнее</button>
                         </div>
 
-                        {/* Карточка 4 */}
                         <div className="bg-[#081f13] p-8 rounded-[24px] border border-white/5 relative overflow-hidden flex flex-col justify-between min-h-[260px]">
                             <div>
                                 <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-6 bg-emerald-500/10 text-emerald-500">
@@ -404,10 +397,9 @@ export default function MegaWin() {
                     </div>
                 </section>
 
-                {/* VIP ПРОГРАММА (ДИЗАЙН ИЗ ФИГМЫ) */}
+                {/* VIP ПРОГРАММА */}
                 <section className="bg-gradient-to-r from-[#2d1b3d] to-[#4a2e1b] rounded-[40px] p-10 md:p-16 border border-white/5 mb-24 relative overflow-hidden shadow-2xl">
                     <div className="flex flex-col lg:flex-row items-center gap-16 relative z-10">
-
                         <div className="flex-1">
                             <div className="inline-flex items-center bg-black/30 text-[#ff9900] border border-[#ff9900]/30 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest mb-6">
                                 Специальное предложение
@@ -435,7 +427,7 @@ export default function MegaWin() {
                                 ))}
                                 <div className="flex justify-between items-center py-4 px-4 bg-white/10 rounded-xl mt-2">
                                     <span className="text-white font-bold text-sm">Уровень 4 - Платина</span>
-                                    <span className="text-[#ff9900] font-black text-sm">{item?.val || "+20% кэшбэк"}</span>
+                                    <span className="text-[#ff9900] font-black text-sm">+20% кэшбэк</span>
                                 </div>
                             </div>
                         </div>
@@ -443,7 +435,55 @@ export default function MegaWin() {
                 </section>
             </main>
 
-            {/* --- МОДАЛКА: АВТОРИЗАЦИЯ (ИСПРАВЛЕНА) --- */}
+            {/* FOOTER */}
+            <footer className="border-t border-white/10 bg-[#080a0e] pt-16 pb-8 mt-auto">
+                <div className="max-w-[1400px] mx-auto px-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+                        <div>
+                            <Link href="/" className="flex items-center gap-3 text-[#ff9900] mb-6 hover:opacity-80 transition-opacity">
+                                <div className="bg-[#ff9900] text-[#0b0e14] w-10 h-10 flex items-center justify-center rounded-[10px]">
+                                    <CrownIcon />
+                                </div>
+                                <div className="flex flex-col justify-center mt-1">
+                                    <span className="text-xl font-black leading-none tracking-tight text-white mb-0.5">MegaWin</span>
+                                    <span className="text-[9px] text-[#ff9900] font-bold tracking-[0.15em] uppercase leading-none">Casino Online</span>
+                                </div>
+                            </Link>
+                            <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+                                Лучшее онлайн-казино с мгновенными выплатами и честной игрой.
+                            </p>
+                        </div>
+                        <div>
+                            <h4 className="text-white font-bold mb-6">Быстрые ссылки</h4>
+                            <ul className="flex flex-col gap-3 text-sm text-gray-400">
+                                <li><a href="#" className="hover:text-[#ff9900] transition-colors">О нас</a></li>
+                                <li><a href="#" className="hover:text-[#ff9900] transition-colors">Правила</a></li>
+                                <li><a href="#" className="hover:text-[#ff9900] transition-colors">Ответственная игра</a></li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 className="text-white font-bold mb-6">Игры</h4>
+                            <ul className="flex flex-col gap-3 text-sm text-gray-400">
+                                <li><a href="#" className="hover:text-[#ff9900] transition-colors">Слоты</a></li>
+                                <li><a href="#" className="hover:text-[#ff9900] transition-colors">Живое казино</a></li>
+                                <li><a href="#" className="hover:text-[#ff9900] transition-colors">Турниры</a></li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 className="text-white font-bold mb-6">Контакты</h4>
+                            <ul className="flex flex-col gap-4 text-sm text-gray-400 mb-6">
+                                <li className="flex items-center gap-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="#ff9900" strokeWidth="2"><rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
+                                    support@megawin.com
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+
+
+            {/* --- МОДАЛКА: АВТОРИЗАЦИЯ --- */}
             <AnimatePresence>
                 {isAuthOpen && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center p-4">
@@ -485,7 +525,7 @@ export default function MegaWin() {
                 )}
             </AnimatePresence>
 
-            {/* --- МОДАЛКА: ПОПОЛНЕНИЕ (СВОЯ СУММА) --- */}
+            {/* --- МОДАЛКА: ПОПОЛНЕНИЕ --- */}
             <AnimatePresence>
                 {isDepositOpen && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center p-4">
@@ -520,7 +560,7 @@ export default function MegaWin() {
                 )}
             </AnimatePresence>
 
-            {/* --- МОДАЛКА: ЛИЧНЫЙ КАБИНЕТ (С ВЫБОРОМ БАЛАНСА) --- */}
+            {/* --- МОДАЛКА: ПРОФИЛЬ --- */}
             <AnimatePresence>
                 {isProfileOpen && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex justify-end">
@@ -542,7 +582,6 @@ export default function MegaWin() {
                                     </div>
                                 </div>
 
-                                {/* УПРАВЛЕНИЕ БАЛАНСАМИ */}
                                 <div className="bg-[#0b0e14] border border-white/5 rounded-2xl p-5">
                                     <h3 className="font-bold text-white mb-4">Ваши счета</h3>
                                     <div className="flex flex-col gap-3">
@@ -560,7 +599,6 @@ export default function MegaWin() {
                                     </button>
                                 </div>
 
-                                {/* История */}
                                 <div>
                                     <h3 className="font-bold text-lg mb-4 text-white border-b border-white/10 pb-2">История операций</h3>
                                     <div className="flex flex-col gap-3">
@@ -582,7 +620,7 @@ export default function MegaWin() {
                                     </div>
                                 </div>
 
-                                <button onClick={() => { setIsLoggedIn(false); setIsProfileOpen(false); setHistory([]); setStats({ wagered: 0, won: 0 }); setRealBalance(0); }} className="mt-4 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white py-4 rounded-xl font-bold transition-colors w-full uppercase tracking-widest text-sm">
+                                <button onClick={() => { setIsLoggedIn(false); setIsProfileOpen(false); setHistory([]); setStats({ wagered: 0, won: 0 }); setRealBalance(0); setDemoBalance(0); }} className="mt-4 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white py-4 rounded-xl font-bold transition-colors w-full uppercase tracking-widest text-sm">
                                     Выйти из аккаунта
                                 </button>
                             </div>
@@ -591,7 +629,7 @@ export default function MegaWin() {
                 )}
             </AnimatePresence>
 
-            {/* --- СИМУЛЯТОР СЛОТОВ (ОКНО ГЕЙМПЛЕЯ) --- */}
+            {/* --- СИМУЛЯТОР СЛОТОВ --- */}
             <AnimatePresence>
                 {activeGame && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black z-[110] flex flex-col">
@@ -618,8 +656,6 @@ export default function MegaWin() {
                         }}>
 
                             <div className="w-full max-w-3xl flex flex-col items-center z-10">
-
-                                {/* МАШИНА СЛОТОВ */}
                                 <div className="bg-[#12151f] border-4 border-[#ff9900] rounded-[30px] md:rounded-[40px] p-4 md:p-6 shadow-[0_0_50px_rgba(255,153,0,0.2)] mb-6 md:mb-8 w-full">
                                     <div className="bg-[#0b0e14] border-4 border-gray-800 rounded-2xl md:rounded-3xl p-4 md:p-8 flex justify-center gap-2 md:gap-8 overflow-hidden shadow-[inset_0_10px_20px_rgba(0,0,0,0.8)]">
 
@@ -639,14 +675,12 @@ export default function MegaWin() {
                                     </div>
                                 </div>
 
-                                {/* ИНФОРМАЦИЯ О РЕЗУЛЬТАТЕ */}
                                 <div className="h-12 md:h-16 flex items-center justify-center mb-4 md:mb-6">
                                     {gameStatus === 'win' && <motion.span initial={{ scale: 0, y: 20 }} animate={{ scale: 1, y: 0 }} className="text-[#ff9900] text-2xl md:text-4xl font-black uppercase drop-shadow-[0_0_15px_rgba(255,153,0,0.8)]">{gameResultInfo}</motion.span>}
                                     {gameStatus === 'loss' && <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-gray-400 text-lg md:text-xl font-bold uppercase">{gameResultInfo}</motion.span>}
                                     {gameStatus === 'idle' && <span className="text-gray-500 font-medium text-sm md:text-base">Крутите слоты ({activeBalanceType === 'real' ? 'Реальный счет' : 'Демо счет'})</span>}
                                 </div>
 
-                                {/* ПАНЕЛЬ УПРАВЛЕНИЯ */}
                                 <div className="bg-[#12151f]/90 backdrop-blur-md border border-white/10 rounded-2xl md:rounded-3xl p-4 md:p-6 w-full flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6">
 
                                     <div className="flex flex-col gap-2 w-full md:w-auto">
