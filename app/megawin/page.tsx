@@ -7,14 +7,14 @@ import Link from "next/link";
 
 // --- БАЗА ДАННЫХ ИГР ---
 const games = [
-    { id: 1, title: "Lucky Jackpot", provider: "NetEnt", rating: 4.8, tags: ["HOT"], img: "https://images.unsplash.com/photo-1596838132731-3301c3fd4317?auto=format&fit=crop&w=500&q=80", category: "Слоты" },
-    { id: 2, title: "Royal Roulette", provider: "Evolution Gaming", rating: 4.9, tags: ["NEW"], img: "https://images.unsplash.com/photo-1606167668584-78701c57f13d?auto=format&fit=crop&w=500&q=80", category: "Настольные" },
-    { id: 3, title: "Poker Master", provider: "Pragmatic Play", rating: 4.7, tags: [], img: "https://images.unsplash.com/photo-1517856497829-3047e3fffae1?auto=format&fit=crop&w=500&q=80", category: "Настольные" },
-    { id: 4, title: "Dice Paradise", provider: "Play'n GO", rating: 4.6, tags: ["HOT"], img: "https://images.unsplash.com/photo-1518882176949-0d1991d7dfdc?auto=format&fit=crop&w=500&q=80", category: "Настольные" },
-    { id: 5, title: "Neon Chips", provider: "Microgaming", rating: 4.5, tags: [], img: "https://images.unsplash.com/photo-1582229555137-0249764516ae?auto=format&fit=crop&w=500&q=80", category: "Новинки" },
-    { id: 6, title: "Blackjack Pro", provider: "Red Tiger", rating: 4.8, tags: ["NEW"], img: "https://images.unsplash.com/photo-1605706859570-584347712e0f?auto=format&fit=crop&w=500&q=80", category: "Живые" },
-    { id: 7, title: "Fortune Slots", provider: "NetEnt", rating: 4.7, tags: [], img: "https://images.unsplash.com/photo-1599839619722-39751411ea63?auto=format&fit=crop&w=500&q=80", category: "Слоты" },
-    { id: 8, title: "Golden Wheel", provider: "Evolution Gaming", rating: 4.9, tags: ["HOT"], img: "https://images.unsplash.com/photo-1606167668584-78701c57f13d?auto=format&fit=crop&w=500&q=80", category: "Живые" }
+    { id: 1, title: "Lucky Jackpot", provider: "NetEnt", rating: 4.8, tags: ["HOT"], img: "https://play-lh.googleusercontent.com/MDzMTxMDjW9Ms9g7-fw65atLgrfRkjxD_-slhFaIaoVY05n8u1y3ALrvvIoKnDiF2Q=w7680-h4320", category: "Слоты" },
+    { id: 2, title: "Royal Roulette", provider: "Evolution Gaming", rating: 4.9, tags: ["NEW"], img: "https://avatars.mds.yandex.net/get-mpic/4557391/2a000001942b9fe6937f722b5775cbf1e3ba/9hq", category: "Настольные" },
+    { id: 3, title: "Poker Master", provider: "Pragmatic Play", rating: 4.7, tags: [], img: "https://avatars.mds.yandex.net/i?id=5c04d7aefc9ae7fa2be5b6c4c5f595d8c6f2d23b-10701951-images-thumbs&n=13", category: "Настольные" },
+    { id: 4, title: " DiceParadise", provider: "Play'n GO", rating: 4.6, tags: ["HOT"], img: "https://app-s.ru/_nw/148/93278995.jpg", category: "Настольные" },
+    { id: 5, title: "Neon Chips", provider: "Microgaming", rating: 4.5, tags: [], img: "https://static.vecteezy.com/system/resources/previews/005/525/213/non_2x/neon-casino-playing-cards-with-poker-chips-and-hologram-of-digital-rings-in-dark-empty-scene-vector.jpg", category: "Новинки" },
+    { id: 6, title: "Blackjack Pro", provider: "Red Tiger", rating: 4.8, tags: ["NEW"], img: "https://avatars.mds.yandex.net/i?id=8cb151a4764ea4deff3b73a78c21354ef773ed10-5219773-images-thumbs&n=13", category: "Живые" },
+    { id: 7, title: "Fortune Slots", provider: "NetEnt", rating: 4.7, tags: [], img: "https://avatars.mds.yandex.net/i?id=47ef78b8a09fc611be188be10706df46_l-3816297-images-thumbs&n=13", category: "Слоты" },
+    { id: 8, title: "Golden Wheel", provider: "Evolution Gaming", rating: 4.9, tags: ["HOT"], img: "https://www.wildsbet.com/images/games/golden-hero/golden-wheel.webp", category: "Живые" }
 ];
 
 const categories = ["Все игры", "Слоты", "Живые", "Настольные", "Новинки"];
