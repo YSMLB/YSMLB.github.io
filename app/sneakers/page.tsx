@@ -13,7 +13,7 @@ const heroShoes = [
         title3: "FLIGHT",
         subtitle: "INTRODUCING OUR LIGHTEST\nSHOE EVER",
         name: "Air Jordan 1",
-        img: "https://images.unsplash.com/photo-1597045566677-8cf039d7f6a4?q=80&w=1000&auto=format&fit=crop",
+        img: "/Jordan1.jpg",
     },
     {
         id: 2,
@@ -21,8 +21,8 @@ const heroShoes = [
         title2: "MEETS",
         title3: "STREET",
         subtitle: "NEW LOUIS VUITTON SKATE\nGREEN / WHITE EDITION",
-        name: "LV Skate Sneaker",
-        img: "https://images.unsplash.com/photo-1608231387042-66d1773070a5?q=80&w=1000&auto=format&fit=crop",
+        name: "LV Skate",
+        img: "/skateGW.jpg",
     },
     {
         id: 3,
@@ -31,18 +31,18 @@ const heroShoes = [
         title3: "IMPACT",
         subtitle: "NIKE AIR MORE UPTEMPO '96\nBOLD AND UNAPOLOGETIC",
         name: "Air More Uptempo",
-        img: "https://images.unsplash.com/photo-1552346154-21d32810baa3?q=80&w=1000&auto=format&fit=crop",
+        img: "/uptempo96.jpg",
     }
 ];
 
-// --- ГЕНЕРАЦИЯ 30 ЗАГЛУШЕК ДЛЯ КАТАЛОГА ---
-const catalogShoes = Array.from({ length: 30 }, (_, i) => {
-    // Чередуем 3 разные модели для разнообразия
+// --- ГЕНЕРАЦИЯ 30 КАРТОЧК ДЛЯ КАТАЛОГА ---
+const initialCatalogShoes = Array.from({ length: 30 }, (_, i) => {
     const type = i % 3;
     return {
         id: i + 1,
         name: type === 0 ? "AIR JORDAN 1" : type === 1 ? "JORDAN MIDS" : "NIKE AIR MAX 95",
         subtitle: type === 0 ? "Classic / Black" : type === 1 ? "Bred Toe / Red" : "Essential / Colorway",
+        price: (Math.random() * 200 + 100).toFixed(2),
         img: type === 0
             ? "https://images.unsplash.com/photo-1597045566677-8cf039d7f6a4?q=80&w=500&auto=format&fit=crop"
             : type === 1
@@ -63,11 +63,17 @@ const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="32" heigh
 export default function SneakerStore() {
     const [currentIndex, setCurrentIndex] = useState(0);
 
-    // Состояния модалок
+    // АВТОРИЗАЦИЯ И ПРОФИЛЬ
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [isAuthOpen, setIsAuthOpen] = useState(false);
-    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-    // 3D Анимация при наведении
+    // ПОИСК
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [searchInput, setSearchInput] = useState("");
+    const [activeSearch, setActiveSearch] = useState("");
+
+    // 3D Анимация
     const x = useMotionValue(0);
     const y = useMotionValue(0);
     const rotateX = useTransform(y, [-300, 300], [10, -10]);
@@ -80,25 +86,41 @@ export default function SneakerStore() {
         x.set(event.clientX - centerX);
         y.set(event.clientY - centerY);
     };
-
-    const handleMouseLeave = () => {
-        x.set(0);
-        y.set(0);
-    };
+    const handleMouseLeave = () => { x.set(0); y.set(0); };
 
     const nextShoe = () => setCurrentIndex((prev) => (prev + 1) % heroShoes.length);
     const prevShoe = () => setCurrentIndex((prev) => (prev - 1 + heroShoes.length) % heroShoes.length);
 
     const activeShoe = heroShoes[currentIndex];
 
+    // Фильтрация каталога
+    const displayedCatalog = activeSearch
+        ? initialCatalogShoes.filter(shoe => shoe.name.toLowerCase().includes(activeSearch.toLowerCase()))
+        : initialCatalogShoes;
+
+    const handleSearchSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            setActiveSearch(searchInput);
+            setIsSearchOpen(false);
+            document.getElementById('catalog-section')?.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
+    const handleLogin = () => {
+        setIsLoggedIn(true);
+        setIsAuthOpen(false);
+    };
+
+    const handleUserIconClick = () => {
+        if (isLoggedIn) setIsProfileOpen(true);
+        else setIsAuthOpen(true);
+    };
+
     return (
-        // FULL SCREEN LAYOUT (Edge-to-Edge)
         <div className="bg-white min-h-screen text-black font-sans overflow-x-hidden selection:bg-black selection:text-white">
 
             {/* ================= ШАПКА ================= */}
-            <header className="w-full bg-white/90 backdrop-blur-md px-6 md:px-12 py-6 flex justify-between items-center fixed top-0 z-50 border-b border-gray-100">
-
-                {/* Левое меню */}
+            <header className="w-full bg-white/90 backdrop-blur-md px-6 md:px-12 py-6 flex justify-between items-center fixed top-0 z-40 border-b border-gray-100">
                 <nav className="hidden md:flex gap-8 text-sm font-black tracking-widest uppercase">
                     <Link href="#" className="hover:text-gray-500 transition-colors">Women</Link>
                     <Link href="#" className="hover:text-gray-500 transition-colors">Men</Link>
@@ -106,151 +128,96 @@ export default function SneakerStore() {
                     <Link href="#" className="hover:text-gray-500 transition-colors">Sale</Link>
                 </nav>
 
-                {/* Скошенный логотип по центру */}
-                <div className="absolute left-1/2 -translate-x-1/2 flex justify-center">
-                    <Link href="/" className="bg-[#111] text-white px-6 py-2 skew-x-[-12deg] hover:bg-gray-800 transition-colors">
+                <div className="absolute left-1/2 -translate-x-1/2 flex justify-center cursor-pointer" onClick={() => { setActiveSearch(""); setSearchInput(""); }}>
+                    <div className="bg-[#111] text-white px-6 py-2 skew-x-[-12deg] hover:bg-gray-800 transition-colors">
                         <h1 className="skew-x-[12deg] font-black text-xl italic tracking-[0.1em] uppercase">SNEAKER STORE</h1>
-                    </Link>
+                    </div>
                 </div>
 
-                {/* Иконки справа */}
                 <div className="flex gap-8 items-center text-black">
                     <button onClick={() => setIsSearchOpen(true)} className="hover:opacity-50 transition-opacity"><SearchIcon /></button>
                     <Link href="/cart" target="_blank" className="hover:opacity-50 transition-opacity"><BagIcon /></Link>
-                    <button onClick={() => setIsAuthOpen(true)} className="hover:opacity-50 transition-opacity"><UserIcon /></button>
+                    <button onClick={handleUserIconClick} className="hover:opacity-50 transition-opacity">
+                        {/* Если авторизован - показываем жирную иконку или кружок */}
+                        {isLoggedIn ? <div className="w-6 h-6 bg-black text-white rounded-full flex items-center justify-center text-[10px] font-bold">ME</div> : <UserIcon />}
+                    </button>
                 </div>
             </header>
 
             {/* ================= ГЛАВНЫЙ ЭКРАН (HERO) ================= */}
             <main className="pt-32 px-6 md:px-12 max-w-[1800px] mx-auto">
-
                 <section className="flex flex-col lg:flex-row items-center w-full min-h-[60vh] lg:min-h-[70vh] mb-20 relative">
-
-                    {/* ЛЕВЫЙ БЛОК: Текст и Кнопка */}
                     <div className="w-full lg:w-5/12 flex flex-col items-start z-20">
                         <AnimatePresence mode="wait">
-                            <motion.div
-                                key={activeShoe.id}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.3 }}
-                            >
+                            <motion.div key={activeShoe.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}>
                                 <h2 className="text-7xl lg:text-[110px] font-black italic uppercase leading-[0.9] tracking-tighter mb-6">
-                                    <span className="block">{activeShoe.title1}</span>
-                                    <span className="block">{activeShoe.title2}</span>
-                                    <span className="block">{activeShoe.title3}</span>
+                                    <span className="block">{activeShoe.title1}</span><span className="block">{activeShoe.title2}</span><span className="block">{activeShoe.title3}</span>
                                 </h2>
                                 <p className="text-gray-800 font-medium text-sm md:text-base uppercase whitespace-pre-line mb-10 leading-relaxed max-w-sm">
                                     {activeShoe.subtitle}
                                 </p>
-                                <button className="bg-[#111] text-white px-12 py-5 font-bold uppercase tracking-widest text-sm hover:bg-gray-800 transition-colors shadow-lg shadow-black/20">
+                                <button onClick={() => document.getElementById('catalog-section')?.scrollIntoView({ behavior: 'smooth' })} className="bg-[#111] text-white px-12 py-5 font-bold uppercase tracking-widest text-sm hover:bg-gray-800 transition-colors shadow-lg shadow-black/20">
                                     Shop Now
                                 </button>
                             </motion.div>
                         </AnimatePresence>
                     </div>
 
-                    {/* ПРАВЫЙ БЛОК: 3D Слайдер */}
                     <div className="w-full lg:w-7/12 h-[500px] lg:h-[700px] relative flex items-center justify-center mt-12 lg:mt-0">
-
-                        <button onClick={prevShoe} className="absolute left-0 lg:-left-8 z-30 w-14 h-14 bg-white border border-gray-200 rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors shadow-lg text-black">
-                            <ArrowLeft />
-                        </button>
-
-                        <motion.div
-                            className="w-full h-full flex items-center justify-center relative z-20 perspective-1000"
-                            onMouseMove={handleMouseMove}
-                            onMouseLeave={handleMouseLeave}
-                            style={{ rotateX, rotateY }}
-                        >
+                        <button onClick={prevShoe} className="absolute left-0 lg:-left-8 z-30 w-14 h-14 bg-white border border-gray-200 rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors shadow-lg text-black"><ArrowLeft /></button>
+                        <motion.div className="w-full h-full flex items-center justify-center relative z-20 perspective-1000" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave} style={{ rotateX, rotateY }}>
                             <AnimatePresence mode="popLayout">
-                                <motion.img
-                                    key={activeShoe.id}
-                                    src={activeShoe.img}
-                                    alt={activeShoe.name}
-                                    initial={{ opacity: 0, scale: 0.8, x: 100 }}
-                                    animate={{ opacity: 1, scale: 1, x: 0 }}
-                                    exit={{ opacity: 0, scale: 0.8, x: -100 }}
-                                    transition={{ type: "spring", stiffness: 200, damping: 25 }}
-                                    className="w-full max-w-[800px] object-contain drop-shadow-2xl mix-blend-multiply pointer-events-none"
-                                />
+                                <motion.img key={activeShoe.id} src={activeShoe.img} alt={activeShoe.name} initial={{ opacity: 0, scale: 0.8, x: 100 }} animate={{ opacity: 1, scale: 1, x: 0 }} exit={{ opacity: 0, scale: 0.8, x: -100 }} transition={{ type: "spring", stiffness: 200, damping: 25 }} className="w-full max-w-[800px] object-contain drop-shadow-2xl mix-blend-multiply pointer-events-none" />
                             </AnimatePresence>
                         </motion.div>
-
-                        <button onClick={nextShoe} className="absolute right-0 lg:right-8 z-30 w-14 h-14 bg-white border border-gray-200 rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors shadow-lg text-black">
-                            <ArrowRight />
-                        </button>
-
+                        <button onClick={nextShoe} className="absolute right-0 lg:right-8 z-30 w-14 h-14 bg-white border border-gray-200 rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors shadow-lg text-black"><ArrowRight /></button>
                     </div>
                 </section>
 
-                {/* ================= КАТАЛОГ (30 ПАР КРОССОВОК) ================= */}
-                <section className="mb-24">
-                    <div className="flex justify-between items-end mb-10">
+                {/* ================= КАТАЛОГ ================= */}
+                <section id="catalog-section" className="mb-24 scroll-mt-32">
+                    <div className="flex justify-between items-end mb-10 border-b border-black/10 pb-6">
                         <h3 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter">
-                            Explore Collection
+                            {activeSearch ? `Search: "${activeSearch}"` : "Explore Collection"}
                         </h3>
                         <span className="text-gray-400 font-bold text-sm tracking-widest uppercase hidden md:block">
-                            {catalogShoes.length} Items found
+                            {displayedCatalog.length} Items found
                         </span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
-                        {catalogShoes.map((shoe) => (
-                            <div
-                                key={shoe.id}
-                                className="border border-gray-200 rounded-[30px] p-6 md:p-8 flex flex-col justify-between group cursor-pointer hover:shadow-2xl hover:border-gray-300 transition-all bg-white relative overflow-hidden"
-                            >
-                                {/* Заголовок и стрелка */}
-                                <div className="flex justify-between items-start relative z-10">
-                                    <div>
-                                        <h4 className="font-black uppercase tracking-widest text-sm md:text-base mb-1 text-black">
-                                            {shoe.name}
-                                        </h4>
-                                        {/* При наведении появляется фейковая цена */}
-                                        <p className="text-xs text-gray-500 font-bold tracking-wider group-hover:hidden block">
-                                            {shoe.subtitle}
-                                        </p>
-                                        <p className="text-xs text-black font-black tracking-wider hidden group-hover:block transition-all">
-                                            $ {(Math.random() * 200 + 100).toFixed(2)}
-                                        </p>
+                    {displayedCatalog.length === 0 ? (
+                        <div className="py-20 text-center">
+                            <h2 className="text-3xl font-black uppercase mb-4 text-gray-300">No sneakers found</h2>
+                            <button onClick={() => { setActiveSearch(""); setSearchInput(""); }} className="border-b-2 border-black font-bold uppercase tracking-widest text-sm pb-1 hover:text-gray-500">Clear Search</button>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
+                            {displayedCatalog.map((shoe) => (
+                                <div key={shoe.id} className="border border-gray-200 rounded-[30px] p-6 md:p-8 flex flex-col justify-between group cursor-pointer hover:shadow-2xl hover:border-gray-300 transition-all bg-white relative overflow-hidden">
+                                    <div className="flex justify-between items-start relative z-10">
+                                        <div>
+                                            <h4 className="font-black uppercase tracking-widest text-sm md:text-base mb-1 text-black">{shoe.name}</h4>
+                                            <p className="text-xs text-gray-500 font-bold tracking-wider group-hover:hidden block">{shoe.subtitle}</p>
+                                            <p className="text-xs text-black font-black tracking-wider hidden group-hover:block transition-all">$ {shoe.price}</p>
+                                        </div>
+                                        <div className="text-gray-400 group-hover:text-black group-hover:translate-x-1 transition-all"><ArrowRightLong /></div>
                                     </div>
-                                    <div className="text-gray-400 group-hover:text-black group-hover:translate-x-1 transition-all">
-                                        <ArrowRightLong />
+                                    <div className="h-48 md:h-56 mt-8 flex items-end justify-center relative z-10">
+                                        <img src={shoe.img} alt={shoe.name} className="w-full h-full object-contain mix-blend-multiply group-hover:scale-110 group-hover:-translate-y-4 transition-transform duration-500 origin-bottom" />
                                     </div>
+                                    <div className="absolute inset-0 bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity z-0 pointer-events-none" />
                                 </div>
-
-                                {/* Картинка */}
-                                <div className="h-48 md:h-56 mt-8 flex items-end justify-center relative z-10">
-                                    <img
-                                        src={shoe.img}
-                                        alt={shoe.name}
-                                        className="w-full h-full object-contain mix-blend-multiply group-hover:scale-110 group-hover:-translate-y-4 transition-transform duration-500 origin-bottom"
-                                    />
-                                </div>
-
-                                {/* Легкий серый фон при наведении */}
-                                <div className="absolute inset-0 bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity z-0 pointer-events-none" />
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Кнопка "Загрузить еще" */}
-                    <div className="flex justify-center mt-16">
-                        <button className="border-2 border-black text-black px-12 py-4 font-bold uppercase tracking-widest text-sm hover:bg-black hover:text-white transition-colors">
-                            Load More
-                        </button>
-                    </div>
+                            ))}
+                        </div>
+                    )}
                 </section>
-
             </main>
 
             {/* ================= МОДАЛКА АВТОРИЗАЦИИ ================= */}
             <AnimatePresence>
                 {isAuthOpen && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-                        <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-white w-full max-w-md rounded-[30px] p-10 relative shadow-2xl">
+                        <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-white w-full max-w-md rounded-[30px] p-10 relative shadow-2xl border border-gray-100">
                             <button onClick={() => setIsAuthOpen(false)} className="absolute top-6 right-6 text-gray-400 hover:text-black transition-colors"><CloseIcon /></button>
                             <h2 className="text-4xl font-black italic tracking-tighter uppercase mb-2">Welcome</h2>
                             <p className="text-xs text-gray-500 tracking-widest uppercase mb-8">Sign in to your account</p>
@@ -258,10 +225,48 @@ export default function SneakerStore() {
                             <div className="flex flex-col gap-4">
                                 <input type="email" placeholder="E-mail" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 text-sm font-medium focus:outline-none focus:border-black transition-colors placeholder:text-gray-400" />
                                 <input type="password" placeholder="Password" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 text-sm font-medium focus:outline-none focus:border-black transition-colors placeholder:text-gray-400" />
-                                <button onClick={() => setIsAuthOpen(false)} className="w-full bg-[#111] text-white px-6 py-4 rounded-xl font-bold uppercase tracking-widest text-sm mt-4 hover:bg-gray-800 transition-colors shadow-lg">
+                                <button onClick={handleLogin} className="w-full bg-[#111] text-white px-6 py-4 rounded-xl font-bold uppercase tracking-widest text-sm mt-4 hover:bg-gray-800 transition-colors shadow-lg">
                                     Login
                                 </button>
                             </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* ================= МОДАЛКА ПРОФИЛЯ ================= */}
+            <AnimatePresence>
+                {isProfileOpen && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                        <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-white w-full max-w-md rounded-[30px] p-10 relative shadow-2xl border border-gray-100">
+                            <button onClick={() => setIsProfileOpen(false)} className="absolute top-6 right-6 text-gray-400 hover:text-black transition-colors"><CloseIcon /></button>
+
+                            <div className="flex items-center gap-4 mb-10 border-b border-gray-100 pb-8">
+                                <div className="w-16 h-16 bg-black text-white rounded-full flex items-center justify-center text-xl font-black">ME</div>
+                                <div>
+                                    <h2 className="text-2xl font-black uppercase">My Profile</h2>
+                                    <p className="text-xs text-gray-500 tracking-widest uppercase">Member since 2026</p>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-2 mb-8">
+                                <button className="flex justify-between items-center bg-gray-50 p-4 rounded-xl hover:bg-gray-100 transition-colors font-bold text-sm uppercase tracking-widest">
+                                    Order History <span>→</span>
+                                </button>
+                                <button className="flex justify-between items-center bg-gray-50 p-4 rounded-xl hover:bg-gray-100 transition-colors font-bold text-sm uppercase tracking-widest">
+                                    Saved Items <span>→</span>
+                                </button>
+                                <button className="flex justify-between items-center bg-gray-50 p-4 rounded-xl hover:bg-gray-100 transition-colors font-bold text-sm uppercase tracking-widest">
+                                    Settings <span>→</span>
+                                </button>
+                            </div>
+
+                            <button
+                                onClick={() => { setIsLoggedIn(false); setIsProfileOpen(false); }}
+                                className="w-full bg-red-50 text-red-500 px-6 py-4 rounded-xl font-bold uppercase tracking-widest text-sm hover:bg-red-100 transition-colors"
+                            >
+                                Sign Out
+                            </button>
                         </motion.div>
                     </motion.div>
                 )}
@@ -279,23 +284,21 @@ export default function SneakerStore() {
                             <input
                                 type="text"
                                 autoFocus
+                                value={searchInput}
+                                onChange={(e) => setSearchInput(e.target.value)}
+                                onKeyDown={handleSearchSubmit}
                                 placeholder="TYPE SNEAKER NAME..."
                                 className="w-full text-4xl md:text-7xl font-black italic tracking-tighter uppercase text-center text-black placeholder-gray-200 focus:outline-none border-b-4 border-black pb-4 md:pb-8"
                             />
                             <p className="text-gray-400 text-xs md:text-sm tracking-widest uppercase mt-8 font-bold text-center">
-                                Trending: Jordan 1, Uptempo, LV Skate, Dunk Low
+                                Press Enter to Search • Trending: Jordan, Uptempo, Max
                             </p>
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {/* Глобальные стили для перспективы */}
-            <style jsx global>{`
-        .perspective-1000 {
-          perspective: 1000px;
-        }
-      `}</style>
+            <style jsx global>{`.perspective-1000 { perspective: 1000px; }`}</style>
         </div>
     );
 }
