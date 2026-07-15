@@ -15,9 +15,9 @@ export const portfolioProjects = [
     },
     {
         id: 3,
-        title: "System Layer 03",
-        category: "Architecture / C#",
-        link: "#"
+        title: "Sneaker Store",
+        category: "E-commerce // UI/UX",
+        link: "/sneakers"
     },
     {
         id: 4,
