@@ -175,6 +175,8 @@ export default function MegaWin() {
 
     const runSlotsEngine = (bet: number) => {
         setGameStatus('rolling');
+        setShowEpicWin(false); // ИСПРАВЛЕНИЕ БАГА: Принудительно выключаем анимацию перед началом нового спина
+
         const symbols = activeGame.id === 7 ? slotSymbolsEgypt : slotSymbolsNormal;
         rollIntervalRef.current = setInterval(() => {
             setReelsGrid(Array(5).fill(0).map(() => Array(3).fill(0).map(() => symbols[Math.floor(Math.random() * symbols.length)])));
@@ -195,6 +197,12 @@ export default function MegaWin() {
                 addFunds(winAmount);
                 setGameStatus('win');
                 setShowEpicWin(true);
+
+                // ИСПРАВЛЕНИЕ БАГА: Убираем надпись WILD через 2.5 секунды
+                setTimeout(() => {
+                    setShowEpicWin(false);
+                }, 2500);
+
                 setGameResultInfo(`ВЫИГРЫШ: +${winAmount} ₽ (x${mult})`);
             } else {
                 setGameStatus('loss');
@@ -530,7 +538,7 @@ export default function MegaWin() {
                 </section>
             </main>
 
-            {/* ================= ВЕЛИКИЙ И МОГУЧИЙ ФУТЕР (ВЕРНУЛСЯ) ================= */}
+            {/* ================= ВЕЛИКИЙ И МОГУЧИЙ ФУТЕР ================= */}
             <footer className="border-t border-white/10 bg-[#080a0e] pt-16 pb-8 mt-auto">
                 <div className="max-w-[1400px] mx-auto px-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
@@ -609,7 +617,7 @@ export default function MegaWin() {
             <AnimatePresence>
                 {isVipModalOpen && (
                     <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-                        <div className="bg-[#12151f] border border-[#ff9900]/30 rounded-3xl w-full max-w-2xl p-8 relative">
+                        <div className="bg-[#12151f] border border-[#ff9900]/30 rounded-3xl w-full max-w-2xl p-8 relative shadow-[0_0_50px_rgba(255,153,0,0.1)]">
                             <button onClick={() => setIsVipModalOpen(false)} className="absolute top-6 right-6 text-gray-500"><CloseIcon /></button>
                             <h2 className="text-3xl font-black uppercase mb-8">Статусы <span className="text-[#ff9900]">MegaWin</span></h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -705,7 +713,7 @@ export default function MegaWin() {
 
                             <div className="w-full max-w-4xl flex flex-col items-center">
 
-                                {/* ---------------- ИНТЕРФЕЙС 1: СЛОТЫ 5х3 (Lucky Jackpot // Fortune Slots) ---------------- */}
+                                {/* ---------------- ИНТЕРФЕЙС 1: СЛОТЫ 5х3 ---------------- */}
                                 {(activeGame.id === 1 || activeGame.id === 7) && (
                                     <div className="w-full flex flex-col items-center">
                                         {activeGame.id === 1 && (
@@ -737,7 +745,7 @@ export default function MegaWin() {
                                     </div>
                                 )}
 
-                                {/* ---------------- ИНТЕРФЕЙС 2: РУЛЕТКА (Royal Roulette // Golden Wheel) ---------------- */}
+                                {/* ---------------- ИНТЕРФЕЙС 2: РУЛЕТКА ---------------- */}
                                 {(activeGame.id === 2 || activeGame.id === 8) && (
                                     <div className="w-full flex flex-col items-center gap-8">
                                         <motion.div animate={{ rotate: wheelRotation }} transition={{ type: "spring", damping: 30, stiffness: 40 }} className="w-56 h-56 md:w-72 md:h-72 rounded-full border-8 border-amber-700 bg-gradient-to-tr from-green-900 to-green-950 shadow-[0_0_40px_rgba(0,0,0,0.8)] flex items-center justify-center relative">
@@ -755,7 +763,7 @@ export default function MegaWin() {
                                     </div>
                                 )}
 
-                                {/* ---------------- ИНТЕРФЕЙС 3: БЛЕКДЖЕК (Poker Master // Blackjack Pro) ---------------- */}
+                                {/* ---------------- ИНТЕРФЕЙС 3: БЛЕКДЖЕК ---------------- */}
                                 {(activeGame.id === 3 || activeGame.id === 6) && (
                                     <div className="w-full flex flex-col gap-6 max-w-2xl bg-green-950/80 backdrop-blur-md p-6 md:p-8 rounded-[32px] border-2 border-emerald-600/30 relative shadow-2xl">
                                         <div className="absolute inset-4 border border-dashed border-emerald-500/20 rounded-[24px] pointer-events-none" />
@@ -781,7 +789,7 @@ export default function MegaWin() {
                                     </div>
                                 )}
 
-                                {/* ---------------- ИНТЕРФЕЙС 4: КОСТИ (Dice Paradise // Neon Chips) ---------------- */}
+                                {/* ---------------- ИНТЕРФЕЙС 4: КОСТИ ---------------- */}
                                 {(activeGame.id === 4 || activeGame.id === 5) && (
                                     <div className="w-full flex flex-col items-center gap-8">
                                         <div className="flex gap-6 justify-center">
@@ -819,7 +827,12 @@ export default function MegaWin() {
                                                 <button onClick={setMaxBet} disabled={gameStatus === 'rolling'} className="bg-[#ff9900]/20 hover:bg-[#ff9900]/40 text-[#ff9900] border border-[#ff9900]/30 px-3 md:px-4 rounded-xl text-xs md:text-sm font-bold disabled:opacity-50">MAX</button>
                                             </div>
                                         </div>
-                                        <button onClick={startAction} disabled={gameStatus === 'rolling'} className={`w-full md:w-64 py-4 md:py-5 rounded-xl font-black uppercase tracking-widest text-base md:text-lg transition-all ${gameStatus === 'rolling' ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gradient-to-t from-[#e68a00] to-[#ff9900] text-[#0b0e14] shadow-[0_10px_0_#b36b00,0_15px_20px_rgba(255,153,0,0.4)] hover:translate-y-1 active:translate-y-2'}`}>
+
+                                        <button
+                                            onClick={startAction}
+                                            disabled={gameStatus === 'rolling'}
+                                            className={`w-full md:w-64 py-4 md:py-5 rounded-xl font-black uppercase tracking-widest text-base md:text-lg transition-all ${gameStatus === 'rolling' ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-gradient-to-t from-[#e68a00] to-[#ff9900] text-[#0b0e14] shadow-[0_10px_0_#b36b00,0_15px_20px_rgba(255,153,0,0.4)] hover:translate-y-1 active:translate-y-2'}`}
+                                        >
                                             {gameStatus === 'rolling' ? 'ЗАПУСК...' : activeGame.category === 'Слоты' ? 'SPIN 🎰' : 'ИГРАТЬ 🎲'}
                                         </button>
                                     </div>
