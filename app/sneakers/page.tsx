@@ -1,29 +1,44 @@
 "use client";
 
-import { useState, Suspense, useEffect } from "react";
+import { useState, Suspense, useLayoutEffect, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import * as THREE from "three";
 
 // --- 3D ИМПОРТЫ ---
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, useGLTF, Environment, ContactShadows, Html, Bounds } from "@react-three/drei";
+import { OrbitControls, useGLTF, Environment, ContactShadows } from "@react-three/drei";
 
-// --- КОМПОНЕНТ 3D МОДЕЛИ ---
-function ShoeModel({ path }: { path: string }) {
+// =====================================================================
+// УМНЫЙ КОМПОНЕНТ МОДЕЛИ (ФИКСИТ МАСШТАБ, ЦЕНТР И СООБЩАЕТ О ЗАГРУЗКЕ)
+// =====================================================================
+function AutoScaledModel({ path, onLoad }: { path: string; onLoad: () => void }) {
     const { scene } = useGLTF(path);
-    return <primitive object={scene} />;
+    const ref = useRef<THREE.Group>(null);
+
+    useLayoutEffect(() => {
+        if (ref.current) {
+            // Вычисляем размеры и подгоняем масштаб
+            const box = new THREE.Box3().setFromObject(ref.current);
+            const size = new THREE.Vector3();
+            box.getSize(size);
+
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const scale = 3.5 / maxDim;
+            ref.current.scale.setScalar(scale);
+
+            // Идеально центруем
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+            ref.current.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
+        }
+        // Модель готова, даем сигнал запускать таймеры анимации!
+        onLoad();
+    }, [scene, onLoad]);
+
+    return <primitive ref={ref} object={scene} />;
 }
 
-// Заглушка загрузки
-function Loader() {
-    return (
-        <Html center>
-            <div className="text-black font-black uppercase tracking-widest text-[10px] animate-pulse bg-white/90 px-6 py-3 rounded-full shadow-lg border border-gray-100">
-                LOADING 3D...
-            </div>
-        </Html>
-    );
-}
 
 // --- ДАННЫЕ ДЛЯ ГЛАВНОГО СЛАЙДЕРА (HERO) ---
 const heroShoes = [
@@ -56,7 +71,7 @@ const heroShoes = [
     }
 ];
 
-// --- ТВОЙ КАТАЛОГ С ТВОИМИ ПУТЯМИ ---
+// --- СТРОГО ТВОЙ КАТАЛОГ С ТВОИМИ ПУТЯМИ (БЕЗ ЛЕВОГО МУСОРА) ---
 const initialCatalogShoes = [
     { id: 3, name: "Air Jordan 1 Retro High", subtitle: "Chicago", price: "180.00", category: "MEN", isSale: false, bgText: "JORDAN", img: "/AirJordan1RetroHigh.jpg", model: "/models/3.glb" },
     { id: 4, name: "Nike Dunk Low", subtitle: "Panda", price: "110.00", category: "WOMEN", isSale: false, bgText: "DUNK LOW", img: "/NikeDunkLow.jpg", model: "/models/4.glb" },
@@ -64,7 +79,7 @@ const initialCatalogShoes = [
     { id: 6, name: "Nike Air Max", subtitle: "Travis Scott", price: "150.00", category: "MEN", isSale: false, bgText: "SB DUNK", img: "/NikeSBDunkLow.jpg", model: "/models/6.glb" },
     { id: 7, name: "Nike Air Force 1 '07", subtitle: "Triple White", price: "115.00", category: "WOMEN", isSale: false, bgText: "FORCE 1", img: "/NikeAirForce107.jpg", model: "/models/7.glb" },
     { id: 8, name: "Air Jordan 4 Retro", subtitle: "Military Black", price: "210.00", category: "MEN", isSale: false, bgText: "JORDAN 4", img: "/AirJordan4Retro.jpg", model: "/models/8.glb" },
-    { id: 9, name: "Nike tc 7900", subtitle: "Sunset", price: "175.00", category: "MEN", isSale: true, bgText: "TC 7900", img: "/NikeAirMaxPlus.jpg", model: "/models/9.glb" },
+    { id: 9, name: "Nike tc 7900", subtitle: "Sunset", price: "175.00", category: "MEN", isSale: true, bgText: "TC", img: "/NikeAirMaxPlus.jpg", model: "/models/9.glb" },
     { id: 10, name: "Nike Blazer Mid '77", subtitle: "Vintage White", price: "105.00", category: "WOMEN", isSale: false, bgText: "BLAZER", img: "/NikeBlazerMid77.jpg", model: "/models/10.glb" },
     { id: 12, name: "Nike Air Mag", subtitle: "Cobblestone", price: "160.00", category: "MEN", isSale: true, bgText: "MAG", img: "/NikeZoomVomero5.jpg", model: "/models/12.glb" },
     { id: 13, name: "Nike Air Max 720", subtitle: "Triple Black", price: "160.00", category: "KIDS", isSale: false, bgText: "AIR MAX", img: "/NikeAirMax270.jpg", model: "/models/13.glb" },
@@ -81,27 +96,30 @@ const ArrowRight = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" heig
 const ArrowRightLong = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>;
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>;
 
-
 // =====================================================================
-// ПЛАВНЫЙ И КИНЕМАТОГРАФИЧНЫЙ ПРОСМОТР ТОВАРА (КАК НА ВИДЕО)
+// ПЛАВНЫЙ И КИНЕМАТОГРАФИЧНЫЙ ПРОСМОТР ТОВАРА С ПРАВИЛЬНОЙ СИНХРОНИЗАЦИЕЙ
 // =====================================================================
 const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => void }) => {
+    const [isModelLoaded, setIsModelLoaded] = useState(false);
     const [showUI, setShowUI] = useState(false);
-    const [selectedSize, setSelectedSize] = useState<number | null>(null);
 
-    // Таймер на 4 секунды перед выездом интерфейса
+    // Таймер запускается ТОЛЬКО когда isModelLoaded станет true
     useEffect(() => {
-        const timer = setTimeout(() => setShowUI(true), 4000);
-        return () => clearTimeout(timer);
-    }, []);
+        if (isModelLoaded) {
+            const timer = setTimeout(() => setShowUI(true), 4000);
+            return () => clearTimeout(timer);
+        }
+    }, [isModelLoaded]);
 
     return (
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[120] bg-white overflow-hidden flex flex-col"
-            onClick={() => setShowUI(true)} // Клик по экрану моментально показывает UI
+            className="fixed inset-0 z-[120] bg-[#fafafa] overflow-hidden flex flex-col"
+            onClick={() => {
+                if (isModelLoaded) setShowUI(true); // Клик по экрану пропускает ожидание, если модель загрузилась
+            }}
         >
             {/* ШАПКА */}
             <header className="absolute top-0 left-0 w-full px-6 md:px-12 py-8 flex justify-between items-center z-50 pointer-events-auto">
@@ -111,52 +129,58 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                 <Link href="/cart" target="_blank" className="hover:opacity-50 transition-opacity text-[#111]"><BagIcon /></Link>
             </header>
 
+            {/* ЭКРАН ЗАГРУЗКИ (Прячет все, пока модель не появится) */}
+            <AnimatePresence>
+                {!isModelLoaded && (
+                    <motion.div exit={{ opacity: 0 }} className="absolute inset-0 z-40 bg-[#fafafa] flex items-center justify-center flex-col gap-4">
+                        <div className="w-12 h-12 border-4 border-gray-200 border-t-black rounded-full animate-spin"></div>
+                        <p className="font-black tracking-[0.2em] uppercase text-xs animate-pulse">Loading 3D Model...</p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* ОГРОМНЫЙ ФОНОВЫЙ ТЕКСТ (СЕРЫЙ, КАК В РЕФЕРЕНСЕ) */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
-                <h1 className="text-[28vw] font-black italic text-[#f2f2f2] tracking-tighter leading-none whitespace-nowrap select-none">
+                <h1 className="text-[28vw] font-black italic text-black/[0.03] tracking-tighter leading-none whitespace-nowrap select-none">
                     {shoe.bgText || shoe.name.split(" ")[0]}
                 </h1>
             </div>
 
-            {/* ЗОНА 3D КРОССОВКА (ПЛАВНО ОТЪЕЗЖАЕТ ВЛЕВО) */}
+            {/* ЗОНА 3D КРОССОВКА */}
             <motion.div
                 className="absolute inset-0 flex items-center justify-center z-10 pointer-events-auto"
-                animate={{ x: showUI ? "-20%" : "0%" }} // Плавный отъезд влево
-                transition={{ duration: 1.2, ease: [0.25, 1, 0.5, 1] }} // Очень мягкая пружина
+                initial={{ x: "0%" }}
+                animate={{ x: showUI ? "-20%" : "0%" }} // Плавный отъезд влево после таймера
+                transition={{ duration: 1.2, ease: [0.25, 1, 0.5, 1] }}
             >
-                {shoe.model ? (
-                    <Canvas shadows camera={{ position: [0, 0, 5], fov: 45 }}>
-                        <ambientLight intensity={0.7} />
-                        <directionalLight position={[5, 10, 5]} intensity={1} castShadow />
-                        <Environment preset="city" />
+                <Canvas shadows camera={{ position: [0, 0, 5.5], fov: 45 }}>
+                    {/* Мощный студийный свет для лучшего отображения текстур */}
+                    <ambientLight intensity={0.8} />
+                    <directionalLight position={[10, 10, 5]} intensity={1.5} castShadow />
+                    <directionalLight position={[-10, 5, -5]} intensity={0.5} />
+                    <Environment preset="city" />
 
-                        <Suspense fallback={<Loader />}>
-                            {/* Bounds сам идеально масштабирует любую 3D модель */}
-                            <Bounds fit clip observe margin={1.2}>
-                                <ShoeModel path={shoe.model} />
-                            </Bounds>
-                            <ContactShadows position={[0, -1, 0]} opacity={0.4} scale={10} blur={2.5} far={4} />
-                        </Suspense>
+                    <Suspense fallback={null}>
+                        {/* Подключаем нашу умную модель и передаем ей коллбэк загрузки */}
+                        <AutoScaledModel path={shoe.model} onLoad={() => setIsModelLoaded(true)} />
+                        <ContactShadows position={[0, -1.2, 0]} opacity={0.5} scale={10} blur={2.5} far={4} />
+                    </Suspense>
 
-                        <OrbitControls
-                            autoRotate={!showUI}
-                            autoRotateSpeed={3}
-                            enableZoom={showUI}
-                            enablePan={false}
-                            // БЛОКИРОВКА ОСЕЙ: Кроссовок крутится ТОЛЬКО влево-вправо
-                            minPolarAngle={Math.PI / 2}
-                            maxPolarAngle={Math.PI / 2}
-                        />
-                    </Canvas>
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                        <img src={shoe.img} alt={shoe.name} className="w-[80%] max-w-[800px] object-contain mix-blend-multiply drop-shadow-2xl pointer-events-none" />
-                    </div>
-                )}
+                    <OrbitControls
+                        autoRotate={!showUI && isModelLoaded} // Крутится только когда загрузилось и нет UI
+                        autoRotateSpeed={3}
+                        enableZoom={showUI}
+                        enablePan={false}
+                        // Жестко фиксируем вертикальную ось - крутить можно только влево/вправо
+                        minPolarAngle={Math.PI / 2}
+                        maxPolarAngle={Math.PI / 2}
+                    />
+                </Canvas>
 
+                {/* Подсказка внизу экрана */}
                 <AnimatePresence>
-                    {showUI && shoe.model && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute bottom-12 flex items-center gap-2 text-gray-400 text-[10px] font-bold tracking-[0.2em] uppercase pointer-events-none">
+                    {showUI && isModelLoaded && (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute bottom-12 flex items-center gap-2 text-gray-400 text-[10px] font-bold tracking-[0.2em] uppercase animate-pulse pointer-events-none">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /><path d="M12 19l-7-7 7-7" /></svg>
                             Drag to rotate
                         </motion.div>
@@ -164,21 +188,21 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                 </AnimatePresence>
             </motion.div>
 
-            {/* ПАНЕЛЬ UI СПРАВА (ПЛАВНО ВЫЕЗЖАЕТ) */}
+            {/* ПАНЕЛЬ UI СПРАВА (ВЫЕЗЖАЕТ) */}
             <AnimatePresence>
                 {showUI && (
                     <motion.div
                         initial={{ x: "100%" }}
                         animate={{ x: "0%" }}
-                        transition={{ duration: 1.2, ease: [0.25, 1, 0.5, 1] }} // Синхронно с отъездом кроссовка
+                        transition={{ duration: 1.2, ease: [0.25, 1, 0.5, 1] }}
                         onClick={(e) => e.stopPropagation()}
-                        className="absolute right-0 top-0 h-full w-[45%] lg:w-[40%] z-30 flex flex-col justify-center px-10 lg:px-16 bg-white/80 backdrop-blur-xl shadow-[-20px_0_50px_rgba(0,0,0,0.03)] pointer-events-auto border-l border-white/50"
+                        className="absolute right-0 top-0 h-full w-full lg:w-[45%] xl:w-[40%] z-30 flex flex-col justify-center px-8 lg:px-20 bg-gradient-to-l from-[#fafafa] via-[#fafafa]/90 to-transparent pointer-events-auto"
                     >
                         <p className="text-gray-400 font-bold text-[10px] tracking-[0.15em] uppercase mb-2">{shoe.subtitle}</p>
-                        <h2 className="text-4xl lg:text-6xl font-black italic uppercase leading-[0.9] tracking-tighter mb-4 text-[#111]">{shoe.name}</h2>
+                        <h2 className="text-5xl lg:text-[70px] font-black italic uppercase leading-[0.9] tracking-tighter mb-4 text-[#111]">{shoe.name}</h2>
                         <p className="text-xl lg:text-2xl font-bold mb-12 text-[#111]">$ {shoe.price}</p>
 
-                        <div className="mb-10 w-full max-w-[380px]">
+                        <div className="mb-10 w-full max-w-[420px]">
                             <div className="flex justify-between items-end mb-4">
                                 <span className="text-[10px] font-black tracking-[0.15em] uppercase text-[#111]">Select Size (EU)</span>
                                 <span className="text-[10px] font-bold text-gray-400 underline cursor-pointer hover:text-black transition-colors">Size Guide</span>
@@ -188,7 +212,7 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                                     <button
                                         key={size}
                                         onClick={() => setSelectedSize(size)}
-                                        className={`py-3.5 rounded border font-bold text-sm transition-all ${selectedSize === size ? 'bg-[#111] text-white border-[#111]' : 'bg-white text-[#111] border-gray-200 hover:border-gray-400'}`}
+                                        className={`py-3 rounded-md border font-bold text-sm transition-all ${selectedSize === size ? 'bg-[#111] text-white border-[#111]' : 'bg-white text-[#111] border-gray-200 hover:border-gray-400 shadow-sm'}`}
                                     >
                                         {size}
                                     </button>
@@ -196,11 +220,11 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                             </div>
                         </div>
 
-                        <button className="w-full max-w-[380px] bg-[#111] text-white py-5 font-bold uppercase tracking-[0.15em] text-xs hover:bg-black transition-colors rounded-sm shadow-xl">
+                        <button className="w-full max-w-[420px] bg-[#111] text-white py-4 font-bold uppercase tracking-[0.15em] text-xs hover:bg-black transition-colors rounded-sm shadow-xl">
                             Add To Cart
                         </button>
 
-                        <div className="mt-8 text-[11px] text-gray-500 font-medium leading-relaxed max-w-[380px]">
+                        <div className="mt-8 text-[11px] text-gray-500 font-medium leading-relaxed max-w-[420px]">
                             <p className="mb-1 uppercase tracking-widest font-black text-[#111]">Free Shipping</p>
                             <p>Standard delivery 3-5 working days. Express delivery available at checkout.</p>
                         </div>
@@ -282,6 +306,7 @@ export default function SneakerStore() {
     return (
         <div className="bg-white text-black min-h-screen font-sans overflow-x-hidden pb-20 selection:bg-black selection:text-white">
 
+            {/* ================= ШАПКА ================= */}
             <header className="w-full bg-white/95 backdrop-blur-md px-6 md:px-12 py-6 flex justify-between items-center fixed top-0 z-40 border-b border-gray-100">
                 <div className="flex items-center gap-6 md:gap-12">
                     <Link href="/" className="text-[10px] font-bold uppercase tracking-widest opacity-50 hover:opacity-100 transition-opacity flex items-center gap-2">
@@ -310,6 +335,7 @@ export default function SneakerStore() {
                 </div>
             </header>
 
+            {/* ================= ГЛАВНЫЙ ЭКРАН (HERO) ================= */}
             <main className="pt-32 px-6 md:px-12 max-w-[1800px] mx-auto">
                 <section className="flex flex-col lg:flex-row items-center w-full min-h-[60vh] lg:min-h-[70vh] mb-20 relative">
                     <div className="w-full lg:w-5/12 flex flex-col items-start z-20">
@@ -348,6 +374,7 @@ export default function SneakerStore() {
                     </div>
                 </section>
 
+                {/* ================= РАБОЧИЙ КАТАЛОГ ================= */}
                 <section id="catalog-section" className="mb-24 scroll-mt-32">
                     <div className="flex justify-between items-end mb-10 border-b border-black/10 pb-6">
                         <h3 className="text-3xl md:text-5xl font-black italic uppercase tracking-tighter">
@@ -371,7 +398,7 @@ export default function SneakerStore() {
                                 {currentVisibleCatalog.map((shoe) => (
                                     <div
                                         key={shoe.id}
-                                        onClick={() => setSelectedProduct(shoe)}
+                                        onClick={() => { setSelectedProduct(shoe); }}
                                         className="bg-white border-gray-200 hover:border-gray-300 border rounded-[30px] p-6 md:p-8 flex flex-col justify-between group cursor-pointer transition-all relative overflow-hidden"
                                     >
                                         {shoe.isSale && (
@@ -414,7 +441,7 @@ export default function SneakerStore() {
                 {selectedProduct && <ProductCinematicView shoe={selectedProduct} onClose={() => setSelectedProduct(null)} />}
             </AnimatePresence>
 
-            {/* ================= МОДАЛКИ АВТОРИЗАЦИИ И ПРОФИЛЯ ================= */}
+            {/* ================= МОДАЛКИ (АВТОРИЗАЦИЯ И ПРОФИЛЬ) ================= */}
             <AnimatePresence>
                 {isAuthOpen && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
