@@ -3,29 +3,26 @@
 import { useState, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-// Импорты для 3D
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, useGLTF, Environment, ContactShadows, Html } from "@react-three/drei";
+// Используем Stage для автоматического центрирования, масштабирования и освещения ЛЮБОЙ модели
+import { OrbitControls, useGLTF, Stage, Html } from "@react-three/drei";
 
-// --- КОМПОНЕНТ ЗАГРУЗКИ 3D МОДЕЛИ ---
+// --- КОМПОНЕНТ 3D МОДЕЛИ ---
 function ShoeModel({ path }: { path: string }) {
-  const { scene } = useGLTF(path);
-  // Масштаб и позиция могут немного отличаться в зависимости от того, как экспортировали GLB.
-  // Если кроссовки будут слишком большими/маленькими, меняй scale={...}
-  return <primitive object={scene} scale={2} position={[0, -0.5, 0]} rotation={[0, -Math.PI / 4, 0]} />;
+    const { scene } = useGLTF(path);
+    return <primitive object={scene} />;
 }
 
-// Полоса загрузки, пока качается GLB файл
+// Заглушка загрузки
 function Loader() {
-  return (
-    <Html center>
-      <div className="text-black font-black uppercase tracking-widest text-xs animate-pulse">
-        Loading 3D...
-      </div>
-    </Html>
-  );
+    return (
+        <Html center>
+            <div className="text-black font-black uppercase tracking-widest text-xs animate-pulse bg-white/80 px-4 py-2 rounded-full backdrop-blur-sm">
+                Loading 3D...
+            </div>
+        </Html>
+    );
 }
-
 
 // --- ДАННЫЕ ДЛЯ ГЛАВНОГО СЛАЙДЕРА (HERO) ---
 const heroShoes = [
@@ -37,7 +34,6 @@ const heroShoes = [
         subtitle: "INTRODUCING OUR LIGHTEST\nSHOE EVER",
         name: "Air Jordan 1",
         img: "/Jordan1.jpg",
-        bgText: "JORDAN"
     },
     {
         id: 2,
@@ -47,7 +43,6 @@ const heroShoes = [
         subtitle: "NEW LOUIS VUITTON SKATE\nGREEN / WHITE EDITION",
         name: "LV Skate Sneaker",
         img: "/skateGW.jpg",
-        bgText: "LOUIS VUITTON"
     },
     {
         id: 3,
@@ -57,43 +52,41 @@ const heroShoes = [
         subtitle: "NIKE AIR MORE UPTEMPO '96\nBOLD AND UNAPOLOGETIC",
         name: "Air More Uptempo",
         img: "/uptempo96.jpg",
-        bgText: "UPTEMPO"
     }
 ];
 
-// --- ГЕНЕРАЦИЯ 30 РЕАЛЬНЫХ МОДЕЛЕЙ ДЛЯ КАТАЛОГА ---
-// Для первых 15 (Nike) добавлен параметр model: "/models/1.glb"
-// Переименуй свои скачанные файлы в 1.glb, 2.glb... 15.glb и закинь в public/models/
+// --- ГЕНЕРАЦИЯ 30 КАРТОЧЕК ДЛЯ КАТАЛОГА ---
 const initialCatalogShoes = [
-    // --- 15 NIKE (С 3D МОДЕЛЯМИ) ---
+    // --- 15 NIKE (Тут прописаны пути к твоим 3D моделям) ---
     { id: 1, name: "Nike Air Max 95", subtitle: "Essential / Black", price: "170.00", category: "MEN", isSale: false, bgText: "AIR MAX", img: "/NikeAirMax95.jpg", model: "/models/1.glb" },
+    { id: 2, name: "Nike Cortez", subtitle: "Basic / White Black", price: "90.00", category: "WOMEN", isSale: true, bgText: "CORTEZ", img: "/NikeCortez.jpg", model: "/models/2.glb" },
     { id: 3, name: "Air Jordan 1 Retro High", subtitle: "Chicago", price: "180.00", category: "MEN", isSale: false, bgText: "JORDAN", img: "/AirJordan1RetroHigh.jpg", model: "/models/3.glb" },
     { id: 4, name: "Nike Dunk Low", subtitle: "Panda", price: "110.00", category: "WOMEN", isSale: false, bgText: "DUNK LOW", img: "/NikeDunkLow.jpg", model: "/models/4.glb" },
     { id: 5, name: "Air More Uptempo '96", subtitle: "Black / White", price: "160.00", category: "MEN", isSale: true, bgText: "UPTEMPO", img: "/AirMoreUptempo96.jpg", model: "/models/5.glb" },
     { id: 6, name: "Nike SB Dunk Low", subtitle: "Travis Scott", price: "150.00", category: "MEN", isSale: false, bgText: "SB DUNK", img: "/NikeSBDunkLow.jpg", model: "/models/6.glb" },
     { id: 7, name: "Nike Air Force 1 '07", subtitle: "Triple White", price: "115.00", category: "WOMEN", isSale: false, bgText: "FORCE 1", img: "/NikeAirForce107.jpg", model: "/models/7.glb" },
     { id: 8, name: "Air Jordan 4 Retro", subtitle: "Military Black", price: "210.00", category: "MEN", isSale: false, bgText: "JORDAN 4", img: "/AirJordan4Retro.jpg", model: "/models/8.glb" },
-    { id: 9, name: "Nike tc 7900", subtitle: "Sunset", price: "175.00", category: "MEN", isSale: true, bgText: "AIR MAX", img: "/NikeAirMaxPlus.jpg", model: "/models/9.glb" },
+    { id: 9, name: "Nike Air Max Plus", subtitle: "Sunset", price: "175.00", category: "MEN", isSale: true, bgText: "AIR MAX", img: "/NikeAirMaxPlus.jpg", model: "/models/9.glb" },
     { id: 10, name: "Nike Blazer Mid '77", subtitle: "Vintage White", price: "105.00", category: "WOMEN", isSale: false, bgText: "BLAZER", img: "/NikeBlazerMid77.jpg", model: "/models/10.glb" },
     { id: 11, name: "Air Jordan 11 Retro", subtitle: "Concord", price: "220.00", category: "MEN", isSale: false, bgText: "JORDAN 11", img: "/AirJordan11Retro.jpg", model: "/models/11.glb" },
-    { id: 12, name: "Nike Air Mag", subtitle: "Cobblestone", price: "160.00", category: "WOMEN", isSale: true, bgText: "VOMERO", img: "/NikeZoomVomero5.jpg", model: "/models/12.glb" },
-    { id: 13, name: "Nike Air 720", subtitle: "Triple Black", price: "160.00", category: "KIDS", isSale: false, bgText: "AIR MAX", img: "/NikeAirMax270.jpg", model: "/models/13.glb" },
+    { id: 12, name: "Nike Zoom Vomero 5", subtitle: "Cobblestone", price: "160.00", category: "WOMEN", isSale: true, bgText: "VOMERO", img: "/NikeZoomVomero5.jpg", model: "/models/12.glb" },
+    { id: 13, name: "Nike Air Max 270", subtitle: "Triple Black", price: "160.00", category: "KIDS", isSale: false, bgText: "AIR MAX", img: "/NikeAirMax270.jpg", model: "/models/13.glb" },
     { id: 14, name: "Air Jordan 3 Retro", subtitle: "White Cement", price: "200.00", category: "KIDS", isSale: false, bgText: "JORDAN 3", img: "/AirJordan3Retro.jpg", model: "/models/14.glb" },
-    { id: 15, name: "Nike React Presto Running", subtitle: "Wolf Grey", price: "210.00", category: "MEN", isSale: false, bgText: "VAPORMAX", img: "/NikeAirVaporMaxPlus.jpg", model: "/models/15.glb" },
+    { id: 15, name: "Nike Air VaporMax Plus", subtitle: "Wolf Grey", price: "210.00", category: "MEN", isSale: false, bgText: "VAPORMAX", img: "/NikeAirVaporMaxPlus.jpg", model: "/models/15.glb" },
 
-    // --- 5 RAF SIMONS (БЕЗ 3D ПОКА) ---
+    // --- RAF SIMONS ---
     { id: 16, name: "Raf Simons Ozweego", subtitle: "Bunny / Core Black", price: "350.00", category: "MEN", isSale: false, bgText: "RAF SIMONS", img: "/RafSimonsOzweego.jpg", model: null },
     { id: 17, name: "Raf Simons Antei", subtitle: "White / Cream", price: "400.00", category: "WOMEN", isSale: true, bgText: "RAF SIMONS", img: "/RafSimonsAntei.jpg", model: null },
     { id: 18, name: "Raf Simons Cylon-21", subtitle: "Black / Red", price: "450.00", category: "MEN", isSale: false, bgText: "RAF SIMONS", img: "/RafSimonsCylon-21.jpg", model: null },
     { id: 19, name: "Raf Simons Detroit Runner", subtitle: "Canvas / Black", price: "300.00", category: "WOMEN", isSale: false, bgText: "RAF SIMONS", img: "/RafSimonsDetroitRunner.jpg", model: null },
     { id: 20, name: "Raf Simons x Stan Smith", subtitle: "Optic White", price: "280.00", category: "MEN", isSale: true, bgText: "RAF SIMONS", img: "/RafSimonsxStanSmith.jpg", model: null },
 
-    // --- 3 LOUIS VUITTON (БЕЗ 3D ПОКА) ---
+    // --- LOUIS VUITTON ---
     { id: 21, name: "LV Skate Sneaker", subtitle: "Green / White", price: "1340.00", category: "MEN", isSale: false, bgText: "LOUIS VUITTON", img: "/LVSkateSneaker.jpg", model: null },
     { id: 22, name: "LV Trainer", subtitle: "Monogram / Black", price: "1220.00", category: "MEN", isSale: false, bgText: "LOUIS VUITTON", img: "/LVTrainer.jpg", model: null },
     { id: 23, name: "LV Archlight", subtitle: "Classic / White", price: "1150.00", category: "WOMEN", isSale: false, bgText: "LOUIS VUITTON", img: "/LVArchlight.jpg", model: null },
 
-    // --- 7 ADIDAS (БЕЗ 3D ПОКА) ---
+    // --- ADIDAS ---
     { id: 24, name: "Adidas Yeezy Boost 350 V2", subtitle: "Zebra", price: "230.00", category: "MEN", isSale: false, bgText: "YEEZY", img: "/AdidasYeezyBoost350V2.jpg", model: null },
     { id: 25, name: "Adidas Samba OG", subtitle: "Cloud White", price: "100.00", category: "WOMEN", isSale: false, bgText: "SAMBA", img: "/AdidasSambaOG.jpg", model: null },
     { id: 26, name: "Adidas Campus 00s", subtitle: "Core Black", price: "110.00", category: "MEN", isSale: true, bgText: "CAMPUS", img: "/AdidasCampus00s.jpg", model: null },
@@ -115,18 +108,14 @@ const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="32" heigh
 export default function SneakerStore() {
     const [currentIndex, setCurrentIndex] = useState(0);
 
-    // АВТОРИЗАЦИЯ И ПРОФИЛЬ
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [isAuthOpen, setIsAuthOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
-
-    // СИСТЕМА ПРОФИЛЯ
     const [profileView, setProfileView] = useState("menu");
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [profileData, setProfileData] = useState({ name: "MY PROFILE", email: "user@sneakerstore.com" });
     const [tempProfileData, setTempProfileData] = useState(profileData);
 
-    // ПОИСК И ФИЛЬТРЫ
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchInput, setSearchInput] = useState("");
     const [activeSearch, setActiveSearch] = useState("");
@@ -139,10 +128,8 @@ export default function SneakerStore() {
 
     const nextShoe = () => setCurrentIndex((prev) => (prev + 1) % heroShoes.length);
     const prevShoe = () => setCurrentIndex((prev) => (prev - 1 + heroShoes.length) % heroShoes.length);
-
     const activeShoe = heroShoes[currentIndex];
 
-    // Фильтрация каталога
     const displayedCatalog = initialCatalogShoes
         .filter(shoe => activeTab === "ALL" || shoe.category === activeTab || (activeTab === "SALE" && shoe.isSale))
         .filter(shoe => !activeSearch || shoe.name.toLowerCase().includes(activeSearch.toLowerCase()));
@@ -184,11 +171,6 @@ export default function SneakerStore() {
         setProfileView("menu");
     };
 
-    const getBgText = (name: string) => {
-        const words = name.split(" ");
-        return words.length > 1 ? `${words[0]} ${words[1]}` : words[0];
-    };
-
     return (
         <div className="bg-white text-black min-h-screen font-sans overflow-x-hidden pb-20 selection:bg-black selection:text-white">
 
@@ -198,7 +180,6 @@ export default function SneakerStore() {
                     <Link href="/" className="text-[10px] font-bold uppercase tracking-widest opacity-50 hover:opacity-100 transition-opacity flex items-center gap-2">
                         ← <span className="hidden md:inline">Back to Portfolio</span>
                     </Link>
-
                     <nav className="hidden md:flex gap-8 text-[13px] font-black tracking-[0.15em] uppercase">
                         <button onClick={() => handleTabClick("WOMEN")} className={`hover:opacity-60 transition-opacity ${activeTab === "WOMEN" ? "border-b-2 border-black" : ""}`}>Women</button>
                         <button onClick={() => handleTabClick("MEN")} className={`hover:opacity-60 transition-opacity ${activeTab === "MEN" ? "border-b-2 border-black" : ""}`}>Men</button>
@@ -242,9 +223,7 @@ export default function SneakerStore() {
                     </div>
 
                     <div className="w-full lg:w-7/12 h-[450px] lg:h-[600px] relative flex items-center justify-center mt-12 lg:mt-0">
-                        <button onClick={prevShoe} className="absolute left-0 lg:-left-4 z-30 w-12 h-12 rounded-full flex items-center justify-center hover:scale-105 transition-transform shadow-lg bg-white text-black border border-gray-100">
-                            <ArrowLeft />
-                        </button>
+                        <button onClick={prevShoe} className="absolute left-0 lg:-left-4 z-30 w-12 h-12 rounded-full flex items-center justify-center hover:scale-105 transition-transform shadow-lg bg-white text-black border border-gray-100"><ArrowLeft /></button>
                         <div className="w-full h-full flex items-center justify-center relative z-20">
                             <AnimatePresence mode="wait">
                                 <motion.img
@@ -255,13 +234,11 @@ export default function SneakerStore() {
                                     animate={{ opacity: 1, x: 0 }}
                                     exit={{ opacity: 0, x: -20 }}
                                     transition={{ duration: 0.3 }}
-                                    className="w-full max-w-[750px] object-contain drop-shadow-2xl pointer-events-none"
+                                    className="w-full max-w-[750px] object-contain drop-shadow-2xl mix-blend-multiply pointer-events-none"
                                 />
                             </AnimatePresence>
                         </div>
-                        <button onClick={nextShoe} className="absolute right-0 lg:right-4 z-30 w-12 h-12 rounded-full flex items-center justify-center hover:scale-105 transition-transform shadow-lg bg-white text-black border border-gray-100">
-                            <ArrowRight />
-                        </button>
+                        <button onClick={nextShoe} className="absolute right-0 lg:right-4 z-30 w-12 h-12 rounded-full flex items-center justify-center hover:scale-105 transition-transform shadow-lg bg-white text-black border border-gray-100"><ArrowRight /></button>
                     </div>
                 </section>
 
@@ -287,17 +264,17 @@ export default function SneakerStore() {
                         <>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
                                 {currentVisibleCatalog.map((shoe) => (
-                                    <div 
-                                        key={shoe.id} 
+                                    <div
+                                        key={shoe.id}
                                         onClick={() => { setSelectedProduct(shoe); setSelectedSize(null); }}
                                         className="bg-white border-gray-200 hover:border-gray-300 border rounded-[30px] p-6 md:p-8 flex flex-col justify-between group cursor-pointer transition-all relative overflow-hidden"
                                     >
                                         {shoe.isSale && (
                                             <div className="absolute top-6 left-6 bg-red-500 text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full z-20">SALE</div>
                                         )}
-                                        {/* Если у кроссовка есть 3D модель, покажем значок */}
+                                        {/* Значок 3D */}
                                         {shoe.model && (
-                                            <div className="absolute top-6 right-6 bg-black text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full z-20">3D</div>
+                                            <div className="absolute top-6 right-6 bg-black text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full z-20 shadow-md">3D</div>
                                         )}
 
                                         <div className="flex justify-between items-start relative z-10">
@@ -309,13 +286,13 @@ export default function SneakerStore() {
                                             <div className="text-gray-300 group-hover:text-black group-hover:translate-x-1 transition-all"><ArrowRightLong /></div>
                                         </div>
                                         <div className="h-48 md:h-56 mt-8 flex items-end justify-center relative z-10">
-                                            <img src={shoe.img} alt={shoe.name} className="w-full h-full object-contain group-hover:scale-105 group-hover:-translate-y-2 transition-transform duration-500 origin-bottom mix-blend-multiply" />
+                                            <img src={shoe.img} alt={shoe.name} className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 group-hover:-translate-y-4 transition-transform duration-500 origin-bottom" />
                                         </div>
                                         <div className="absolute inset-0 bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity z-0 pointer-events-none" />
                                     </div>
                                 ))}
                             </div>
-                            
+
                             {visibleCount < displayedCatalog.length && (
                                 <div className="flex justify-center mt-16">
                                     <button onClick={() => setVisibleCount(prev => prev + 8)} className="border-2 border-black text-black px-12 py-4 font-bold uppercase tracking-widest text-sm hover:bg-black hover:text-white transition-colors">
@@ -328,118 +305,112 @@ export default function SneakerStore() {
                 </section>
             </main>
 
-            {/* ================= ИНТЕРФЕЙС ПРОСМОТРА ТОВАРА С 3D ================= */}
+            {/* ================= МОДАЛКА ПРОСМОТРА ТОВАРА (АВТО-МАСШТАБ С 3D / 2D) ================= */}
             <AnimatePresence>
                 {selectedProduct && (
-                <motion.div 
-                    initial={{ opacity: 0, y: 20 }} 
-                    animate={{ opacity: 1, y: 0 }} 
-                    exit={{ opacity: 0, y: 20 }} 
-                    className="fixed inset-0 bg-white z-[120] flex flex-col overflow-hidden"
-                >
-                    {/* Шапка */}
-                    <header className="w-full px-6 md:px-12 py-6 flex justify-between items-center z-50 absolute top-0 left-0">
-                        <button onClick={() => setSelectedProduct(null)} className="flex items-center gap-2 font-black uppercase tracking-widest text-[11px] hover:text-gray-500 transition-colors">
-                            <ArrowLeft /> BACK TO CATALOG
-                        </button>
-                        <Link href="/cart" target="_blank" className="hover:opacity-50 transition-opacity text-black"><BagIcon /></Link>
-                    </header>
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 20 }}
+                        className="fixed inset-0 bg-white z-[120] flex flex-col overflow-hidden"
+                    >
+                        {/* Шапка */}
+                        <header className="w-full px-6 md:px-12 py-6 flex justify-between items-center z-50 absolute top-0 left-0">
+                            <button onClick={() => setSelectedProduct(null)} className="flex items-center gap-2 font-black uppercase tracking-widest text-[11px] hover:text-gray-500 transition-colors">
+                                <ArrowLeft /> BACK TO CATALOG
+                            </button>
+                            <Link href="/cart" target="_blank" className="hover:opacity-50 transition-opacity text-black"><BagIcon /></Link>
+                        </header>
 
-                    {/* Огромный бегущий текст */}
-                    <div className="absolute top-1/2 -translate-y-1/2 w-full overflow-hidden pointer-events-none z-0 flex items-center">
-                        <motion.div
-                            animate={{ x: ["0%", "-50%"] }}
-                            transition={{ ease: "linear", duration: 25, repeat: Infinity }}
-                            className="flex whitespace-nowrap text-gray-100 opacity-60 select-none"
-                        >
-                            <h1 className="text-[25vw] font-black italic tracking-tighter leading-none px-8">{selectedProduct.bgText}</h1>
-                            <h1 className="text-[25vw] font-black italic tracking-tighter leading-none px-8">{selectedProduct.bgText}</h1>
-                            <h1 className="text-[25vw] font-black italic tracking-tighter leading-none px-8">{selectedProduct.bgText}</h1>
-                            <h1 className="text-[25vw] font-black italic tracking-tighter leading-none px-8">{selectedProduct.bgText}</h1>
-                        </motion.div>
-                    </div>
-
-                    {/* Контент */}
-                    <div className="flex-1 flex flex-col lg:flex-row relative z-10 w-full max-w-[1600px] mx-auto pt-24 lg:pt-0">
-                        
-                        {/* ЛЕВАЯ ЗОНА: 3D Кроссовок (если есть .glb) или 2D Картинка */}
-                        <div className="w-full lg:w-3/5 h-[45vh] lg:h-full relative flex flex-col items-center justify-center cursor-grab active:cursor-grabbing">
-                            {selectedProduct.model ? (
-                                // Рендер настоящей 3D модели
-                                <Canvas camera={{ position: [0, 0, 6], fov: 45 }}>
-                                    <ambientLight intensity={0.7} />
-                                    <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={1} castShadow />
-                                    <Environment preset="city" />
-                                    
-                                    <Suspense fallback={<Loader />}>
-                                        <ShoeModel path={selectedProduct.model} />
-                                        <ContactShadows position={[0, -1.2, 0]} opacity={0.6} scale={10} blur={2.5} far={4} />
-                                    </Suspense>
-                                    
-                                    {/* Управление: крутить левой кнопкой мыши */}
-                                    <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={0.5} />
-                                </Canvas>
-                            ) : (
-                                // Заглушка, если модели нет (рендерим 2D картинку)
-                                <img 
-                                    src={selectedProduct.img} 
-                                    alt={selectedProduct.name} 
-                                    className="w-full max-w-[600px] object-contain drop-shadow-2xl mix-blend-multiply pointer-events-none" 
-                                />
-                            )}
-                            
-                            <div className="absolute bottom-8 flex items-center gap-2 text-gray-400 text-[10px] font-bold tracking-[0.2em] uppercase animate-pulse z-10 pointer-events-none">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/><path d="M12 19l-7-7 7-7"/></svg>
-                                {selectedProduct.model ? "Drag to 3D rotate" : "Image Preview"}
-                            </div>
-                        </div>
-
-                        {/* ПРАВАЯ ЗОНА: Инфа о товаре */}
-                        <div className="w-full lg:w-2/5 flex flex-col justify-center px-6 lg:px-20 pb-12 lg:pb-0 z-30 bg-white/50 backdrop-blur-md lg:bg-transparent lg:backdrop-blur-none">
-                            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
-                                
-                                <p className="text-gray-400 font-bold text-[10px] tracking-[0.15em] uppercase mb-3">
-                                    {selectedProduct.subtitle}
-                                </p>
-                                
-                                <h2 className="text-4xl lg:text-6xl font-black italic uppercase leading-[0.9] tracking-tighter mb-4">
-                                    {selectedProduct.name}
-                                </h2>
-                                
-                                <p className="text-2xl font-bold mb-12">$ {selectedProduct.price}</p>
-                                
-                                <div className="mb-12">
-                                    <div className="flex justify-between items-center mb-5">
-                                        <span className="text-[10px] font-black tracking-[0.15em] uppercase">Select Size (EU)</span>
-                                        <span className="text-[10px] font-bold text-gray-400 underline cursor-pointer hover:text-black">Size Guide</span>
-                                    </div>
-                                    <div className="grid grid-cols-4 gap-2 lg:gap-3">
-                                        {[38, 39, 40, 41, 42, 43, 44, 45].map((size) => (
-                                            <button 
-                                                key={size} 
-                                                onClick={() => setSelectedSize(size)}
-                                                className={`py-3.5 rounded-lg border font-bold text-sm transition-all ${selectedSize === size ? 'bg-black text-white border-black' : 'bg-white text-black border-gray-200 hover:border-black'}`}
-                                            >
-                                                {size}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <button className="w-full bg-black text-white py-5 font-bold uppercase tracking-[0.15em] text-xs hover:bg-gray-800 transition-colors shadow-lg">
-                                    Add To Cart
-                                </button>
-
-                                <div className="mt-8 text-[11px] text-gray-500 font-medium leading-relaxed">
-                                    <p className="mb-1 uppercase tracking-widest font-bold text-black">Free Shipping</p>
-                                    <p>Standard delivery 3-5 working days. Express delivery available at checkout.</p>
-                                </div>
-                                
+                        {/* ОГРОМНЫЙ БЕГУЩИЙ ТЕКСТ (СЕРЫЙ, КАК В МАКЕТЕ) */}
+                        <div className="absolute top-1/2 -translate-y-1/2 w-full overflow-hidden pointer-events-none z-0 flex items-center">
+                            <motion.div
+                                animate={{ x: ["0%", "-50%"] }}
+                                transition={{ ease: "linear", duration: 25, repeat: Infinity }}
+                                className="flex whitespace-nowrap text-black/5 select-none"
+                            >
+                                <h1 className="text-[35vw] font-black italic tracking-tighter leading-none px-8">{selectedProduct.bgText}</h1>
+                                <h1 className="text-[35vw] font-black italic tracking-tighter leading-none px-8">{selectedProduct.bgText}</h1>
+                                <h1 className="text-[35vw] font-black italic tracking-tighter leading-none px-8">{selectedProduct.bgText}</h1>
+                                <h1 className="text-[35vw] font-black italic tracking-tighter leading-none px-8">{selectedProduct.bgText}</h1>
                             </motion.div>
                         </div>
 
-                    </div>
-                </motion.div>
+                        {/* Контент */}
+                        <div className="flex-1 flex flex-col lg:flex-row relative z-10 w-full max-w-[1600px] mx-auto pt-24 lg:pt-0">
+
+                            {/* ЛЕВАЯ ЗОНА: 3D Кроссовок (Stage решает все баги с размерами) */}
+                            <div className="w-full lg:w-3/5 h-[45vh] lg:h-full relative flex flex-col items-center justify-center cursor-grab active:cursor-grabbing">
+                                {selectedProduct.model ? (
+                                    <Canvas shadows camera={{ position: [0, 0, 4], fov: 45 }}>
+                                        <Suspense fallback={<Loader />}>
+                                            {/* Stage автоматически ставит свет, центрует модель и подгоняет её под экран (adjustCamera) */}
+                                            <Stage environment="city" intensity={0.8} adjustCamera={1.2}>
+                                                <ShoeModel path={selectedProduct.model} />
+                                            </Stage>
+                                        </Suspense>
+                                        <OrbitControls autoRotate autoRotateSpeed={2} enableZoom={false} enablePan={false} />
+                                    </Canvas>
+                                ) : (
+                                    <img
+                                        src={selectedProduct.img}
+                                        alt={selectedProduct.name}
+                                        className="w-full max-w-[600px] object-contain drop-shadow-2xl mix-blend-multiply pointer-events-none"
+                                    />
+                                )}
+
+                                <div className="absolute bottom-8 flex items-center gap-2 text-gray-400 text-[10px] font-bold tracking-[0.2em] uppercase animate-pulse z-10 pointer-events-none">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /><path d="M12 19l-7-7 7-7" /></svg>
+                                    {selectedProduct.model ? "Drag to rotate 3D" : "Image Preview"}
+                                </div>
+                            </div>
+
+                            {/* ПРАВАЯ ЗОНА: Инфа о товаре */}
+                            <div className="w-full lg:w-2/5 flex flex-col justify-center px-6 lg:px-20 pb-12 lg:pb-0 z-30 bg-white/50 backdrop-blur-md lg:bg-transparent lg:backdrop-blur-none">
+                                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
+
+                                    <p className="text-gray-400 font-bold text-[10px] tracking-[0.15em] uppercase mb-3">
+                                        {selectedProduct.subtitle}
+                                    </p>
+
+                                    <h2 className="text-4xl lg:text-6xl font-black italic uppercase leading-[0.9] tracking-tighter mb-4">
+                                        {selectedProduct.name}
+                                    </h2>
+
+                                    <p className="text-2xl font-bold mb-12">$ {selectedProduct.price}</p>
+
+                                    <div className="mb-12">
+                                        <div className="flex justify-between items-center mb-5">
+                                            <span className="text-[10px] font-black tracking-[0.15em] uppercase">Select Size (EU)</span>
+                                            <span className="text-[10px] font-bold text-gray-400 underline cursor-pointer hover:text-black">Size Guide</span>
+                                        </div>
+                                        <div className="grid grid-cols-4 gap-2 lg:gap-3">
+                                            {[38, 39, 40, 41, 42, 43, 44, 45].map((size) => (
+                                                <button
+                                                    key={size}
+                                                    onClick={() => setSelectedSize(size)}
+                                                    className={`py-3.5 rounded-lg border font-bold text-sm transition-all ${selectedSize === size ? 'bg-black text-white border-black' : 'bg-white text-black border-gray-200 hover:border-black'}`}
+                                                >
+                                                    {size}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <button className="w-full bg-black text-white py-5 font-bold uppercase tracking-[0.15em] text-xs hover:bg-gray-800 transition-colors shadow-lg">
+                                        Add To Cart
+                                    </button>
+
+                                    <div className="mt-8 text-[11px] text-gray-500 font-medium leading-relaxed">
+                                        <p className="mb-1 uppercase tracking-widest font-bold text-black">Free Shipping</p>
+                                        <p>Standard delivery 3-5 working days. Express delivery available at checkout.</p>
+                                    </div>
+
+                                </motion.div>
+                            </div>
+
+                        </div>
+                    </motion.div>
                 )}
             </AnimatePresence>
 
@@ -511,6 +482,11 @@ export default function SneakerStore() {
                                         <div className="p-4 rounded-xl border border-gray-200">
                                             <p className="text-[10px] font-bold tracking-widest opacity-50 mb-1">MAY 2026</p>
                                             <h4 className="font-black uppercase text-sm mb-1">Air Jordan 1 Retro</h4>
+                                            <p className="text-sm font-bold text-green-500">Delivered</p>
+                                        </div>
+                                        <div className="p-4 rounded-xl border border-gray-200">
+                                            <p className="text-[10px] font-bold tracking-widest opacity-50 mb-1">APRIL 2026</p>
+                                            <h4 className="font-black uppercase text-sm mb-1">LV Skate Sneaker</h4>
                                             <p className="text-sm font-bold text-green-500">Delivered</p>
                                         </div>
                                     </div>
