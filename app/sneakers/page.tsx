@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, Suspense, useLayoutEffect, useRef } from "react";
-import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
+import { useState, Suspense, useLayoutEffect, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import * as THREE from "three";
 
@@ -9,26 +9,23 @@ import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, useGLTF, Environment, ContactShadows, Html } from "@react-three/drei";
 
-// --- УМНЫЙ КОМПОНЕНТ ДЛЯ 3D МОДЕЛЕЙ (ФИКСИТ БАГИ С МАСШТАБОМ И ЦЕНТРОМ) ---
 function AutoScaledModel({ path }: { path: string }) {
     const { scene } = useGLTF(path);
     const ref = useRef<THREE.Group>(null);
 
     useLayoutEffect(() => {
         if (ref.current) {
-            // 1. Вычисляем реальные размеры загруженной модели
+            // Вычисляем реальные размеры скачанной модели
             const box = new THREE.Box3().setFromObject(ref.current);
             const size = new THREE.Vector3();
             box.getSize(size);
 
-            // 2. Находим самую большую сторону кроссовка
+            // Находим самую большую сторону и подгоняем под идеальный размер для экрана
             const maxDim = Math.max(size.x, size.y, size.z);
-
-            // 3. Подгоняем масштаб (если огромная - уменьшит, если микро - увеличит)
-            const scale = 3.5 / maxDim;
+            const scale = 3.5 / maxDim; // 3.5 - оптимальный размер для экрана
             ref.current.scale.setScalar(scale);
 
-            // 4. Идеально центруем модель
+            // Идеально центруем модель, чтобы она не улетала за край
             const center = new THREE.Vector3();
             box.getCenter(center);
             ref.current.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
@@ -42,8 +39,8 @@ function AutoScaledModel({ path }: { path: string }) {
 function Loader() {
     return (
         <Html center>
-            <div className="text-black font-black uppercase tracking-widest text-[10px] animate-pulse bg-white/90 px-4 py-2 rounded-full shadow-lg">
-                Loading 3D...
+            <div className="text-black font-black uppercase tracking-widest text-[10px] animate-pulse bg-white/90 px-6 py-3 rounded-full shadow-2xl">
+                LOADING 3D...
             </div>
         </Html>
     );
@@ -80,20 +77,40 @@ const heroShoes = [
     }
 ];
 
-// --- ТВОЙ МАССИВ КАТАЛОГА БЕЗ ИЗМЕНЕНИЙ ---
+// --- ГЕНЕРАЦИЯ 30 КАРТОЧЕК ДЛЯ КАТАЛОГА (С ТВОИМИ ПУТЯМИ К КАРТИНКАМ) ---
 const initialCatalogShoes = [
+    { id: 1, name: "Nike Air Max 95", subtitle: "Essential / Black", price: "170.00", category: "MEN", isSale: false, bgText: "AIR MAX", img: "/NikeAirMax95.jpg", model: "/models/1.glb" },
+    { id: 2, name: "Nike Cortez", subtitle: "Basic / White Black", price: "90.00", category: "WOMEN", isSale: true, bgText: "CORTEZ", img: "/NikeCortez.jpg", model: "/models/2.glb" },
     { id: 3, name: "Air Jordan 1 Retro High", subtitle: "Chicago", price: "180.00", category: "MEN", isSale: false, bgText: "JORDAN", img: "/AirJordan1RetroHigh.jpg", model: "/models/3.glb" },
     { id: 4, name: "Nike Dunk Low", subtitle: "Panda", price: "110.00", category: "WOMEN", isSale: false, bgText: "DUNK LOW", img: "/NikeDunkLow.jpg", model: "/models/4.glb" },
     { id: 5, name: "Air More Uptempo '96", subtitle: "Black / White", price: "160.00", category: "MEN", isSale: true, bgText: "UPTEMPO", img: "/AirMoreUptempo96.jpg", model: "/models/5.glb" },
-    { id: 6, name: "Nike Air Max", subtitle: "Travis Scott", price: "150.00", category: "MEN", isSale: false, bgText: "SB DUNK", img: "/NikeSBDunkLow.jpg", model: "/models/6.glb" },
+    { id: 6, name: "Nike SB Dunk Low", subtitle: "Travis Scott", price: "150.00", category: "MEN", isSale: false, bgText: "SB DUNK", img: "/NikeSBDunkLow.jpg", model: "/models/6.glb" },
     { id: 7, name: "Nike Air Force 1 '07", subtitle: "Triple White", price: "115.00", category: "WOMEN", isSale: false, bgText: "FORCE 1", img: "/NikeAirForce107.jpg", model: "/models/7.glb" },
     { id: 8, name: "Air Jordan 4 Retro", subtitle: "Military Black", price: "210.00", category: "MEN", isSale: false, bgText: "JORDAN 4", img: "/AirJordan4Retro.jpg", model: "/models/8.glb" },
-    { id: 9, name: "Nike tc 7900", subtitle: "Sunset", price: "175.00", category: "MEN", isSale: true, bgText: "TC 7900", img: "/NikeAirMaxPlus.jpg", model: "/models/9.glb" },
+    { id: 9, name: "Nike Air Max Plus", subtitle: "Sunset", price: "175.00", category: "MEN", isSale: true, bgText: "AIR MAX", img: "/NikeAirMaxPlus.jpg", model: "/models/9.glb" },
     { id: 10, name: "Nike Blazer Mid '77", subtitle: "Vintage White", price: "105.00", category: "WOMEN", isSale: false, bgText: "BLAZER", img: "/NikeBlazerMid77.jpg", model: "/models/10.glb" },
-    { id: 12, name: "Nike Air Mag", subtitle: "Cobblestone", price: "160.00", category: "MEN", isSale: true, bgText: "MAG", img: "/NikeZoomVomero5.jpg", model: "/models/12.glb" },
-    { id: 13, name: "Nike Air Max 720", subtitle: "Triple Black", price: "160.00", category: "KIDS", isSale: false, bgText: "AIR MAX", img: "/NikeAirMax270.jpg", model: "/models/13.glb" },
-    { id: 14, name: "Air Jordan 1 Retro", subtitle: "White Cement", price: "200.00", category: "KIDS", isSale: false, bgText: "JORDAN 1", img: "/AirJordan3Retro.jpg", model: "/models/14.glb" },
-    { id: 15, name: "Nike React Presto", subtitle: "Wolf Grey", price: "210.00", category: "MEN", isSale: false, bgText: "REACT PRESTO", img: "/NikeAirVaporMaxPlus.jpg", model: "/models/15.glb" },
+    { id: 11, name: "Air Jordan 11 Retro", subtitle: "Concord", price: "220.00", category: "MEN", isSale: false, bgText: "JORDAN 11", img: "/AirJordan11Retro.jpg", model: "/models/11.glb" },
+    { id: 12, name: "Nike Zoom Vomero 5", subtitle: "Cobblestone", price: "160.00", category: "WOMEN", isSale: true, bgText: "VOMERO", img: "/NikeZoomVomero5.jpg", model: "/models/12.glb" },
+    { id: 13, name: "Nike Air Max 270", subtitle: "Triple Black", price: "160.00", category: "KIDS", isSale: false, bgText: "AIR MAX", img: "/NikeAirMax270.jpg", model: "/models/13.glb" },
+    { id: 14, name: "Air Jordan 3 Retro", subtitle: "White Cement", price: "200.00", category: "KIDS", isSale: false, bgText: "JORDAN 3", img: "/AirJordan3Retro.jpg", model: "/models/14.glb" },
+    { id: 15, name: "Nike Air VaporMax Plus", subtitle: "Wolf Grey", price: "210.00", category: "MEN", isSale: false, bgText: "VAPORMAX", img: "/NikeAirVaporMaxPlus.jpg", model: "/models/15.glb" },
+
+    // Остальные 15 штук без 3D моделей (пока что)
+    { id: 16, name: "Raf Simons Ozweego", subtitle: "Bunny / Core Black", price: "350.00", category: "MEN", isSale: false, bgText: "RAF SIMONS", img: "/RafSimonsOzweego.jpg", model: null },
+    { id: 17, name: "Raf Simons Antei", subtitle: "White / Cream", price: "400.00", category: "WOMEN", isSale: true, bgText: "RAF SIMONS", img: "/RafSimonsAntei.jpg", model: null },
+    { id: 18, name: "Raf Simons Cylon-21", subtitle: "Black / Red", price: "450.00", category: "MEN", isSale: false, bgText: "RAF SIMONS", img: "/RafSimonsCylon-21.jpg", model: null },
+    { id: 19, name: "Raf Simons Detroit Runner", subtitle: "Canvas / Black", price: "300.00", category: "WOMEN", isSale: false, bgText: "RAF SIMONS", img: "/RafSimonsDetroitRunner.jpg", model: null },
+    { id: 20, name: "Raf Simons x Stan Smith", subtitle: "Optic White", price: "280.00", category: "MEN", isSale: true, bgText: "RAF SIMONS", img: "/RafSimonsxStanSmith.jpg", model: null },
+    { id: 21, name: "LV Skate Sneaker", subtitle: "Green / White", price: "1340.00", category: "MEN", isSale: false, bgText: "LOUIS VUITTON", img: "/LVSkateSneaker.jpg", model: null },
+    { id: 22, name: "LV Trainer", subtitle: "Monogram / Black", price: "1220.00", category: "MEN", isSale: false, bgText: "LOUIS VUITTON", img: "/LVTrainer.jpg", model: null },
+    { id: 23, name: "LV Archlight", subtitle: "Classic / White", price: "1150.00", category: "WOMEN", isSale: false, bgText: "LOUIS VUITTON", img: "/LVArchlight.jpg", model: null },
+    { id: 24, name: "Adidas Yeezy Boost 350 V2", subtitle: "Zebra", price: "230.00", category: "MEN", isSale: false, bgText: "YEEZY", img: "/AdidasYeezyBoost350V2.jpg", model: null },
+    { id: 25, name: "Adidas Samba OG", subtitle: "Cloud White", price: "100.00", category: "WOMEN", isSale: false, bgText: "SAMBA", img: "/AdidasSambaOG.jpg", model: null },
+    { id: 26, name: "Adidas Campus 00s", subtitle: "Core Black", price: "110.00", category: "MEN", isSale: true, bgText: "CAMPUS", img: "/AdidasCampus00s.jpg", model: null },
+    { id: 27, name: "Adidas Gazelle", subtitle: "Collegiate Navy", price: "100.00", category: "WOMEN", isSale: false, bgText: "GAZELLE", img: "/AdidasGazelle.jpg", model: null },
+    { id: 28, name: "Adidas Ultraboost 1.0", subtitle: "Light Solid Grey", price: "190.00", category: "MEN", isSale: false, bgText: "ULTRABOOST", img: "/AdidasUltraboost1.0.jpg", model: null },
+    { id: 29, name: "Adidas Superstar", subtitle: "Cloud White / Core Black", price: "100.00", category: "KIDS", isSale: true, bgText: "SUPERSTAR", img: "/AdidasSuperstar.jpg", model: null },
+    { id: 30, name: "Adidas Yeezy 700 V3", subtitle: "Azael", price: "200.00", category: "MEN", isSale: false, bgText: "YEEZY", img: "/AdidasYeezy700V3.jpg", model: null }
 ];
 
 // --- ИКОНКИ ---
@@ -105,6 +122,142 @@ const ArrowRight = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" heig
 const ArrowRightLong = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>;
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>;
 
+// =====================================================================
+// НОВЫЙ КОМПОНЕНТ ДЛЯ 1В1 КИНЕМАТОГРАФИЧНОГО 3D ПРОСМОТРА КАК НА ВИДЕО
+// =====================================================================
+const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => void }) => {
+    const [showUI, setShowUI] = useState(false);
+    const [selectedSize, setSelectedSize] = useState<number | null>(null);
+
+    // Таймер: через 4.5 секунды кручения анимированно выезжает интерфейс.
+    // Юзер может кликнуть в любую точку, чтобы пропустить анимацию
+    useEffect(() => {
+        const timer = setTimeout(() => setShowUI(true), 4500);
+        return () => clearTimeout(timer);
+    }, []);
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[120] bg-[#fafafa] overflow-hidden flex flex-col"
+            onClick={() => setShowUI(true)} // Клик по фону пропускает ожидание
+        >
+            {/* ШАПКА КАК НА СКРИНШОТЕ */}
+            <header className="absolute top-0 left-0 w-full px-6 md:px-12 py-8 flex justify-between items-center z-50 pointer-events-auto">
+                <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="flex items-center gap-2 font-black uppercase tracking-widest text-[11px] hover:text-gray-500 transition-colors text-[#111]">
+                    <ArrowLeft /> BACK TO CATALOG
+                </button>
+                <Link href="/cart" target="_blank" className="hover:opacity-50 transition-opacity text-[#111]"><BagIcon /></Link>
+            </header>
+
+            {/* ГРОМАДНЫЙ ТЕКСТ НА ФОНЕ БЕЗ ОГРАНИЧЕНИЙ */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
+                <h1 className="text-[30vw] font-black italic text-black/[0.03] tracking-tighter leading-none whitespace-nowrap select-none">
+                    {shoe.bgText || shoe.name.split(" ")[0]}
+                </h1>
+            </div>
+
+            {/* ЗОНА 3D КРОССОВКА */}
+            {/* Сначала он по центру (100% ширины), потом отъезжает влево (освобождая место под UI справа) */}
+            <motion.div
+                className="absolute top-0 left-0 h-full flex items-center justify-center z-10 pointer-events-auto"
+                initial={{ right: 0 }}
+                animate={{ right: showUI ? "40%" : "0%" }} // Двигаем границу вправо на 40% при появлении UI
+                transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }} // Плавная кинематографичная кривая
+            >
+                {shoe.model ? (
+                    <Canvas shadows camera={{ position: [0, 0, 5.5], fov: 45 }}>
+                        {/* Идеальный студийный свет, чтобы текстуры читались */}
+                        <ambientLight intensity={0.8} />
+                        <directionalLight position={[10, 10, 5]} intensity={1.5} castShadow />
+                        <directionalLight position={[-10, 5, -5]} intensity={0.5} />
+                        <Environment preset="city" />
+
+                        <Suspense fallback={<Loader />}>
+                            <AutoScaledModel path={shoe.model} />
+                            {/* Красивая контактная тень на полу */}
+                            <ContactShadows position={[0, -1.2, 0]} opacity={0.5} scale={10} blur={2.5} far={4} />
+                        </Suspense>
+
+                        <OrbitControls
+                            autoRotate={!showUI} // Крутится, пока UI скрыт
+                            autoRotateSpeed={4}  // Скорость кручения
+                            enableZoom={showUI}  // Зум доступен только после появления UI
+                            enablePan={false}
+                            maxPolarAngle={Math.PI / 2 + 0.1} // Запрещаем смотреть прямо снизу
+                        />
+                    </Canvas>
+                ) : (
+                    // Заглушка для тех кроссовок, у которых пока нет .glb файла
+                    <div className="w-full h-full flex items-center justify-center">
+                        <img src={shoe.img} alt={shoe.name} className="w-[80%] max-w-[800px] object-contain mix-blend-multiply drop-shadow-2xl pointer-events-none" />
+                    </div>
+                )}
+
+                {/* Подсказка внизу экрана */}
+                <AnimatePresence>
+                    {showUI && shoe.model && (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute bottom-12 flex items-center gap-2 text-gray-400 text-[10px] font-bold tracking-[0.2em] uppercase animate-pulse pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /><path d="M12 19l-7-7 7-7" /></svg>
+                            Drag to rotate
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </motion.div>
+
+            {/* ПАНЕЛЬ UI СПРАВА (Выезжает сбоку) */}
+            <AnimatePresence>
+                {showUI && (
+                    <motion.div
+                        initial={{ opacity: 0, x: 100 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+                        onClick={(e) => e.stopPropagation()} // Чтобы клики по панели не закрывали её
+                        className="absolute right-0 top-0 h-full w-full lg:w-[45%] xl:w-[40%] z-30 flex flex-col justify-center px-8 lg:px-20 bg-gradient-to-l from-[#fafafa] via-[#fafafa]/90 to-transparent pointer-events-auto"
+                    >
+                        <p className="text-gray-400 font-bold text-[10px] tracking-[0.15em] uppercase mb-2">{shoe.subtitle}</p>
+                        <h2 className="text-5xl lg:text-[70px] font-black italic uppercase leading-[0.9] tracking-tighter mb-4 text-[#111]">{shoe.name}</h2>
+                        <p className="text-xl lg:text-2xl font-bold mb-12 text-[#111]">$ {shoe.price}</p>
+
+                        <div className="mb-10 w-full max-w-[420px]">
+                            <div className="flex justify-between items-end mb-4">
+                                <span className="text-[10px] font-black tracking-[0.15em] uppercase text-[#111]">Select Size (EU)</span>
+                                <span className="text-[10px] font-bold text-gray-400 underline cursor-pointer hover:text-black">Size Guide</span>
+                            </div>
+                            <div className="grid grid-cols-4 gap-2">
+                                {[38, 39, 40, 41, 42, 43, 44, 45].map((size) => (
+                                    <button
+                                        key={size}
+                                        onClick={() => setSelectedSize(size)}
+                                        className={`py-3 rounded-md border font-bold text-sm transition-all ${selectedSize === size ? 'bg-[#111] text-white border-[#111]' : 'bg-white text-[#111] border-gray-200 hover:border-gray-400 shadow-sm'}`}
+                                    >
+                                        {size}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <button className="w-full max-w-[420px] bg-[#111] text-white py-4 font-bold uppercase tracking-[0.15em] text-xs hover:bg-black transition-colors rounded-sm shadow-xl">
+                            Add To Cart
+                        </button>
+
+                        <div className="mt-8 text-[11px] text-gray-500 font-medium leading-relaxed max-w-[420px]">
+                            <p className="mb-1 uppercase tracking-widest font-black text-[#111]">Free Shipping</p>
+                            <p>Standard delivery 3-5 working days. Express delivery available at checkout.</p>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </motion.div>
+    );
+};
+
+
+// =====================================================================
+// ГЛАВНЫЙ КОМПОНЕНТ САЙТА (КАТАЛОГ)
+// =====================================================================
 export default function SneakerStore() {
     const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -124,7 +277,6 @@ export default function SneakerStore() {
 
     // ПРОСМОТР ТОВАРА
     const [selectedProduct, setSelectedProduct] = useState<any>(null);
-    const [selectedSize, setSelectedSize] = useState<number | null>(null);
 
     const nextShoe = () => setCurrentIndex((prev) => (prev + 1) % heroShoes.length);
     const prevShoe = () => setCurrentIndex((prev) => (prev - 1 + heroShoes.length) % heroShoes.length);
@@ -266,13 +418,12 @@ export default function SneakerStore() {
                                 {currentVisibleCatalog.map((shoe) => (
                                     <div
                                         key={shoe.id}
-                                        onClick={() => { setSelectedProduct(shoe); setSelectedSize(null); }}
-                                        className="bg-white border-gray-200 hover:border-gray-400 border rounded-[20px] p-6 md:p-8 flex flex-col justify-between group cursor-pointer transition-all relative overflow-hidden"
+                                        onClick={() => setSelectedProduct(shoe)}
+                                        className="bg-white border-gray-200 hover:border-gray-300 border rounded-[30px] p-6 md:p-8 flex flex-col justify-between group cursor-pointer transition-all relative overflow-hidden"
                                     >
                                         {shoe.isSale && (
                                             <div className="absolute top-6 left-6 bg-red-500 text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-sm z-20">SALE</div>
                                         )}
-                                        {/* Значок 3D */}
                                         {shoe.model && (
                                             <div className="absolute top-6 right-6 bg-[#111] text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-sm z-20 shadow-md">3D VIEW</div>
                                         )}
@@ -286,8 +437,9 @@ export default function SneakerStore() {
                                             <div className="text-gray-300 group-hover:text-[#111] group-hover:translate-x-1 transition-all"><ArrowRightLong /></div>
                                         </div>
                                         <div className="h-48 md:h-56 mt-8 flex items-end justify-center relative z-10">
-                                            <img src={shoe.img} alt={shoe.name} className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 group-hover:-translate-y-2 transition-transform duration-500 origin-bottom" />
+                                            <img src={shoe.img} alt={shoe.name} className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 group-hover:-translate-y-4 transition-transform duration-500 origin-bottom" />
                                         </div>
+                                        <div className="absolute inset-0 bg-gray-50 opacity-0 group-hover:opacity-100 transition-opacity z-0 pointer-events-none" />
                                     </div>
                                 ))}
                             </div>
@@ -304,116 +456,12 @@ export default function SneakerStore() {
                 </section>
             </main>
 
-            {/* ================= МОДАЛКА ПРОСМОТРА ТОВАРА (ИДЕАЛЬНЫЙ ДИЗАЙН 1 К 1 ИЗ ФОТО) ================= */}
+            {/* ВЫЗОВ МОДАЛКИ С 3D */}
             <AnimatePresence>
-                {selectedProduct && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-[#f8f8f8] z-[120] flex flex-col overflow-y-auto overflow-x-hidden"
-                    >
-                        {/* Шапка модалки */}
-                        <header className="w-full px-6 md:px-12 py-6 flex justify-between items-center z-50 fixed top-0 left-0 bg-transparent">
-                            <button onClick={() => setSelectedProduct(null)} className="flex items-center gap-2 font-black uppercase tracking-widest text-[11px] hover:text-gray-500 transition-colors text-[#111]">
-                                <ArrowLeft /> BACK TO CATALOG
-                            </button>
-                            <Link href="/cart" target="_blank" className="hover:opacity-50 transition-opacity text-[#111]"><BagIcon /></Link>
-                        </header>
-
-                        {/* ОГРОМНЫЙ ФОНОВЫЙ ТЕКСТ КАК НА СКРИНШОТЕ */}
-                        <div className="absolute top-1/2 -translate-y-1/2 w-full flex justify-center pointer-events-none z-0">
-                            <h1 className="text-[28vw] font-black italic text-gray-200/50 tracking-tighter leading-none select-none">
-                                {selectedProduct.bgText || selectedProduct.name.split(" ")[0]}
-                            </h1>
-                        </div>
-
-                        {/* ОСНОВНОЙ КОНТЕНТ */}
-                        <div className="flex-1 w-full max-w-[1400px] mx-auto flex flex-col lg:flex-row items-center pt-24 lg:pt-0 z-10 px-6 lg:px-12 gap-10 lg:gap-20 min-h-screen">
-
-                            {/* ЛЕВАЯ ЗОНА: БЕЛЫЙ КВАДРАТ С ТЕНЬЮ (КАК НА СКРИНШОТЕ) */}
-                            <div className="w-full lg:w-1/2 flex justify-center mt-12 lg:mt-0">
-                                <div className="w-full max-w-[650px] aspect-[4/3] bg-white rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.05)] relative flex items-center justify-center overflow-hidden border border-gray-100">
-                                    {selectedProduct.model ? (
-                                        <Canvas shadows camera={{ position: [0, 0, 6], fov: 45 }}>
-                                            {/* Мягкий студийный свет, чтобы не было "вырвиглазных" бликов */}
-                                            <ambientLight intensity={0.6} />
-                                            <directionalLight position={[5, 10, 5]} intensity={0.8} castShadow />
-                                            <Environment preset="studio" />
-
-                                            <Suspense fallback={<Loader />}>
-                                                {/* Умное масштабирование */}
-                                                <AutoScaledModel path={selectedProduct.model} />
-                                                <ContactShadows position={[0, -1.8, 0]} opacity={0.3} scale={10} blur={2.5} far={4} />
-                                            </Suspense>
-
-                                            <OrbitControls enableZoom={true} enablePan={false} autoRotate={false} />
-                                        </Canvas>
-                                    ) : (
-                                        <img
-                                            src={selectedProduct.img}
-                                            alt={selectedProduct.name}
-                                            className="w-[80%] h-[80%] object-contain mix-blend-multiply pointer-events-none"
-                                        />
-                                    )}
-
-                                    <div className="absolute bottom-6 flex items-center gap-2 text-gray-300 text-[10px] font-bold tracking-[0.2em] uppercase pointer-events-none">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /><path d="M12 19l-7-7 7-7" /></svg>
-                                        {selectedProduct.model ? "Drag to rotate" : "Image Preview"}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* ПРАВАЯ ЗОНА: ИНФО О ТОВАРЕ (1 К 1 КАК НА СКРИНШОТЕ) */}
-                            <div className="w-full lg:w-1/2 flex flex-col justify-center pb-12 lg:pb-0">
-                                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
-
-                                    <p className="text-gray-400 font-bold text-[10px] tracking-[0.15em] uppercase mb-2">
-                                        {selectedProduct.subtitle}
-                                    </p>
-
-                                    <h2 className="text-5xl lg:text-[70px] font-black italic uppercase leading-[0.9] tracking-tighter mb-4 text-[#111]">
-                                        {selectedProduct.name}
-                                    </h2>
-
-                                    <p className="text-xl lg:text-2xl font-bold mb-12 text-[#111]">$ {selectedProduct.price}</p>
-
-                                    <div className="mb-10 w-full max-w-[400px]">
-                                        <div className="flex justify-between items-end mb-4">
-                                            <span className="text-[10px] font-black tracking-[0.15em] uppercase text-[#111]">Select Size (EU)</span>
-                                            <span className="text-[10px] font-bold text-gray-400 underline cursor-pointer hover:text-black">Size Guide</span>
-                                        </div>
-                                        <div className="grid grid-cols-4 gap-2">
-                                            {[38, 39, 40, 41, 42, 43, 44, 45].map((size) => (
-                                                <button
-                                                    key={size}
-                                                    onClick={() => setSelectedSize(size)}
-                                                    className={`py-3 rounded-md border font-bold text-sm transition-all ${selectedSize === size ? 'bg-[#111] text-white border-[#111]' : 'bg-transparent text-[#111] border-gray-200 hover:border-gray-400'}`}
-                                                >
-                                                    {size}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <button className="w-full max-w-[400px] bg-[#111] text-white py-4 font-bold uppercase tracking-[0.15em] text-xs hover:bg-black transition-colors rounded-sm">
-                                        Add To Cart
-                                    </button>
-
-                                    <div className="mt-8 text-[11px] text-gray-500 font-medium leading-relaxed max-w-[400px]">
-                                        <p className="mb-1 uppercase tracking-widest font-black text-[#111]">Free Shipping</p>
-                                        <p>Standard delivery 3-5 working days. Express delivery available at checkout.</p>
-                                    </div>
-
-                                </motion.div>
-                            </div>
-
-                        </div>
-                    </motion.div>
-                )}
+                {selectedProduct && <ProductCinematicView shoe={selectedProduct} onClose={() => setSelectedProduct(null)} />}
             </AnimatePresence>
 
-            {/* ================= МОДАЛКИ (АВТОРИЗАЦИЯ И ПРОФИЛЬ) ОСТАЮТСЯ КАК БЫЛИ ================= */}
+            {/* ================= МОДАЛКИ (АВТОРИЗАЦИЯ И ПРОФИЛЬ) ================= */}
             <AnimatePresence>
                 {isAuthOpen && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
@@ -574,7 +622,6 @@ export default function SneakerStore() {
                     </motion.div>
                 )}
             </AnimatePresence>
-
         </div>
     );
 }
