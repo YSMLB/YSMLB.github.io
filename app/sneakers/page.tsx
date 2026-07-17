@@ -1,17 +1,15 @@
 "use client";
 
-import React, { useState, Suspense, useLayoutEffect, useRef, useEffect } from "react";
+import React, { useState, Suspense, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import * as THREE from "three";
 
 // --- 3D ИМПОРТЫ ---
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, useGLTF, Environment, ContactShadows, Html } from "@react-three/drei";
+import { OrbitControls, useGLTF, Environment, ContactShadows, Bounds, Center, Html } from "@react-three/drei";
 
 // =====================================================================
-// ПРЕДОХРАНИТЕЛЬ: Спасает от черного экрана смерти Next.js
-// Если файла .glb нет, сайт не крашится, а показывает ошибку внутри блока
+// ПРЕДОХРАНИТЕЛЬ: Защита от черного экрана
 // =====================================================================
 class ModelErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
     constructor(props: any) { super(props); this.state = { hasError: false }; }
@@ -31,40 +29,11 @@ class ModelErrorBoundary extends React.Component<{ children: React.ReactNode }, 
 }
 
 // =====================================================================
-// УМНЫЙ КОМПОНЕНТ МОДЕЛИ (Автомасштаб и Центровка)
+// ПРОСТОЙ КОМПОНЕНТ МОДЕЛИ (Всю магию теперь делают Bounds и Center)
 // =====================================================================
-function AutoScaledModel({ path, onLoad }: { path: string; onLoad: () => void }) {
+function ShoeModel({ path }: { path: string }) {
     const { scene } = useGLTF(path);
-    const ref = useRef<THREE.Group>(null);
-
-    useLayoutEffect(() => {
-        if (ref.current) {
-            const box = new THREE.Box3().setFromObject(ref.current);
-            const size = new THREE.Vector3();
-            box.getSize(size);
-
-            const maxDim = Math.max(size.x, size.y, size.z);
-            const scale = 3.5 / maxDim; // Оптимальный размер для экрана
-            ref.current.scale.setScalar(scale);
-
-            const center = new THREE.Vector3();
-            box.getCenter(center);
-            ref.current.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
-        }
-        onLoad(); // Сообщаем, что модель готова к анимации
-    }, [scene, onLoad]);
-
-    return <primitive ref={ref} object={scene} />;
-}
-
-function Loader() {
-    return (
-        <Html center>
-            <div className="text-black font-black uppercase tracking-widest text-[10px] animate-pulse bg-white/90 px-6 py-3 rounded shadow-lg">
-                Loading 3D...
-            </div>
-        </Html>
-    );
+    return <primitive object={scene} />;
 }
 
 // --- ДАННЫЕ ДЛЯ ГЛАВНОГО СЛАЙДЕРА (HERO) ---
@@ -98,7 +67,7 @@ const heroShoes = [
     }
 ];
 
-// --- ТВОЙ КАТАЛОГ (СТРОГО КАК В ТВОЕМ ФАЙЛЕ sneakers_2.txt) ---
+
 const initialCatalogShoes = [
     { id: 3, name: "Air Jordan 1 Retro High", subtitle: "Chicago", price: "180.00", category: "MEN", isSale: false, bgText: "JORDAN", img: "/AirJordan1RetroHigh.jpg", model: "/models/3.glb" },
     { id: 4, name: "Nike Dunk Low", subtitle: "Panda", price: "110.00", category: "WOMEN", isSale: false, bgText: "DUNK LOW", img: "/NikeDunkLow.jpg", model: "/models/4.glb" },
@@ -116,6 +85,16 @@ const initialCatalogShoes = [
 
 ];
 
+// =====================================================================
+// ОПТИМИЗАЦИЯ: ПРЕДЗАГРУЗКА 3D МОДЕЛЕЙ
+// Как только код читается браузером, он начинает скачивать модели в фоне
+// =====================================================================
+initialCatalogShoes.forEach((shoe) => {
+    if (shoe.model) {
+        useGLTF.preload(shoe.model);
+    }
+});
+
 // --- ИКОНКИ ---
 const SearchIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>;
 const BagIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>;
@@ -125,32 +104,27 @@ const ArrowRight = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" heig
 const ArrowRightLong = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>;
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>;
 
-
 // =====================================================================
-// ИДЕАЛЬНАЯ ПЛАВНАЯ АНИМАЦИЯ (КИНЕМАТОГРАФИЧНЫЙ ПРОСМОТР ТОВАРА)
+// ИДЕАЛЬНАЯ ПЛАВНАЯ АНИМАЦИЯ ПРОСМОТРА ТОВАРА
 // =====================================================================
 const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => void }) => {
-    const [isModelLoaded, setIsModelLoaded] = useState(false);
     const [showUI, setShowUI] = useState(false);
     const [selectedSize, setSelectedSize] = useState<number | null>(null);
 
-    // Таймер запускается ТОЛЬКО после полной загрузки модели
+    // Поскольку модели предзагружаются, мы можем смело ставить таймер анимации сразу
     useEffect(() => {
-        if (isModelLoaded) {
-            const timer = setTimeout(() => setShowUI(true), 4000);
-            return () => clearTimeout(timer);
-        }
-    }, [isModelLoaded]);
+        const timer = setTimeout(() => setShowUI(true), 4000);
+        return () => clearTimeout(timer);
+    }, []);
 
     return (
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[120] bg-[#fafafa] overflow-hidden flex"
-            onClick={() => { if (isModelLoaded) setShowUI(true); }}
+            className="fixed inset-0 z-[120] bg-[#fafafa] overflow-hidden flex flex-col"
+            onClick={() => setShowUI(true)} // Клик скипает 4 секунды
         >
-            {/* ШАПКА */}
             <header className="absolute top-0 left-0 w-full px-6 md:px-12 py-8 flex justify-between items-center z-50 pointer-events-auto">
                 <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="flex items-center gap-2 font-black uppercase tracking-widest text-[11px] hover:text-gray-500 transition-colors text-[#111]">
                     <ArrowLeft /> BACK TO CATALOG
@@ -158,48 +132,53 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                 <Link href="/cart" target="_blank" className="hover:opacity-50 transition-opacity text-[#111]"><BagIcon /></Link>
             </header>
 
-            {/* ОГРОМНЫЙ ФОНОВЫЙ ТЕКСТ (Как на референсе) */}
+            {/* ОГРОМНЫЙ ФОНОВЫЙ ТЕКСТ КАК В РЕФЕРЕНСЕ */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
-                <h1 className="text-[25vw] font-black italic text-[#f0f0f0] tracking-tighter leading-none whitespace-nowrap select-none">
+                <h1 className="text-[25vw] font-black italic text-[#f2f2f2] tracking-tighter leading-none whitespace-nowrap select-none">
                     {shoe.bgText || shoe.name.split(" ")[0]}
                 </h1>
             </div>
 
-            {/* ЗОНА 3D КРОССОВКА (Плавное сужение ширины двигает модель) */}
+            {/* 3D СЦЕНА (Мягко смещается влево) */}
             <motion.div
-                className="h-full relative z-10 flex items-center justify-center pointer-events-auto"
+                className="absolute inset-0 flex items-center justify-center z-10 pointer-events-auto"
                 initial={{ width: "100%" }}
-                animate={{ width: showUI ? "55%" : "100%" }} // Сужаем контейнер, Three.js плавно сдвинет центр
+                animate={{ width: showUI ? "55%" : "100%" }}
                 transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
             >
                 <ModelErrorBoundary>
-                    <Canvas shadows camera={{ position: [0, 0, 5.5], fov: 45 }}>
-                        {/* Студийный свет для текстур */}
+                    <Canvas shadows camera={{ position: [0, 0, 5], fov: 45 }}>
                         <ambientLight intensity={0.9} />
                         <directionalLight position={[5, 10, 5]} intensity={1.5} castShadow />
                         <directionalLight position={[-5, 5, -5]} intensity={0.5} />
                         <Environment preset="city" />
 
-                        <Suspense fallback={<Loader />}>
-                            <AutoScaledModel path={shoe.model} onLoad={() => setIsModelLoaded(true)} />
-                            <ContactShadows position={[0, -1.2, 0]} opacity={0.6} scale={10} blur={2.5} far={4} />
+                        <Suspense fallback={null}>
+                            {/* МАГИЯ ЗДЕСЬ: Bounds подгоняет камеру под размер объекта, Center ставит в середину */}
+                            <Bounds fit clip observe margin={1.2}>
+                                <Center>
+                                    <ShoeModel path={shoe.model} />
+                                </Center>
+                            </Bounds>
+                            {/* Тень под кроссовком */}
+                            <ContactShadows position={[0, -1.2, 0]} opacity={0.5} scale={10} blur={2.5} far={4} />
                         </Suspense>
 
                         <OrbitControls
-                            autoRotate={!showUI && isModelLoaded}
+                            makeDefault // Позволяет Bounds управлять камерой
+                            autoRotate={!showUI}
                             autoRotateSpeed={3}
                             enableZoom={showUI}
                             enablePan={false}
-                            // СТРОГАЯ БЛОКИРОВКА ОСЕЙ (Крутим только влево-вправо)
+                            // БЛОКИРОВКА ВЕРТИКАЛИ: Крутится строго влево-вправо
                             minPolarAngle={Math.PI / 2}
                             maxPolarAngle={Math.PI / 2}
                         />
                     </Canvas>
                 </ModelErrorBoundary>
 
-                {/* Подсказка */}
                 <AnimatePresence>
-                    {showUI && isModelLoaded && (
+                    {showUI && (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute bottom-12 flex items-center gap-2 text-gray-400 text-[10px] font-bold tracking-[0.2em] uppercase animate-pulse pointer-events-none">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /><path d="M12 19l-7-7 7-7" /></svg>
                             Drag to rotate
@@ -208,7 +187,7 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                 </AnimatePresence>
             </motion.div>
 
-            {/* ПАНЕЛЬ UI СПРАВА (Выезжает плавно) */}
+            {/* ПАНЕЛЬ ИНТЕРФЕЙСА (Выезжает справа) */}
             <AnimatePresence>
                 {showUI && (
                     <motion.div
@@ -416,7 +395,7 @@ export default function SneakerStore() {
                                 {currentVisibleCatalog.map((shoe) => (
                                     <div
                                         key={shoe.id}
-                                        onClick={() => { setSelectedProduct(shoe); setSelectedSize(null); }}
+                                        onClick={() => setSelectedProduct(shoe)}
                                         className="bg-white border-gray-200 hover:border-gray-300 border rounded-[30px] p-6 md:p-8 flex flex-col justify-between group cursor-pointer transition-all relative overflow-hidden"
                                     >
                                         {shoe.isSale && (
@@ -620,7 +599,6 @@ export default function SneakerStore() {
                     </motion.div>
                 )}
             </AnimatePresence>
-
         </div>
     );
 }
