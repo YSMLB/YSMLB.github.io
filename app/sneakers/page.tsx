@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, Suspense, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, Suspense, useEffect, useRef } from "react";
+import { motion, AnimatePresence, animate } from "framer-motion";
 import Link from "next/link";
+import * as THREE from "three";
 
 // --- 3D ИМПОРТЫ ---
 import { Canvas } from "@react-three/fiber";
@@ -67,7 +68,7 @@ const heroShoes = [
     }
 ];
 
-// --- ТВОЙ КАТАЛОГ СО ВСЕМИ ПУТЯМИ ---
+// --- ТВОЙ КАТАЛОГ ---
 const initialCatalogShoes = [
     { id: 3, name: "Air Jordan 1 Retro High", subtitle: "Chicago", price: "180.00", category: "MEN", isSale: false, bgText: "JORDAN", img: "/AirJordan1RetroHigh.jpg", model: "/models/3.glb" },
     { id: 4, name: "Nike Dunk Low", subtitle: "Panda", price: "110.00", category: "WOMEN", isSale: false, bgText: "DUNK LOW", img: "/NikeDunkLow.jpg", model: "/models/4.glb" },
@@ -85,13 +86,8 @@ const initialCatalogShoes = [
 
 ];
 
-// =====================================================================
-// ОПТИМИЗАЦИЯ: ПРЕДЗАГРУЗКА 3D МОДЕЛЕЙ (уже работает отлично)
-// =====================================================================
 initialCatalogShoes.forEach((shoe) => {
-    if (shoe.model) {
-        useGLTF.preload(shoe.model);
-    }
+    if (shoe.model) useGLTF.preload(shoe.model);
 });
 
 // --- ИКОНКИ ---
@@ -103,14 +99,71 @@ const ArrowRight = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" heig
 const ArrowRightLong = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>;
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>;
 
+
 // =====================================================================
-// ИДЕАЛЬНАЯ ПЛАВНАЯ АНИМАЦИЯ ПРОСМОТРА ТОВАРА
+// ВНУТРЕННЯЯ 3D СЦЕНА (С ИДЕАЛЬНОЙ ОСТАНОВКОЙ КАДРА)
+// =====================================================================
+const CinematicScene = ({ shoe, showUI }: { shoe: any, showUI: boolean }) => {
+    const groupRef = useRef<THREE.Group>(null);
+
+    useEffect(() => {
+        // -1.0 радиан - это тот самый идеальный угол 3/4 профиля с твоего скрина.
+        const targetAngle = -1.0;
+        // Добавляем полтора оборота (Math.PI * 3), чтобы кроссовок красиво раскрутился перед остановкой
+        const startAngle = targetAngle + Math.PI * 3;
+
+        if (groupRef.current) {
+            // Ручная математическая анимация (без тупого рандомного autoRotate)
+            const controls = animate(startAngle, targetAngle, {
+                type: "tween",
+                duration: 4, // Ровно 4 секунды как и таймер появления UI
+                ease: [0.16, 1, 0.3, 1], // Топовое кинематографичное замедление в конце
+                onUpdate: (v) => {
+                    if (groupRef.current) groupRef.current.rotation.y = v;
+                }
+            });
+            return () => controls.stop();
+        }
+    }, []);
+
+    return (
+        <>
+            <ambientLight intensity={0.9} />
+            <directionalLight position={[5, 10, 5]} intensity={1.5} castShadow />
+            <directionalLight position={[-5, 5, -5]} intensity={0.5} />
+            <Environment preset="city" />
+
+            <group ref={groupRef}>
+                <Suspense fallback={null}>
+                    <Bounds fit clip observe margin={1.2}>
+                        <Center>
+                            <ShoeModel path={shoe.model} />
+                        </Center>
+                    </Bounds>
+                </Suspense>
+                <ContactShadows position={[0, -1.2, 0]} opacity={0.5} scale={10} blur={2.5} far={4} />
+            </group>
+
+            <OrbitControls
+                makeDefault
+                enableRotate={showUI} // Юзер может крутить ТОЛЬКО когда выехала панель (чтобы не сломать интро)
+                enableZoom={showUI}
+                enablePan={false}
+                minPolarAngle={Math.PI / 2}
+                maxPolarAngle={Math.PI / 2}
+            />
+        </>
+    );
+};
+
+
+// =====================================================================
+// ПЛАВНАЯ АНИМАЦИЯ ПРОСМОТРА ТОВАРА
 // =====================================================================
 const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => void }) => {
     const [showUI, setShowUI] = useState(false);
     const [selectedSize, setSelectedSize] = useState<number | null>(null);
 
-    // Таймер появления панели
     useEffect(() => {
         const timer = setTimeout(() => setShowUI(true), 4000);
         return () => clearTimeout(timer);
@@ -122,7 +175,7 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[120] bg-[#fafafa] overflow-hidden flex flex-col"
-            onClick={() => setShowUI(true)} // Клик скипает 4 секунды
+            onClick={() => setShowUI(true)}
         >
             <header className="absolute top-0 left-0 w-full px-6 md:px-12 py-8 flex justify-between items-center z-50 pointer-events-auto">
                 <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="flex items-center gap-2 font-black uppercase tracking-widest text-[11px] hover:text-gray-500 transition-colors text-[#111]">
@@ -131,49 +184,23 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                 <Link href="/cart" target="_blank" className="hover:opacity-50 transition-opacity text-[#111]"><BagIcon /></Link>
             </header>
 
-            {/* БЛОК С КРОССОВКОМ И ТЕКСТОМ (Двигается влево без изменения ширины холста) */}
+            {/* БЛОК С КРОССОВКОМ И ТЕКСТОМ (Сдвигается влево как единое целое) */}
             <motion.div
                 className="absolute inset-0 z-10 pointer-events-auto"
                 initial={{ x: "0%" }}
-                // Сдвигаем влево ровно на половину ширины панели (45% / 2 = 22.5%), 
-                // чтобы модель и текст идеально отцентровались в оставшихся 55% экрана.
                 animate={{ x: showUI ? "-22.5%" : "0%" }}
                 transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
             >
-                {/* ОГРОМНЫЙ ФОНОВЫЙ ТЕКСТ (теперь отъезжает вместе с кроссовком) */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
                     <h1 className="text-[28vw] font-black italic text-[#ebebeb] tracking-tighter leading-none whitespace-nowrap select-none">
                         {shoe.bgText || shoe.name.split(" ")[0]}
                     </h1>
                 </div>
 
-                {/* 3D СЦЕНА (Остается на весь экран, нет рывков при ресайзе) */}
                 <div className="absolute inset-0 z-10">
                     <ModelErrorBoundary>
                         <Canvas shadows camera={{ position: [0, 0, 5], fov: 45 }}>
-                            <ambientLight intensity={0.9} />
-                            <directionalLight position={[5, 10, 5]} intensity={1.5} castShadow />
-                            <directionalLight position={[-5, 5, -5]} intensity={0.5} />
-                            <Environment preset="city" />
-
-                            <Suspense fallback={null}>
-                                <Bounds fit clip observe margin={1.2}>
-                                    <Center>
-                                        <ShoeModel path={shoe.model} />
-                                    </Center>
-                                </Bounds>
-                                <ContactShadows position={[0, -1.2, 0]} opacity={0.5} scale={10} blur={2.5} far={4} />
-                            </Suspense>
-
-                            <OrbitControls
-                                makeDefault
-                                autoRotate={!showUI}
-                                autoRotateSpeed={3}
-                                enableZoom={showUI}
-                                enablePan={false}
-                                minPolarAngle={Math.PI / 2}
-                                maxPolarAngle={Math.PI / 2}
-                            />
+                            <CinematicScene shoe={shoe} showUI={showUI} />
                         </Canvas>
                     </ModelErrorBoundary>
                 </div>
@@ -188,7 +215,7 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                 </AnimatePresence>
             </motion.div>
 
-            {/* ПАНЕЛЬ ИНТЕРФЕЙСА (Выезжает справа на 45% экрана) */}
+            {/* ПАНЕЛЬ ИНТЕРФЕЙСА */}
             <AnimatePresence>
                 {showUI && (
                     <motion.div
