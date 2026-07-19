@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, Suspense, useEffect, useRef } from "react";
-import { motion, AnimatePresence, animate } from "framer-motion";
+import { motion, AnimatePresence, animate, useMotionValue, useTransform } from "framer-motion";
 import Link from "next/link";
 import * as THREE from "three";
 
 // --- 3D ИМПОРТЫ ---
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF, Environment, ContactShadows, Bounds, Center, Html } from "@react-three/drei";
 
 // =====================================================================
@@ -33,6 +33,19 @@ function ShoeModel({ path }: { path: string }) {
     const { scene } = useGLTF(path);
     return <primitive object={scene} />;
 }
+
+// =====================================================================
+// 3D ТРЕКЕР КАМЕРЫ ДЛЯ ПАРАЛЛАКСА ТЕКСТА
+// =====================================================================
+// Этот компонент сидит внутри Canvas и каждую долю секунды передает 
+// координаты камеры в Framer Motion, чтобы 2D-текст двигался вместе с 3D-моделью
+const CameraTracker = ({ cameraX, cameraY }: { cameraX: any, cameraY: any }) => {
+    useFrame(({ camera }) => {
+        cameraX.set(camera.position.x);
+        cameraY.set(camera.position.y);
+    });
+    return null;
+};
 
 // --- ДАННЫЕ ДЛЯ ГЛАВНОГО СЛАЙДЕРА (HERO) ---
 const heroShoes = [
@@ -102,16 +115,13 @@ const CinematicScene = ({ shoe, showUI }: { shoe: any, showUI: boolean }) => {
 
             <group ref={groupRef}>
                 <Suspense fallback={null}>
-                    {/* ФИКС: Bounds теперь учитывает ТОЛЬКО саму модель (margin 1.2 делает красивый отступ) */}
-                    {/* Center precise=true заставляет вычислять "дно" модели строго по вершинам, а не по кривому BoundingBox */}
+                    {/* ФИКС МАСШТАБА: Bounds теперь учитывает ТОЛЬКО саму модель */}
                     <Bounds fit clip observe margin={1.2}>
                         <Center bottom precise>
                             <ShoeModel path={shoe.model} />
                         </Center>
                     </Bounds>
-
-                    {/* ФИКС ТЕНИ: Тень вынесена ЗА пределы Bounds. Она лежит ровно на Y=0. 
-                        Больше никаких микроскопических кроссовок и огромных щелей! */}
+                    {/* ФИКС ТЕНИ: Лежит ровно на Y=0 */}
                     <ContactShadows position={[0, 0, 0]} opacity={0.7} scale={8} blur={2.5} far={3} resolution={1024} />
                 </Suspense>
             </group>
@@ -121,8 +131,9 @@ const CinematicScene = ({ shoe, showUI }: { shoe: any, showUI: boolean }) => {
                 enableRotate={showUI}
                 enableZoom={showUI}
                 enablePan={false}
-                minPolarAngle={Math.PI / 2}
-                maxPolarAngle={Math.PI / 2}
+                // Даем крошечную свободу по вертикали (Y), чтобы работал параллакс вверх-вниз
+                minPolarAngle={Math.PI / 2 - 0.15}
+                maxPolarAngle={Math.PI / 2 + 0.15}
             />
         </>
     );
@@ -130,16 +141,35 @@ const CinematicScene = ({ shoe, showUI }: { shoe: any, showUI: boolean }) => {
 
 
 // =====================================================================
-// ПЛАВНАЯ АНИМАЦИЯ И ЖУРНАЛЬНАЯ ВЕРСТКА (ВМЕСТЕ С 3D)
+// ПЛАВНАЯ АНИМАЦИЯ И ЖУРНАЛЬНАЯ ВЕРСТКА С ПАРАЛЛАКСОМ
 // =====================================================================
 const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => void }) => {
     const [showUI, setShowUI] = useState(false);
     const [selectedSize, setSelectedSize] = useState<number | null>(null);
 
+    // Ловцы позиции камеры для эффекта параллакса текста
+    const cameraX = useMotionValue(0);
+    const cameraY = useMotionValue(0);
+
+    // Математика параллакса: 
+    // Огромный текст на фоне двигается В ПРОТИВОПОЛОЖНУЮ сторону от камеры (создает глубину)
+    const bgX = useTransform(cameraX, [-10, 10], [100, -100]);
+    const bgY = useTransform(cameraY, [-10, 10], [80, -80]);
+
+    // Текст спереди (Журнальный) двигается В ТУ ЖЕ сторону куда и камера (как будто висит перед кроссовком)
+    const fgX = useTransform(cameraX, [-10, 10], [-40, 40]);
+    const fgY = useTransform(cameraY, [-10, 10], [-30, 30]);
+
     useEffect(() => {
         const timer = setTimeout(() => setShowUI(true), 4000);
         return () => clearTimeout(timer);
     }, []);
+
+    // Умное разделение длинного названия модели на 2 строки для дизайна
+    const nameParts = shoe.name.split(" ");
+    const midIndex = Math.ceil(nameParts.length / 2);
+    const nameLine1 = nameParts.slice(0, midIndex).join(" ");
+    const nameLine2 = nameParts.slice(midIndex).join(" ");
 
     return (
         <motion.div
@@ -163,56 +193,58 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                 animate={{ x: showUI ? "-22.5%" : "0%" }}
                 transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
             >
-                {/* Огромный фоновый текст */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
+                {/* Огромный фоновый текст с параллаксом (ЗА КРОССОВКОМ) */}
+                <motion.div
+                    style={{ x: bgX, y: bgY }}
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden"
+                >
                     <h1 className="text-[28vw] font-black italic text-[#ebebeb] tracking-tighter leading-none whitespace-nowrap select-none">
                         {shoe.bgText}
                     </h1>
-                </div>
+                </motion.div>
 
-                {/* ЖУРНАЛЬНАЯ ТИПОГРАФИКА (Присутствует С САМОГО НАЧАЛА и сдвигается вместе с контейнером) */}
+                {/* ЖУРНАЛЬНАЯ ТИПОГРАФИКА С ПАРАЛЛАКСОМ (ПЕРЕД КРОССОВКОМ) */}
+                {/* Текст теперь висит С САМОЙ ПЕРВОЙ секунды (без AnimatePresence), как ты и просил */}
                 <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 1 }}
+                    style={{ x: fgX, y: fgY }}
                     className="absolute inset-0 z-10 pointer-events-none"
                 >
-                    {/* Левый верхний блок (JUST DO IT) */}
-                    {/* left-[8vw] гарантирует, что после сдвига влево на -22.5%, текст красиво обрежется за левым краем экрана */}
+                    {/* Левый верхний блок (Имя и подзаголовок модели) */}
                     <div className="absolute top-[20%] md:top-[25%] left-[8vw] flex flex-col">
                         <p className="text-[10px] font-bold tracking-[0.3em] uppercase mb-4 text-gray-400 whitespace-nowrap">
-                            YOUR AIR • KEY WORD
+                            COLLECTION • {shoe.category}
                         </p>
-                        <h3 className="text-6xl lg:text-[85px] font-black uppercase leading-[0.85] tracking-tighter text-[#111] whitespace-nowrap">
-                            JUST DO IT<br />
-                            LET'S PLAY<br />
-                            <span style={{ WebkitTextStroke: '2px #111', color: 'transparent' }}>
-                                JUST BE TOGETHER
+                        <h3 className="text-5xl lg:text-[75px] font-black uppercase leading-[0.85] tracking-tighter text-[#111] whitespace-nowrap">
+                            {nameLine1}<br />
+                            {nameLine2}<br />
+                            <span className="text-transparent" style={{ WebkitTextStroke: '1.5px #111' }}>
+                                {shoe.subtitle.toUpperCase()}
                             </span>
                         </h3>
                     </div>
 
-                    {/* Правый нижний блок (Цитата под кроссовком) */}
+                    {/* Правый нижний блок (Динамическая цитата) */}
                     <div className="absolute bottom-[18%] md:bottom-[20%] left-[55%] -translate-x-1/2 text-center md:text-right">
                         <p className="text-base md:text-lg lg:text-2xl font-serif italic text-[#111] leading-snug">
                             The world <br />
                             Had never seen <br />
-                            <span className="font-black not-italic uppercase tracking-tighter">{shoe.bgText} SNEAKER</span><br />
-                            Like it before
+                            <span className="font-black not-italic uppercase tracking-tighter">{shoe.bgText} SNEAKERS</span><br />
+                            Like this before
                         </p>
                     </div>
                 </motion.div>
 
-                {/* 3D СЦЕНА (Внутри того же контейнера) */}
+                {/* 3D СЦЕНА */}
                 <div className="absolute inset-0 z-20">
                     <ModelErrorBoundary>
                         <Canvas shadows camera={{ position: [0, 0, 5], fov: 45 }}>
+                            {/* Незаметный трекер, который связывает камеру и 2D-текст */}
+                            <CameraTracker cameraX={cameraX} cameraY={cameraY} />
                             <CinematicScene shoe={shoe} showUI={showUI} />
                         </Canvas>
                     </ModelErrorBoundary>
                 </div>
 
-                {/* Подсказка Drag to rotate */}
                 <AnimatePresence>
                     {showUI && (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-2 text-gray-400 text-[10px] font-bold tracking-[0.2em] uppercase animate-pulse pointer-events-none z-30">
