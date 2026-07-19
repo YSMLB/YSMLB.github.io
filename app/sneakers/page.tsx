@@ -29,9 +29,6 @@ class ModelErrorBoundary extends React.Component<{ children: React.ReactNode }, 
     }
 }
 
-// =====================================================================
-// КОМПОНЕНТ МОДЕЛИ
-// =====================================================================
 function ShoeModel({ path }: { path: string }) {
     const { scene } = useGLTF(path);
     return <primitive object={scene} />;
@@ -39,24 +36,8 @@ function ShoeModel({ path }: { path: string }) {
 
 // --- ДАННЫЕ ДЛЯ ГЛАВНОГО СЛАЙДЕРА (HERO) ---
 const heroShoes = [
-    {
-        id: 1,
-        title1: "BUILT",
-        title2: "FOR",
-        title3: "FLIGHT",
-        subtitle: "INTRODUCING OUR LIGHTEST\nSHOE EVER",
-        name: "Air Jordan 1",
-        img: "/Jordan1.jpg",
-    },
-    {
-        id: 2,
-        title1: "LUXURY",
-        title2: "MEETS",
-        title3: "STREET",
-        subtitle: "NEW LOUIS VUITTON SKATE\nGREEN / WHITE EDITION",
-        name: "LV Skate Sneaker",
-        img: "/skateGW.jpg",
-    }
+    { id: 1, title1: "BUILT", title2: "FOR", title3: "FLIGHT", subtitle: "INTRODUCING OUR LIGHTEST\nSHOE EVER", name: "Air Jordan 1", img: "/Jordan1.jpg" },
+    { id: 2, title1: "LUXURY", title2: "MEETS", title3: "STREET", subtitle: "NEW LOUIS VUITTON SKATE\nGREEN / WHITE EDITION", name: "LV Skate Sneaker", img: "/skateGW.jpg" }
 ];
 
 // --- ТВОЙ КАТАЛОГ ---
@@ -90,7 +71,7 @@ const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="32" heigh
 
 
 // =====================================================================
-// ВНУТРЕННЯЯ 3D СЦЕНА 
+// ВНУТРЕННЯЯ 3D СЦЕНА (ИДЕАЛЬНЫЙ МАСШТАБ И ТЕНИ)
 // =====================================================================
 const CinematicScene = ({ shoe, showUI }: { shoe: any, showUI: boolean }) => {
     const groupRef = useRef<THREE.Group>(null);
@@ -121,15 +102,16 @@ const CinematicScene = ({ shoe, showUI }: { shoe: any, showUI: boolean }) => {
 
             <group ref={groupRef}>
                 <Suspense fallback={null}>
-                    {/* ФИКС ТЕНЕЙ: margin={1.2} дает пространство. Center с пропом 'bottom' 
-                        принудительно ставит низ подошвы ЛЮБОГО кроссовка ровно в координату Y=0 */}
+                    {/* ФИКС МАСШТАБА: Bounds теперь не видит бесконечную тень, а ориентируется только на модель */}
                     <Bounds fit clip observe margin={1.2}>
+                        {/* Center bottom ставит подошву строго на уровень Y=0 */}
                         <Center bottom>
                             <ShoeModel path={shoe.model} />
                         </Center>
-                        {/* Теперь тень всегда находится ровно под подошвой (на Y=0) */}
-                        <ContactShadows position={[0, 0, 0]} opacity={0.65} scale={10} blur={2.5} far={4} resolution={512} />
                     </Bounds>
+
+                    {/* ФИКС ТЕНИ: Тень вынесена ЗА пределы Bounds, лежит ровно на Y=0 под подошвой */}
+                    <ContactShadows position={[0, 0, 0]} opacity={0.65} scale={10} blur={2.5} far={4} resolution={512} />
                 </Suspense>
             </group>
 
@@ -147,7 +129,7 @@ const CinematicScene = ({ shoe, showUI }: { shoe: any, showUI: boolean }) => {
 
 
 // =====================================================================
-// ПЛАВНАЯ АНИМАЦИЯ И ЖУРНАЛЬНАЯ ВЕРСТКА
+// ПЛАВНАЯ АНИМАЦИЯ И ДИНАМИЧЕСКАЯ ЖУРНАЛЬНАЯ ВЕРСТКА
 // =====================================================================
 const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => void }) => {
     const [showUI, setShowUI] = useState(false);
@@ -157,6 +139,12 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
         const timer = setTimeout(() => setShowUI(true), 4000);
         return () => clearTimeout(timer);
     }, []);
+
+    // Умное разделение длинного названия модели на 2 строки для дизайна
+    const nameParts = shoe.name.split(" ");
+    const midIndex = Math.ceil(nameParts.length / 2);
+    const nameLine1 = nameParts.slice(0, midIndex).join(" ");
+    const nameLine2 = nameParts.slice(midIndex).join(" ");
 
     return (
         <motion.div
@@ -183,11 +171,11 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                 {/* Огромный фоновый текст */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
                     <h1 className="text-[28vw] font-black italic text-[#ebebeb] tracking-tighter leading-none whitespace-nowrap select-none">
-                        {shoe.bgText || shoe.name.split(" ")[0]}
+                        {shoe.bgText}
                     </h1>
                 </div>
 
-                {/* ЖУРНАЛЬНАЯ ТИПОГРАФИКА (Появляется вместе с панелью, висит ЗА кроссовком) */}
+                {/* ДИНАМИЧЕСКАЯ ЖУРНАЛЬНАЯ ТИПОГРАФИКА */}
                 <AnimatePresence>
                     {showUI && (
                         <motion.div
@@ -196,30 +184,34 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                             transition={{ delay: 0.3, duration: 1 }}
                             className="absolute inset-0 z-10 pointer-events-none"
                         >
-                            {/* Левый верхний блок */}
-                            <div className="absolute top-[20%] left-[8%] md:left-[12%]">
-                                <p className="text-[10px] font-bold tracking-[0.3em] uppercase mb-4 text-gray-400">YOUR AIR • KEY WORD</p>
-                                <h3 className="text-4xl lg:text-[60px] font-black uppercase leading-[0.95] tracking-tighter text-[#111]">
-                                    JUST DO IT<br />
-                                    LET'S PLAY<br />
-                                    <span className="text-transparent" style={{ WebkitTextStroke: '1.5px #111' }}>JUST BE TOGETHER</span>
+                            {/* Левый верхний блок (Имя и подзаголовок модели) */}
+                            <div className="absolute top-[20%] left-[8%] md:left-[12%] max-w-[400px]">
+                                <p className="text-[10px] font-bold tracking-[0.3em] uppercase mb-4 text-gray-400">
+                                    COLLECTION • {shoe.category}
+                                </p>
+                                <h3 className="text-4xl lg:text-[55px] font-black uppercase leading-[0.95] tracking-tighter text-[#111] break-words">
+                                    {nameLine1}<br />
+                                    {nameLine2}<br />
+                                    <span className="text-transparent" style={{ WebkitTextStroke: '1.5px #111' }}>
+                                        {shoe.subtitle}
+                                    </span>
                                 </h3>
                             </div>
 
-                            {/* Правый нижний блок (прижат к краю выезжающей панели) */}
-                            <div className="absolute bottom-[25%] right-[48%] md:right-[50%] text-right max-w-xs">
+                            {/* Правый нижний блок (Динамическая цитата) */}
+                            <div className="absolute bottom-[20%] right-[48%] md:right-[50%] text-right max-w-xs">
                                 <p className="text-lg lg:text-2xl font-serif italic text-[#111] leading-snug">
                                     The world <br />
                                     Had never seen <br />
-                                    <span className="font-black not-italic uppercase tracking-tighter">Basketball sneaker</span><br />
-                                    Like it before
+                                    <span className="font-black not-italic uppercase tracking-tighter">{shoe.bgText} sneakers</span><br />
+                                    Like this before
                                 </p>
                             </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
 
-                {/* 3D СЦЕНА (Слой выше текста, чтобы перекрывать буквы) */}
+                {/* 3D СЦЕНА */}
                 <div className="absolute inset-0 z-20">
                     <ModelErrorBoundary>
                         <Canvas shadows camera={{ position: [0, 0, 5], fov: 45 }}>
@@ -228,7 +220,6 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                     </ModelErrorBoundary>
                 </div>
 
-                {/* Подсказка Drag to rotate */}
                 <AnimatePresence>
                     {showUI && (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-2 text-gray-400 text-[10px] font-bold tracking-[0.2em] uppercase animate-pulse pointer-events-none z-30">
