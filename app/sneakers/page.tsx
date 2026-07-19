@@ -56,15 +56,6 @@ const heroShoes = [
         subtitle: "NEW LOUIS VUITTON SKATE\nGREEN / WHITE EDITION",
         name: "LV Skate Sneaker",
         img: "/skateGW.jpg",
-    },
-    {
-        id: 3,
-        title1: "MAXIMUM",
-        title2: "AIR",
-        title3: "IMPACT",
-        subtitle: "NIKE AIR MORE UPTEMPO '96\nBOLD AND UNAPOLOGETIC",
-        name: "Air More Uptempo",
-        img: "/uptempo96.jpg",
     }
 ];
 
@@ -78,12 +69,10 @@ const initialCatalogShoes = [
     { id: 8, name: "Air Jordan 4 Retro", subtitle: "Military Black", price: "210.00", category: "MEN", isSale: false, bgText: "JORDAN 4", img: "/AirJordan4Retro.jpg", model: "/models/8.glb" },
     { id: 9, name: "Nike tc 7900", subtitle: "Sunset", price: "175.00", category: "MEN", isSale: true, bgText: "TC", img: "/NikeAirMaxPlus.jpg", model: "/models/9.glb" },
     { id: 10, name: "Nike Blazer Mid '77", subtitle: "Vintage White", price: "105.00", category: "WOMEN", isSale: false, bgText: "BLAZER", img: "/NikeBlazerMid77.jpg", model: "/models/10.glb" },
-
     { id: 12, name: "Nike Air Mag", subtitle: "Cobblestone", price: "160.00", category: "MEN", isSale: true, bgText: "MAG", img: "/NikeZoomVomero5.jpg", model: "/models/12.glb" },
     { id: 13, name: "Nike Air Max 720", subtitle: "Triple Black", price: "160.00", category: "KIDS", isSale: false, bgText: "AIR MAX", img: "/NikeAirMax270.jpg", model: "/models/13.glb" },
     { id: 14, name: "Air Jordan 1 Retro", subtitle: "White Cement", price: "200.00", category: "KIDS", isSale: false, bgText: "JORDAN 1", img: "/AirJordan3Retro.jpg", model: "/models/14.glb" },
     { id: 15, name: "Nike React Presto", subtitle: "Wolf Grey", price: "210.00", category: "MEN", isSale: false, bgText: "REACT PRESTO", img: "/NikeAirVaporMaxPlus.jpg", model: "/models/15.glb" },
-
 ];
 
 initialCatalogShoes.forEach((shoe) => {
@@ -101,23 +90,20 @@ const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="32" heigh
 
 
 // =====================================================================
-// ВНУТРЕННЯЯ 3D СЦЕНА (С ИДЕАЛЬНОЙ ОСТАНОВКОЙ КАДРА)
+// ВНУТРЕННЯЯ 3D СЦЕНА 
 // =====================================================================
 const CinematicScene = ({ shoe, showUI }: { shoe: any, showUI: boolean }) => {
     const groupRef = useRef<THREE.Group>(null);
 
     useEffect(() => {
-        // -1.0 радиан - это тот самый идеальный угол 3/4 профиля с твоего скрина.
         const targetAngle = -1.0;
-        // Добавляем полтора оборота (Math.PI * 3), чтобы кроссовок красиво раскрутился перед остановкой
         const startAngle = targetAngle + Math.PI * 3;
 
         if (groupRef.current) {
-            // Ручная математическая анимация (без тупого рандомного autoRotate)
             const controls = animate(startAngle, targetAngle, {
                 type: "tween",
-                duration: 4, // Ровно 4 секунды как и таймер появления UI
-                ease: [0.16, 1, 0.3, 1], // Топовое кинематографичное замедление в конце
+                duration: 4,
+                ease: [0.16, 1, 0.3, 1],
                 onUpdate: (v) => {
                     if (groupRef.current) groupRef.current.rotation.y = v;
                 }
@@ -135,18 +121,21 @@ const CinematicScene = ({ shoe, showUI }: { shoe: any, showUI: boolean }) => {
 
             <group ref={groupRef}>
                 <Suspense fallback={null}>
+                    {/* ФИКС ТЕНЕЙ: margin={1.2} дает пространство. Center с пропом 'bottom' 
+                        принудительно ставит низ подошвы ЛЮБОГО кроссовка ровно в координату Y=0 */}
                     <Bounds fit clip observe margin={1.2}>
-                        <Center>
+                        <Center bottom>
                             <ShoeModel path={shoe.model} />
                         </Center>
+                        {/* Теперь тень всегда находится ровно под подошвой (на Y=0) */}
+                        <ContactShadows position={[0, 0, 0]} opacity={0.65} scale={10} blur={2.5} far={4} resolution={512} />
                     </Bounds>
                 </Suspense>
-                <ContactShadows position={[0, -1.2, 0]} opacity={0.5} scale={10} blur={2.5} far={4} />
             </group>
 
             <OrbitControls
                 makeDefault
-                enableRotate={showUI} // Юзер может крутить ТОЛЬКО когда выехала панель (чтобы не сломать интро)
+                enableRotate={showUI}
                 enableZoom={showUI}
                 enablePan={false}
                 minPolarAngle={Math.PI / 2}
@@ -158,7 +147,7 @@ const CinematicScene = ({ shoe, showUI }: { shoe: any, showUI: boolean }) => {
 
 
 // =====================================================================
-// ПЛАВНАЯ АНИМАЦИЯ ПРОСМОТРА ТОВАРА
+// ПЛАВНАЯ АНИМАЦИЯ И ЖУРНАЛЬНАЯ ВЕРСТКА
 // =====================================================================
 const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => void }) => {
     const [showUI, setShowUI] = useState(false);
@@ -184,20 +173,54 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                 <Link href="/cart" target="_blank" className="hover:opacity-50 transition-opacity text-[#111]"><BagIcon /></Link>
             </header>
 
-            {/* БЛОК С КРОССОВКОМ И ТЕКСТОМ (Сдвигается влево как единое целое) */}
+            {/* ОСНОВНОЙ БЛОК (Сдвигается влево как единое целое) */}
             <motion.div
                 className="absolute inset-0 z-10 pointer-events-auto"
                 initial={{ x: "0%" }}
                 animate={{ x: showUI ? "-22.5%" : "0%" }}
                 transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
             >
+                {/* Огромный фоновый текст */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
                     <h1 className="text-[28vw] font-black italic text-[#ebebeb] tracking-tighter leading-none whitespace-nowrap select-none">
                         {shoe.bgText || shoe.name.split(" ")[0]}
                     </h1>
                 </div>
 
-                <div className="absolute inset-0 z-10">
+                {/* ЖУРНАЛЬНАЯ ТИПОГРАФИКА (Появляется вместе с панелью, висит ЗА кроссовком) */}
+                <AnimatePresence>
+                    {showUI && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.3, duration: 1 }}
+                            className="absolute inset-0 z-10 pointer-events-none"
+                        >
+                            {/* Левый верхний блок */}
+                            <div className="absolute top-[20%] left-[8%] md:left-[12%]">
+                                <p className="text-[10px] font-bold tracking-[0.3em] uppercase mb-4 text-gray-400">YOUR AIR • KEY WORD</p>
+                                <h3 className="text-4xl lg:text-[60px] font-black uppercase leading-[0.95] tracking-tighter text-[#111]">
+                                    JUST DO IT<br />
+                                    LET'S PLAY<br />
+                                    <span className="text-transparent" style={{ WebkitTextStroke: '1.5px #111' }}>JUST BE TOGETHER</span>
+                                </h3>
+                            </div>
+
+                            {/* Правый нижний блок (прижат к краю выезжающей панели) */}
+                            <div className="absolute bottom-[25%] right-[48%] md:right-[50%] text-right max-w-xs">
+                                <p className="text-lg lg:text-2xl font-serif italic text-[#111] leading-snug">
+                                    The world <br />
+                                    Had never seen <br />
+                                    <span className="font-black not-italic uppercase tracking-tighter">Basketball sneaker</span><br />
+                                    Like it before
+                                </p>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* 3D СЦЕНА (Слой выше текста, чтобы перекрывать буквы) */}
+                <div className="absolute inset-0 z-20">
                     <ModelErrorBoundary>
                         <Canvas shadows camera={{ position: [0, 0, 5], fov: 45 }}>
                             <CinematicScene shoe={shoe} showUI={showUI} />
@@ -205,9 +228,10 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                     </ModelErrorBoundary>
                 </div>
 
+                {/* Подсказка Drag to rotate */}
                 <AnimatePresence>
                     {showUI && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-2 text-gray-400 text-[10px] font-bold tracking-[0.2em] uppercase animate-pulse pointer-events-none z-20">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-2 text-gray-400 text-[10px] font-bold tracking-[0.2em] uppercase animate-pulse pointer-events-none z-30">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /><path d="M12 19l-7-7 7-7" /></svg>
                             Drag to rotate
                         </motion.div>
@@ -224,7 +248,7 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                         exit={{ x: "100%" }}
                         transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
                         onClick={(e) => e.stopPropagation()}
-                        className="absolute right-0 top-0 h-full w-[45%] z-30 flex flex-col justify-center px-10 lg:px-20 bg-white/95 backdrop-blur-xl shadow-[-20px_0_50px_rgba(0,0,0,0.03)] pointer-events-auto border-l border-gray-100"
+                        className="absolute right-0 top-0 h-full w-[45%] z-40 flex flex-col justify-center px-10 lg:px-20 bg-white/95 backdrop-blur-xl shadow-[-30px_0_60px_rgba(0,0,0,0.05)] pointer-events-auto border-l border-gray-100"
                     >
                         <p className="text-gray-400 font-bold text-[10px] tracking-[0.15em] uppercase mb-2">{shoe.subtitle}</p>
                         <h2 className="text-5xl lg:text-[70px] font-black italic uppercase leading-[0.9] tracking-tighter mb-4 text-[#111]">{shoe.name}</h2>
