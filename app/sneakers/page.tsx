@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, Suspense, useEffect, useRef } from "react";
-import { motion, AnimatePresence, animate, useMotionValue, useTransform } from "framer-motion";
+import { motion, AnimatePresence, animate } from "framer-motion";
 import Link from "next/link";
 import * as THREE from "three";
 
 // --- 3D ИМПОРТЫ ---
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas } from "@react-three/fiber";
 import { OrbitControls, useGLTF, Environment, ContactShadows, Bounds, Center, Html } from "@react-three/drei";
 
 // =====================================================================
@@ -33,19 +33,6 @@ function ShoeModel({ path }: { path: string }) {
     const { scene } = useGLTF(path);
     return <primitive object={scene} />;
 }
-
-// =====================================================================
-// 3D ТРЕКЕР КАМЕРЫ ДЛЯ ПАРАЛЛАКСА ТЕКСТА
-// =====================================================================
-// Этот компонент сидит внутри Canvas и каждую долю секунды передает 
-// координаты камеры в Framer Motion, чтобы 2D-текст двигался вместе с 3D-моделью
-const CameraTracker = ({ cameraX, cameraY }: { cameraX: any, cameraY: any }) => {
-    useFrame(({ camera }) => {
-        cameraX.set(camera.position.x);
-        cameraY.set(camera.position.y);
-    });
-    return null;
-};
 
 // --- ДАННЫЕ ДЛЯ ГЛАВНОГО СЛАЙДЕРА (HERO) ---
 const heroShoes = [
@@ -84,7 +71,7 @@ const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="32" heigh
 
 
 // =====================================================================
-// ВНУТРЕННЯЯ 3D СЦЕНА (ИДЕАЛЬНЫЙ МАСШТАБ И ФИКС ТЕНЕЙ)
+// ВНУТРЕННЯЯ 3D СЦЕНА 
 // =====================================================================
 const CinematicScene = ({ shoe, showUI }: { shoe: any, showUI: boolean }) => {
     const groupRef = useRef<THREE.Group>(null);
@@ -115,13 +102,11 @@ const CinematicScene = ({ shoe, showUI }: { shoe: any, showUI: boolean }) => {
 
             <group ref={groupRef}>
                 <Suspense fallback={null}>
-                    {/* ФИКС МАСШТАБА: Bounds теперь учитывает ТОЛЬКО саму модель */}
                     <Bounds fit clip observe margin={1.2}>
                         <Center bottom precise>
                             <ShoeModel path={shoe.model} />
                         </Center>
                     </Bounds>
-                    {/* ФИКС ТЕНИ: Лежит ровно на Y=0 */}
                     <ContactShadows position={[0, 0, 0]} opacity={0.7} scale={8} blur={2.5} far={3} resolution={1024} />
                 </Suspense>
             </group>
@@ -131,7 +116,6 @@ const CinematicScene = ({ shoe, showUI }: { shoe: any, showUI: boolean }) => {
                 enableRotate={showUI}
                 enableZoom={showUI}
                 enablePan={false}
-                // Даем крошечную свободу по вертикали (Y), чтобы работал параллакс вверх-вниз
                 minPolarAngle={Math.PI / 2 - 0.15}
                 maxPolarAngle={Math.PI / 2 + 0.15}
             />
@@ -141,35 +125,24 @@ const CinematicScene = ({ shoe, showUI }: { shoe: any, showUI: boolean }) => {
 
 
 // =====================================================================
-// ПЛАВНАЯ АНИМАЦИЯ И ЖУРНАЛЬНАЯ ВЕРСТКА С ПАРАЛЛАКСОМ
+// ПЛАВНАЯ АНИМАЦИЯ И БЕСКОНЕЧНАЯ БЕГУЩАЯ СТРОКА
 // =====================================================================
 const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => void }) => {
     const [showUI, setShowUI] = useState(false);
     const [selectedSize, setSelectedSize] = useState<number | null>(null);
-
-    // Ловцы позиции камеры для эффекта параллакса текста
-    const cameraX = useMotionValue(0);
-    const cameraY = useMotionValue(0);
-
-    // Математика параллакса: 
-    // Огромный текст на фоне двигается В ПРОТИВОПОЛОЖНУЮ сторону от камеры (создает глубину)
-    const bgX = useTransform(cameraX, [-10, 10], [100, -100]);
-    const bgY = useTransform(cameraY, [-10, 10], [80, -80]);
-
-    // Текст спереди (Журнальный) двигается В ТУ ЖЕ сторону куда и камера (как будто висит перед кроссовком)
-    const fgX = useTransform(cameraX, [-10, 10], [-40, 40]);
-    const fgY = useTransform(cameraY, [-10, 10], [-30, 30]);
 
     useEffect(() => {
         const timer = setTimeout(() => setShowUI(true), 4000);
         return () => clearTimeout(timer);
     }, []);
 
-    // Умное разделение длинного названия модели на 2 строки для дизайна
     const nameParts = shoe.name.split(" ");
     const midIndex = Math.ceil(nameParts.length / 2);
     const nameLine1 = nameParts.slice(0, midIndex).join(" ");
     const nameLine2 = nameParts.slice(midIndex).join(" ");
+
+    // Формируем паттерн для бегущей строки, чтобы не было пустот
+    const repeatText = `${shoe.bgText} \u00A0\u00A0\u00A0 ${shoe.bgText} \u00A0\u00A0\u00A0 ${shoe.bgText} \u00A0\u00A0\u00A0 `;
 
     return (
         <motion.div
@@ -188,25 +161,35 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
 
             {/* ОСНОВНОЙ КОНТЕЙНЕР (Сдвигается влево как единое целое вместе со всем текстом) */}
             <motion.div
-                className="absolute inset-0 z-10 pointer-events-auto"
+                className="absolute inset-0 z-10 pointer-events-auto overflow-hidden"
                 initial={{ x: "0%" }}
                 animate={{ x: showUI ? "-22.5%" : "0%" }}
                 transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
             >
-                {/* Огромный фоновый текст с параллаксом (ЗА КРОССОВКОМ) */}
-                <motion.div
-                    style={{ x: bgX, y: bgY }}
-                    className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden"
-                >
-                    <h1 className="text-[28vw] font-black italic text-[#ebebeb] tracking-tighter leading-none whitespace-nowrap select-none">
-                        {shoe.bgText}
-                    </h1>
-                </motion.div>
+                {/* =========================================================== */}
+                {/* БЕСКОНЕЧНАЯ БЕГУЩАЯ СТРОКА НА ЗАДНЕМ ФОНЕ (MARQUEE) */}
+                {/* =========================================================== */}
+                <div className="absolute inset-0 flex items-center z-0 pointer-events-none w-[200%]">
+                    <motion.div
+                        className="flex whitespace-nowrap"
+                        animate={{ x: ["0%", "-50%"] }} // Едет ровно на половину своей длины и сбрасывается
+                        transition={{ repeat: Infinity, duration: 30, ease: "linear" }}
+                    >
+                        {/* Два абсолютно одинаковых блока для бесшовной склейки */}
+                        <h1 className="text-[28vw] font-black italic text-[#ebebeb] tracking-tighter leading-none select-none">
+                            {repeatText}
+                        </h1>
+                        <h1 className="text-[28vw] font-black italic text-[#ebebeb] tracking-tighter leading-none select-none">
+                            {repeatText}
+                        </h1>
+                    </motion.div>
+                </div>
 
-                {/* ЖУРНАЛЬНАЯ ТИПОГРАФИКА С ПАРАЛЛАКСОМ (ПЕРЕД КРОССОВКОМ) */}
-                {/* Текст теперь висит С САМОЙ ПЕРВОЙ секунды (без AnimatePresence), как ты и просил */}
+                {/* ЖУРНАЛЬНАЯ ТИПОГРАФИКА (Спереди. Статична относительно левого края) */}
                 <motion.div
-                    style={{ x: fgX, y: fgY }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 1 }}
                     className="absolute inset-0 z-10 pointer-events-none"
                 >
                     {/* Левый верхний блок (Имя и подзаголовок модели) */}
@@ -238,8 +221,6 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                 <div className="absolute inset-0 z-20">
                     <ModelErrorBoundary>
                         <Canvas shadows camera={{ position: [0, 0, 5], fov: 45 }}>
-                            {/* Незаметный трекер, который связывает камеру и 2D-текст */}
-                            <CameraTracker cameraX={cameraX} cameraY={cameraY} />
                             <CinematicScene shoe={shoe} showUI={showUI} />
                         </Canvas>
                     </ModelErrorBoundary>
