@@ -125,7 +125,50 @@ const CinematicScene = ({ shoe, showUI }: { shoe: any, showUI: boolean }) => {
 
 
 // =====================================================================
-// ПЛАВНАЯ АНИМАЦИЯ И БЕСКОНЕЧНАЯ БЕГУЩАЯ СТРОКА НА FRAMER MOTION
+// ЯДЕРНЫЙ ВАРИАНТ: БЕГУЩАЯ СТРОКА НА ЧИСТОМ JS (requestAnimationFrame)
+// =====================================================================
+const NativeMarquee = ({ text }: { text: string }) => {
+    const textRef = useRef<HTMLDivElement>(null);
+    const pos = useRef(0);
+
+    useEffect(() => {
+        let reqId: number;
+        const step = () => {
+            // Скорость. Можешь менять это значение (чем больше, тем быстрее бежит)
+            pos.current -= 0.05;
+
+            // Если сдвинулись ровно на половину контейнера — незаметно прыгаем в начало (идеальный луп)
+            if (pos.current <= -50) pos.current = 0;
+
+            // Напрямую дергаем DOM, в обход React. Это гарантирует 60 FPS
+            if (textRef.current) {
+                textRef.current.style.transform = `translateX(${pos.current}%)`;
+            }
+            reqId = requestAnimationFrame(step);
+        };
+        reqId = requestAnimationFrame(step);
+        return () => cancelAnimationFrame(reqId);
+    }, []);
+
+    const repeatText = `${text} \u00A0\u00A0\u00A0 ${text} \u00A0\u00A0\u00A0 ${text} \u00A0\u00A0\u00A0 `;
+
+    return (
+        <div className="absolute inset-0 z-0 flex items-center overflow-hidden pointer-events-none">
+            <div ref={textRef} className="flex whitespace-nowrap w-max will-change-transform">
+                <h1 className="text-[30vw] font-black italic text-[#ebebeb] tracking-tighter leading-none select-none">
+                    {repeatText}
+                </h1>
+                <h1 className="text-[30vw] font-black italic text-[#ebebeb] tracking-tighter leading-none select-none">
+                    {repeatText}
+                </h1>
+            </div>
+        </div>
+    );
+};
+
+
+// =====================================================================
+// ПЛАВНАЯ АНИМАЦИЯ ПОЯВЛЕНИЯ
 // =====================================================================
 const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => void }) => {
     const [showUI, setShowUI] = useState(false);
@@ -140,9 +183,6 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
     const midIndex = Math.ceil(nameParts.length / 2);
     const nameLine1 = nameParts.slice(0, midIndex).join(" ");
     const nameLine2 = nameParts.slice(midIndex).join(" ");
-
-    // Формируем блок текста, который будем дублировать для бегущей строки
-    const repeatText = `${shoe.bgText} \u00A0\u00A0\u00A0 ${shoe.bgText} \u00A0\u00A0\u00A0 ${shoe.bgText} \u00A0\u00A0\u00A0 `;
 
     return (
         <motion.div
@@ -166,30 +206,10 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                 animate={{ x: showUI ? "-22.5%" : "0%" }}
                 transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
             >
-                {/* =========================================================== */}
-                {/* БЕСКОНЕЧНАЯ БЕГУЩАЯ СТРОКА НА FRAMER MOTION */}
-                {/* =========================================================== */}
-                <div className="absolute inset-0 z-0 flex items-center overflow-hidden pointer-events-none">
-                    <motion.div
-                        className="flex whitespace-nowrap w-max"
-                        animate={{ x: ["0%", "-50%"] }} // Двигаем ровно на 50% и сбрасываем, создавая идеальный луп
-                        transition={{
-                            repeat: Infinity,
-                            ease: "linear",
-                            duration: 20, // Скорость бегущей строки (чем больше, тем медленнее)
-                        }}
-                    >
-                        {/* Два абсолютно одинаковых блока h1 для бесшовной склейки */}
-                        <h1 className="text-[30vw] font-black italic text-[#ebebeb] tracking-tighter leading-none select-none">
-                            {repeatText}
-                        </h1>
-                        <h1 className="text-[30vw] font-black italic text-[#ebebeb] tracking-tighter leading-none select-none">
-                            {repeatText}
-                        </h1>
-                    </motion.div>
-                </div>
+                {/* 100% РАБОЧАЯ БЕГУЩАЯ СТРОКА НА ЗАДНЕМ ФОНЕ */}
+                <NativeMarquee text={shoe.bgText} />
 
-                {/* ЖУРНАЛЬНАЯ ТИПОГРАФИКА (Спереди. Статична относительно левого края) */}
+                {/* ЖУРНАЛЬНАЯ ТИПОГРАФИКА НА ПЕРЕДНЕМ ПЛАНЕ */}
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
