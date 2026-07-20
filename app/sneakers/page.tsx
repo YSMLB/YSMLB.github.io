@@ -141,9 +141,6 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
     const nameLine1 = nameParts.slice(0, midIndex).join(" ");
     const nameLine2 = nameParts.slice(midIndex).join(" ");
 
-    // Формируем паттерн для бегущей строки, чтобы не было пустот
-    const repeatText = `${shoe.bgText} \u00A0\u00A0\u00A0 ${shoe.bgText} \u00A0\u00A0\u00A0 ${shoe.bgText} \u00A0\u00A0\u00A0 `;
-
     return (
         <motion.div
             initial={{ opacity: 0 }}
@@ -152,6 +149,19 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
             className="fixed inset-0 z-[120] bg-[#fafafa] overflow-hidden flex flex-col"
             onClick={() => setShowUI(true)}
         >
+            {/* CSS для железобетонной бегущей строки (GPU-акселерация, не зависит от JS) */}
+            <style>{`
+                @keyframes marquee {
+                    0% { transform: translateX(0); }
+                    100% { transform: translateX(-50%); }
+                }
+                .css-marquee-container {
+                    display: flex;
+                    width: max-content;
+                    animation: marquee 20s linear infinite;
+                }
+            `}</style>
+
             <header className="absolute top-0 left-0 w-full px-6 md:px-12 py-8 flex justify-between items-center z-50 pointer-events-auto">
                 <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="flex items-center gap-2 font-black uppercase tracking-widest text-[11px] hover:text-gray-500 transition-colors text-[#111]">
                     <ArrowLeft /> BACK TO CATALOG
@@ -159,7 +169,7 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                 <Link href="/cart" target="_blank" className="hover:opacity-50 transition-opacity text-[#111]"><BagIcon /></Link>
             </header>
 
-            {/* ОСНОВНОЙ КОНТЕЙНЕР (Сдвигается влево как единое целое вместе со всем текстом) */}
+            {/* ОСНОВНОЙ КОНТЕЙНЕР (Сдвигается влево когда выезжает меню) */}
             <motion.div
                 className="absolute inset-0 z-10 pointer-events-auto overflow-hidden"
                 initial={{ x: "0%" }}
@@ -167,32 +177,36 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                 transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
             >
                 {/* =========================================================== */}
-                {/* БЕСКОНЕЧНАЯ БЕГУЩАЯ СТРОКА НА ЗАДНЕМ ФОНЕ (MARQUEE) */}
+                {/* ЧИСТЫЙ CSS MARQUEE - БУДЕТ КРУТИТЬСЯ БЕЗ ОСТАНОВОК */}
                 {/* =========================================================== */}
-                <div className="absolute inset-0 flex items-center z-0 pointer-events-none w-[200%]">
-                    <motion.div
-                        className="flex whitespace-nowrap"
-                        animate={{ x: ["0%", "-50%"] }} // Едет ровно на половину своей длины и сбрасывается
-                        transition={{ repeat: Infinity, duration: 30, ease: "linear" }}
-                    >
-                        {/* Два абсолютно одинаковых блока для бесшовной склейки */}
-                        <h1 className="text-[28vw] font-black italic text-[#ebebeb] tracking-tighter leading-none select-none">
-                            {repeatText}
-                        </h1>
-                        <h1 className="text-[28vw] font-black italic text-[#ebebeb] tracking-tighter leading-none select-none">
-                            {repeatText}
-                        </h1>
-                    </motion.div>
+                <div className="absolute inset-0 flex items-center z-0 pointer-events-none overflow-hidden">
+                    <div className="css-marquee-container">
+                        {/* Первая половина слов */}
+                        <div className="flex shrink-0">
+                            {[...Array(5)].map((_, i) => (
+                                <h1 key={`a-${i}`} className="text-[28vw] font-black italic text-[#ebebeb] tracking-tighter leading-none select-none pr-12">
+                                    {shoe.bgText}
+                                </h1>
+                            ))}
+                        </div>
+                        {/* Вторая половина слов (копия для бесшовной склейки) */}
+                        <div className="flex shrink-0">
+                            {[...Array(5)].map((_, i) => (
+                                <h1 key={`b-${i}`} className="text-[28vw] font-black italic text-[#ebebeb] tracking-tighter leading-none select-none pr-12">
+                                    {shoe.bgText}
+                                </h1>
+                            ))}
+                        </div>
+                    </div>
                 </div>
 
-                {/* ЖУРНАЛЬНАЯ ТИПОГРАФИКА (Спереди. Статична относительно левого края) */}
+                {/* ЖУРНАЛЬНАЯ ТИПОГРАФИКА НА ПЕРЕДНЕМ ПЛАНЕ */}
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 1 }}
                     className="absolute inset-0 z-10 pointer-events-none"
                 >
-                    {/* Левый верхний блок (Имя и подзаголовок модели) */}
                     <div className="absolute top-[20%] md:top-[25%] left-[8vw] flex flex-col">
                         <p className="text-[10px] font-bold tracking-[0.3em] uppercase mb-4 text-gray-400 whitespace-nowrap">
                             COLLECTION • {shoe.category}
@@ -206,7 +220,6 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                         </h3>
                     </div>
 
-                    {/* Правый нижний блок (Динамическая цитата) */}
                     <div className="absolute bottom-[18%] md:bottom-[20%] left-[55%] -translate-x-1/2 text-center md:text-right">
                         <p className="text-base md:text-lg lg:text-2xl font-serif italic text-[#111] leading-snug">
                             The world <br />
