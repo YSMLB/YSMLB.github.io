@@ -125,7 +125,7 @@ const CinematicScene = ({ shoe, showUI }: { shoe: any, showUI: boolean }) => {
 
 
 // =====================================================================
-// ПЛАВНАЯ АНИМАЦИЯ И БЕСКОНЕЧНАЯ БЕГУЩАЯ СТРОКА
+// ПЛАВНАЯ АНИМАЦИЯ И БЕСКОНЕЧНАЯ БЕГУЩАЯ СТРОКА НА FRAMER MOTION
 // =====================================================================
 const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => void }) => {
     const [showUI, setShowUI] = useState(false);
@@ -141,6 +141,9 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
     const nameLine1 = nameParts.slice(0, midIndex).join(" ");
     const nameLine2 = nameParts.slice(midIndex).join(" ");
 
+    // Формируем блок текста, который будем дублировать для бегущей строки
+    const repeatText = `${shoe.bgText} \u00A0\u00A0\u00A0 ${shoe.bgText} \u00A0\u00A0\u00A0 ${shoe.bgText} \u00A0\u00A0\u00A0 `;
+
     return (
         <motion.div
             initial={{ opacity: 0 }}
@@ -149,19 +152,6 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
             className="fixed inset-0 z-[120] bg-[#fafafa] overflow-hidden flex flex-col"
             onClick={() => setShowUI(true)}
         >
-            {/* CSS для железобетонной бегущей строки (GPU-акселерация, не зависит от JS) */}
-            <style>{`
-                @keyframes marquee {
-                    0% { transform: translateX(0); }
-                    100% { transform: translateX(-50%); }
-                }
-                .css-marquee-container {
-                    display: flex;
-                    width: max-content;
-                    animation: marquee 20s linear infinite;
-                }
-            `}</style>
-
             <header className="absolute top-0 left-0 w-full px-6 md:px-12 py-8 flex justify-between items-center z-50 pointer-events-auto">
                 <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="flex items-center gap-2 font-black uppercase tracking-widest text-[11px] hover:text-gray-500 transition-colors text-[#111]">
                     <ArrowLeft /> BACK TO CATALOG
@@ -169,7 +159,7 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                 <Link href="/cart" target="_blank" className="hover:opacity-50 transition-opacity text-[#111]"><BagIcon /></Link>
             </header>
 
-            {/* ОСНОВНОЙ КОНТЕЙНЕР (Сдвигается влево когда выезжает меню) */}
+            {/* ОСНОВНОЙ КОНТЕЙНЕР (Сдвигается влево как единое целое вместе со всем текстом) */}
             <motion.div
                 className="absolute inset-0 z-10 pointer-events-auto overflow-hidden"
                 initial={{ x: "0%" }}
@@ -177,30 +167,29 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                 transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
             >
                 {/* =========================================================== */}
-                {/* ЧИСТЫЙ CSS MARQUEE - БУДЕТ КРУТИТЬСЯ БЕЗ ОСТАНОВОК */}
+                {/* БЕСКОНЕЧНАЯ БЕГУЩАЯ СТРОКА НА FRAMER MOTION */}
                 {/* =========================================================== */}
-                <div className="absolute inset-0 flex items-center z-0 pointer-events-none overflow-hidden">
-                    <div className="css-marquee-container">
-                        {/* Первая половина слов */}
-                        <div className="flex shrink-0">
-                            {[...Array(5)].map((_, i) => (
-                                <h1 key={`a-${i}`} className="text-[28vw] font-black italic text-[#ebebeb] tracking-tighter leading-none select-none pr-12">
-                                    {shoe.bgText}
-                                </h1>
-                            ))}
-                        </div>
-                        {/* Вторая половина слов (копия для бесшовной склейки) */}
-                        <div className="flex shrink-0">
-                            {[...Array(5)].map((_, i) => (
-                                <h1 key={`b-${i}`} className="text-[28vw] font-black italic text-[#ebebeb] tracking-tighter leading-none select-none pr-12">
-                                    {shoe.bgText}
-                                </h1>
-                            ))}
-                        </div>
-                    </div>
+                <div className="absolute inset-0 z-0 flex items-center overflow-hidden pointer-events-none">
+                    <motion.div
+                        className="flex whitespace-nowrap w-max"
+                        animate={{ x: ["0%", "-50%"] }} // Двигаем ровно на 50% и сбрасываем, создавая идеальный луп
+                        transition={{
+                            repeat: Infinity,
+                            ease: "linear",
+                            duration: 20, // Скорость бегущей строки (чем больше, тем медленнее)
+                        }}
+                    >
+                        {/* Два абсолютно одинаковых блока h1 для бесшовной склейки */}
+                        <h1 className="text-[30vw] font-black italic text-[#ebebeb] tracking-tighter leading-none select-none">
+                            {repeatText}
+                        </h1>
+                        <h1 className="text-[30vw] font-black italic text-[#ebebeb] tracking-tighter leading-none select-none">
+                            {repeatText}
+                        </h1>
+                    </motion.div>
                 </div>
 
-                {/* ЖУРНАЛЬНАЯ ТИПОГРАФИКА НА ПЕРЕДНЕМ ПЛАНЕ */}
+                {/* ЖУРНАЛЬНАЯ ТИПОГРАФИКА (Спереди. Статична относительно левого края) */}
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
