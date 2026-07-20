@@ -6,13 +6,10 @@ import Link from "next/link";
 import Image from "next/image";
 import * as THREE from "three";
 
-// --- 3D ИМПОРТЫ ---
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, useGLTF, Environment, ContactShadows, Bounds, Center, Html } from "@react-three/drei";
 
-// =====================================================================
-// ПРЕДОХРАНИТЕЛЬ: Защита от черного экрана
-// =====================================================================
+// Error boundary for missing .glb files
 class ModelErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
     constructor(props: any) { super(props); this.state = { hasError: false }; }
     static getDerivedStateFromError() { return { hasError: true }; }
@@ -21,7 +18,7 @@ class ModelErrorBoundary extends React.Component<{ children: React.ReactNode }, 
             return (
                 <Html center>
                     <div className="bg-red-500/10 border border-red-500 text-red-500 px-6 py-3 rounded-lg font-black tracking-widest text-[10px] uppercase text-center backdrop-blur-md">
-                        Error<br />Model file not found
+                        Model Not Found
                     </div>
                 </Html>
             );
@@ -35,7 +32,7 @@ function ShoeModel({ path }: { path: string }) {
     return <primitive object={scene} />;
 }
 
-// --- ДАННЫЕ ---
+// Mock data
 const heroShoes = [
     { id: 1, title1: "BUILT", title2: "FOR", title3: "FLIGHT", subtitle: "INTRODUCING OUR LIGHTEST\nSHOE EVER", name: "Air Jordan 1", img: "/Jordan1.jpg" },
     { id: 2, title1: "LUXURY", title2: "MEETS", title3: "STREET", subtitle: "NEW LOUIS VUITTON SKATE\nGREEN / WHITE EDITION", name: "LV Skate Sneaker", img: "/skateGW.jpg" }
@@ -60,7 +57,7 @@ initialCatalogShoes.forEach((shoe) => {
     if (shoe.model) useGLTF.preload(shoe.model);
 });
 
-// --- ИКОНКИ ---
+// UI Assets
 const SearchIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>;
 const BagIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>;
 const UserIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>;
@@ -69,9 +66,7 @@ const ArrowRight = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" heig
 const ArrowRightLong = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>;
 const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>;
 
-// =====================================================================
-// ОПТИМИЗИРОВАННАЯ ВНУТРЕННЯЯ 3D СЦЕНА 
-// =====================================================================
+// WebGL Scene
 const CinematicScene = ({ shoe, showUI, isMobile }: { shoe: any, showUI: boolean, isMobile: boolean }) => {
     const groupRef = useRef<THREE.Group>(null);
 
@@ -106,7 +101,7 @@ const CinematicScene = ({ shoe, showUI, isMobile }: { shoe: any, showUI: boolean
                             <ShoeModel path={shoe.model} />
                         </Center>
                     </Bounds>
-                    {/* Режем качество теней на мобилках для FPS */}
+                    {/* Reduce shadow resolution on mobile to save frames */}
                     <ContactShadows position={[0, 0, 0]} opacity={0.7} scale={8} blur={2.5} far={3} resolution={isMobile ? 256 : 1024} />
                 </Suspense>
             </group>
@@ -123,9 +118,7 @@ const CinematicScene = ({ shoe, showUI, isMobile }: { shoe: any, showUI: boolean
     );
 };
 
-// =====================================================================
-// АДАПТИВНАЯ ПЛАВНАЯ АНИМАЦИЯ ПОЯВЛЕНИЯ
-// =====================================================================
+// Overlay layout
 const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => void }) => {
     const [showUI, setShowUI] = useState(false);
     const [selectedSize, setSelectedSize] = useState<number | null>(null);
@@ -165,7 +158,6 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                 <Link href="/cart" target="_blank" className="hover:opacity-50 transition-opacity text-[#111]"><BagIcon /></Link>
             </header>
 
-            {/* ОСНОВНОЙ КОНТЕЙНЕР (Сдвигается влево на десктопе, вверх на мобилке) */}
             <motion.div
                 className="absolute inset-0 z-10 pointer-events-auto overflow-hidden"
                 initial={{ x: "0%", y: "0%" }}
@@ -175,7 +167,7 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                 }}
                 transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
             >
-                {/* ЖЕЛЕЗОБЕТОННАЯ БЕГУЩАЯ СТРОКА НА ЧИСТОМ CSS */}
+                {/* CSS Marquee implementation */}
                 <div className="absolute inset-0 z-0 flex items-center overflow-hidden pointer-events-none">
                     <style dangerouslySetInnerHTML={{
                         __html: `
@@ -202,7 +194,6 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                     </div>
                 </div>
 
-                {/* ЖУРНАЛЬНАЯ ТИПОГРАФИКА */}
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -232,7 +223,7 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                     </div>
                 </motion.div>
 
-                {/* 3D СЦЕНА (Ограничение dpr для мобилок) */}
+                {/* Restrict dpr for performance on high-density displays */}
                 <div className="absolute inset-0 z-20">
                     <ModelErrorBoundary>
                         <Canvas shadows dpr={[1, 1.5]} camera={{ position: [0, 0, 5], fov: 45 }}>
@@ -251,7 +242,6 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                 </AnimatePresence>
             </motion.div>
 
-            {/* ПАНЕЛЬ ИНТЕРФЕЙСА (Адаптивная: шторка снизу или панель сбоку) */}
             <AnimatePresence>
                 {showUI && (
                     <motion.div
@@ -301,9 +291,6 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
     );
 };
 
-// =====================================================================
-// ГЛАВНЫЙ КОМПОНЕНТ САЙТА (КАТАЛОГ)
-// =====================================================================
 export default function SneakerStore() {
     const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -370,7 +357,6 @@ export default function SneakerStore() {
 
     return (
         <div className="bg-white text-black min-h-screen font-sans overflow-x-hidden pb-20 selection:bg-black selection:text-white">
-
             <header className="w-full bg-white/95 backdrop-blur-md px-6 md:px-12 py-4 md:py-6 flex justify-between items-center fixed top-0 z-40 border-b border-gray-100">
                 <div className="flex items-center gap-6 md:gap-12">
                     <Link href="/" className="text-[10px] font-bold uppercase tracking-widest opacity-50 hover:opacity-100 transition-opacity flex items-center gap-2">
@@ -400,7 +386,6 @@ export default function SneakerStore() {
             </header>
 
             <main className="pt-24 md:pt-32 px-4 md:px-12 max-w-[1800px] mx-auto">
-                {/* МОБИЛЬНАЯ НАВИГАЦИЯ */}
                 <nav className="flex lg:hidden overflow-x-auto gap-6 text-[11px] font-black tracking-[0.15em] uppercase mb-8 pb-2 scrollbar-hide">
                     <button onClick={() => handleTabClick("ALL")} className={`whitespace-nowrap ${activeTab === "ALL" ? "border-b-2 border-black" : "opacity-50"}`}>All</button>
                     <button onClick={() => handleTabClick("WOMEN")} className={`whitespace-nowrap ${activeTab === "WOMEN" ? "border-b-2 border-black" : "opacity-50"}`}>Women</button>
@@ -520,12 +505,10 @@ export default function SneakerStore() {
                 </section>
             </main>
 
-            {/* ВЫЗОВ МОДАЛКИ С 3D */}
             <AnimatePresence>
                 {selectedProduct && <ProductCinematicView shoe={selectedProduct} onClose={() => setSelectedProduct(null)} />}
             </AnimatePresence>
 
-            {/* ================= МОДАЛКИ АВТОРИЗАЦИИ И ПРОФИЛЯ ================= */}
             <AnimatePresence>
                 {isAuthOpen && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
@@ -662,7 +645,6 @@ export default function SneakerStore() {
                 )}
             </AnimatePresence>
 
-            {/* ================= ОВЕРЛЕЙ ПОИСКА ================= */}
             <AnimatePresence>
                 {isSearchOpen && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="fixed inset-0 z-[200] flex flex-col px-4 md:px-12 py-6 md:py-8 overflow-hidden bg-white text-black">
