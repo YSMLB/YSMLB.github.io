@@ -125,46 +125,68 @@ const CinematicScene = ({ shoe, showUI }: { shoe: any, showUI: boolean }) => {
 
 
 // =====================================================================
-// ЯДЕРНЫЙ ВАРИАНТ: БЕГУЩАЯ СТРОКА НА ЧИСТОМ JS (requestAnimationFrame)
+// ЖЕЛЕЗОБЕТОННАЯ БЕГУЩАЯ СТРОКА В ПИКСЕЛЯХ
 // =====================================================================
-const NativeMarquee = ({ text }: { text: string }) => {
-    const textRef = useRef<HTMLDivElement>(null);
-    const pos = useRef(0);
+const InfiniteMarquee = React.memo(({ text }: { text: string }) => {
+    const trackRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        let reqId: number;
-        const step = () => {
-            // Скорость. Можешь менять это значение (чем больше, тем быстрее бежит)
-            pos.current -= 0.05;
+        let pos = 0;
+        let animationFrameId: number;
 
-            // Если сдвинулись ровно на половину контейнера — незаметно прыгаем в начало (идеальный луп)
-            if (pos.current <= -50) pos.current = 0;
+        // Даем браузеру 100мс отрендерить шрифты, чтобы width определился точно
+        const timer = setTimeout(() => {
+            const render = () => {
+                pos -= 1.5; // Скорость бегущей строки (в пикселях). 1.5 - оптимально плавно
 
-            // Напрямую дергаем DOM, в обход React. Это гарантирует 60 FPS
-            if (textRef.current) {
-                textRef.current.style.transform = `translateX(${pos.current}%)`;
-            }
-            reqId = requestAnimationFrame(step);
+                if (trackRef.current) {
+                    const child = trackRef.current.firstElementChild as HTMLElement;
+                    if (child) {
+                        // Как только первый блок уехал за левый край полностью,
+                        // идеально откидываем координаты назад на его пиксельную ширину
+                        if (Math.abs(pos) >= child.offsetWidth) {
+                            pos += child.offsetWidth;
+                        }
+                    }
+                    trackRef.current.style.transform = `translate3d(${pos}px, 0, 0)`;
+                }
+                animationFrameId = requestAnimationFrame(render);
+            };
+            render();
+        }, 100);
+
+        return () => {
+            clearTimeout(timer);
+            cancelAnimationFrame(animationFrameId);
         };
-        reqId = requestAnimationFrame(step);
-        return () => cancelAnimationFrame(reqId);
     }, []);
 
-    const repeatText = `${text} \u00A0\u00A0\u00A0 ${text} \u00A0\u00A0\u00A0 ${text} \u00A0\u00A0\u00A0 `;
+    // 15 слов точно перекроют любой 4k монитор
+    const words = Array(15).fill(text);
 
     return (
-        <div className="absolute inset-0 z-0 flex items-center overflow-hidden pointer-events-none">
-            <div ref={textRef} className="flex whitespace-nowrap w-max will-change-transform">
-                <h1 className="text-[30vw] font-black italic text-[#ebebeb] tracking-tighter leading-none select-none">
-                    {repeatText}
-                </h1>
-                <h1 className="text-[30vw] font-black italic text-[#ebebeb] tracking-tighter leading-none select-none">
-                    {repeatText}
-                </h1>
+        <div className="absolute inset-0 flex items-center overflow-hidden z-0 pointer-events-none select-none">
+            <div ref={trackRef} className="flex whitespace-nowrap will-change-transform">
+                <div className="flex shrink-0">
+                    {words.map((w, i) => (
+                        <h1 key={`a-${i}`} className="text-[28vw] font-black italic text-[#ebebeb] tracking-tighter leading-none pr-12">
+                            {w}
+                        </h1>
+                    ))}
+                </div>
+                {/* Клон для идеальной бесшовной склейки */}
+                <div className="flex shrink-0">
+                    {words.map((w, i) => (
+                        <h1 key={`b-${i}`} className="text-[28vw] font-black italic text-[#ebebeb] tracking-tighter leading-none pr-12">
+                            {w}
+                        </h1>
+                    ))}
+                </div>
             </div>
         </div>
     );
-};
+});
+InfiniteMarquee.displayName = 'InfiniteMarquee';
 
 
 // =====================================================================
@@ -199,15 +221,15 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                 <Link href="/cart" target="_blank" className="hover:opacity-50 transition-opacity text-[#111]"><BagIcon /></Link>
             </header>
 
-            {/* ОСНОВНОЙ КОНТЕЙНЕР (Сдвигается влево как единое целое вместе со всем текстом) */}
+            {/* ОСНОВНОЙ КОНТЕЙНЕР (Сдвигается влево как единое целое) */}
             <motion.div
                 className="absolute inset-0 z-10 pointer-events-auto overflow-hidden"
                 initial={{ x: "0%" }}
                 animate={{ x: showUI ? "-22.5%" : "0%" }}
                 transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
             >
-                {/* 100% РАБОЧАЯ БЕГУЩАЯ СТРОКА НА ЗАДНЕМ ФОНЕ */}
-                <NativeMarquee text={shoe.bgText} />
+                {/* 100% РАБОЧАЯ БЕГУЩАЯ СТРОКА В ПИКСЕЛЯХ */}
+                <InfiniteMarquee text={shoe.bgText} />
 
                 {/* ЖУРНАЛЬНАЯ ТИПОГРАФИКА НА ПЕРЕДНЕМ ПЛАНЕ */}
                 <motion.div
