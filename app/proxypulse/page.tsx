@@ -1,17 +1,32 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
-// Icons
+// =====================================================================
+// DALA DESIGN TOKENS
+// =====================================================================
+const tokens = {
+    void: "#000000",
+    boneWhite: "#ffffff",
+    ashGray: "#9a9a9a",
+    silverMist: "#bdbdbd",
+    electricIris: "#8052ff",
+    saffronSpark: "#ffb829",
+    deepVerdant: "#15846e"
+};
+
+// =====================================================================
+// ICONS
+// =====================================================================
 const DalaLogo = () => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M12 2L22 20H2L12 2Z" fill="url(#paint0_linear)" />
         <defs>
             <linearGradient id="paint0_linear" x1="12" y1="2" x2="12" y2="20" gradientUnits="userSpaceOnUse">
-                <stop stopColor="#8052ff" />
-                <stop offset="1" stopColor="#15846e" />
+                <stop stopColor={tokens.electricIris} />
+                <stop offset="1" stopColor={tokens.deepVerdant} />
             </linearGradient>
         </defs>
     </svg>
@@ -23,23 +38,121 @@ const ArrowRight = () => (
     </svg>
 );
 
-const SparkleIcon = () => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8052ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
-    </svg>
-);
+// =====================================================================
+// CONSTELLATION VISUALIZATION
+// =====================================================================
+const ParticleConstellation = () => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
 
-// Live Terminal Data Mock
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        const particles: Particle[] = [];
+        const particleCount = window.innerWidth > 768 ? 200 : 80;
+        const colors = [tokens.electricIris, tokens.saffronSpark, tokens.deepVerdant, '#e845f2', '#45bcf2'];
+
+        class Particle {
+            x: number; y: number; vx: number; vy: number; size: number; color: string; angle: number; speed: number;
+            constructor() {
+                // Skew particles to the right side of the screen for the 2-column layout
+                this.x = (Math.random() * (width * 0.6)) + (width * 0.4);
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 0.3;
+                this.vy = (Math.random() - 0.5) * 0.3;
+                this.size = Math.random() * 3 + 1;
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+                this.angle = Math.random() * Math.PI * 2;
+                this.speed = (Math.random() - 0.5) * 0.01;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.angle += this.speed;
+
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+            }
+
+            draw() {
+                if (!ctx) return;
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                ctx.beginPath();
+                ctx.moveTo(0, -this.size);
+                ctx.lineTo(this.size * 0.866, this.size * 0.5);
+                ctx.lineTo(-this.size * 0.866, this.size * 0.5);
+                ctx.closePath();
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        for (let i = 0; i < particleCount; i++) particles.push(new Particle());
+
+        const animate = () => {
+            ctx.clearRect(0, 0, width, height);
+
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < 100) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(128, 82, 255, ${0.4 * (1 - distance / 100)})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            requestAnimationFrame(animate);
+        };
+
+        animate();
+
+        const handleResize = () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    return (
+        <canvas ref={canvasRef} className="absolute inset-0 z-0 opacity-60 pointer-events-none" />
+    );
+};
+
+// =====================================================================
+// LIVE REQUEST TERMINAL
+// =====================================================================
 const liveRequests = [
-    { method: "GET", path: "/api/v1/golang-proxy/health", status: 200, time: "12ms", size: "1.2kb" },
-    { method: "POST", path: "/auth/csharp/login", status: 201, time: "45ms", size: "340b" },
-    { method: "GET", path: "/ws/stream/events", status: 101, time: "0ms", size: "0b" },
-    { method: "PUT", path: "/api/users/update_profile", status: 400, time: "89ms", size: "45b" },
-    { method: "DELETE", path: "/cache/redis/flush", status: 204, time: "5ms", size: "0b" },
-    { method: "GET", path: "/api/metrics/prometheus", status: 200, time: "112ms", size: "4.5kb" },
+    { method: "GET", path: "/api/v1/golang-proxy/health", status: 200, time: "12ms" },
+    { method: "POST", path: "/auth/csharp/login", status: 201, time: "45ms" },
+    { method: "GET", path: "/ws/stream/events", status: 101, time: "0ms" },
+    { method: "PUT", path: "/api/users/update_profile", status: 400, time: "89ms" },
+    { method: "DELETE", path: "/cache/redis/flush", status: 204, time: "5ms" },
+    { method: "GET", path: "/api/metrics/prometheus", status: 200, time: "112ms" },
 ];
 
-const LiveConsole = () => {
+const LiveTerminal = () => {
     const [requests, setRequests] = useState<typeof liveRequests>([]);
 
     useEffect(() => {
@@ -48,186 +161,184 @@ const LiveConsole = () => {
             setRequests(prev => {
                 const newReq = liveRequests[index % liveRequests.length];
                 index++;
-                return [newReq, ...prev].slice(0, 4);
+                return [newReq, ...prev].slice(0, 6);
             });
-        }, 1500);
+        }, 1200);
         return () => clearInterval(interval);
     }, []);
 
     return (
-        <div className="w-full max-w-[600px] mx-auto bg-[#000000] border border-[#1a1a1a] rounded-[24px] p-6 font-mono text-[14px] text-[#bdbdbd] shadow-[0_0_80px_rgba(128,82,255,0.15)] relative overflow-hidden z-20">
-            <div className="flex items-center justify-between border-b border-[#1a1a1a] pb-4 mb-4">
-                <div className="flex gap-2">
-                    <div className="w-3 h-3 rounded-full bg-[#333]" />
-                    <div className="w-3 h-3 rounded-full bg-[#333]" />
-                    <div className="w-3 h-3 rounded-full bg-[#333]" />
-                </div>
-                <span className="text-[#8052ff] text-[12px] font-semibold tracking-[0.35px] uppercase">Live Traffic</span>
-            </div>
-
-            <div className="flex flex-col gap-3 min-h-[160px]">
-                <AnimatePresence>
-                    {requests.map((req, i) => (
-                        <motion.div
-                            key={`${req.path}-${i}`}
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1 - i * 0.2, y: 0 }}
-                            exit={{ opacity: 0 }}
-                            className="flex items-center justify-between"
-                        >
-                            <div className="flex items-center gap-4">
-                                <span className={`w-12 font-bold ${req.method === 'GET' ? 'text-[#8052ff]' : req.method === 'POST' ? 'text-[#15846e]' : req.method === 'DELETE' ? 'text-red-500' : 'text-[#ffb829]'}`}>
-                                    {req.method}
-                                </span>
-                                <span className="text-[#ffffff] truncate max-w-[200px] sm:max-w-xs">{req.path}</span>
-                            </div>
-                            <div className="flex items-center gap-6 text-[#9a9a9a]">
-                                <span className={`font-bold ${req.status >= 500 ? 'text-red-500' : req.status >= 400 ? 'text-[#ffb829]' : 'text-[#15846e]'}`}>{req.status}</span>
-                                <span className="w-12 text-right hidden sm:block">{req.time}</span>
-                            </div>
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
-            </div>
+        <div className="w-full font-mono text-[14px] leading-[1.5] tracking-tight flex flex-col gap-[12px] relative z-10 text-[#bdbdbd]">
+            <AnimatePresence>
+                {requests.map((req, i) => (
+                    <motion.div
+                        key={`${req.path}-${i}`}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1 - i * 0.15, x: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="flex items-center justify-between"
+                    >
+                        <div className="flex items-center gap-[18px]">
+                            <span className={`w-[48px] font-[600] ${req.method === 'GET' ? 'text-[#8052ff]' : req.method === 'POST' ? 'text-[#15846e]' : req.method === 'DELETE' ? 'text-[#e845f2]' : 'text-[#ffb829]'}`}>
+                                {req.method}
+                            </span>
+                            <span className="text-[#ffffff]">{req.path}</span>
+                        </div>
+                        <div className="flex items-center gap-[24px]">
+                            <span className={`font-[600] ${req.status >= 500 ? 'text-[#e845f2]' : req.status >= 400 ? 'text-[#ffb829]' : 'text-[#15846e]'}`}>{req.status}</span>
+                            <span className="w-[48px] text-right hidden sm:block">{req.time}</span>
+                        </div>
+                    </motion.div>
+                ))}
+            </AnimatePresence>
         </div>
     );
 };
 
+// =====================================================================
+// MAIN LAYOUT
+// =====================================================================
 export default function ProxyPulse() {
     return (
-        <div className="bg-[#000000] text-[#ffffff] min-h-screen font-sans selection:bg-[#8052ff] selection:text-white overflow-x-hidden">
+        <div className="bg-[#000000] text-[#ffffff] min-h-screen font-sans selection:bg-[#8052ff] selection:text-[#ffffff] overflow-x-hidden">
 
-            {/* Top Navigation */}
-            <nav className="fixed top-0 left-0 w-full z-50 py-[24px] px-[24px] md:px-[60px] flex justify-between items-center bg-[#000000]/80 backdrop-blur-md border-b border-transparent">
-                <div className="flex items-center gap-3">
+            {/* Background Constellation */}
+            <ParticleConstellation />
+
+            {/* NAVIGATION BAR */}
+            <nav className="fixed top-0 left-0 w-full z-50 py-[24px] px-[24px] md:px-[60px] flex justify-between items-center bg-transparent">
+                <div className="flex items-center gap-[12px]">
                     <DalaLogo />
-                    <span className="text-[14px] font-[600] tracking-[0.35px] text-[#ffffff]">ProxyPulse</span>
+                    <span className="text-[14px] font-[600] tracking-[0.35px] text-[#ffffff] uppercase">ProxyPulse</span>
                 </div>
 
                 <div className="hidden md:flex items-center gap-[36px]">
-                    <Link href="#features" className="text-[14px] font-[600] tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">Manifesto</Link>
-                    <Link href="#how-it-works" className="text-[14px] font-[600] tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">Docs</Link>
-                    <Link href="#pricing" className="text-[14px] font-[600] tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">Pricing</Link>
+                    <Link href="#manifesto" className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">Manifesto</Link>
+                    <Link href="#team" className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">Team</Link>
+                    <Link href="#blog" className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">Blog</Link>
                 </div>
 
-                <div className="flex items-center gap-[24px]">
-                    <button className="text-[14px] font-[600] tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors hidden sm:block">
-                        Sign In
-                    </button>
-                    <button className="bg-[#8052ff] text-white text-[14px] font-[600] tracking-[0.35px] rounded-[24px] px-[24px] py-[12px] hover:bg-[#6c40e6] transition-colors">
-                        Deploy Agent
+                <div className="flex items-center">
+                    <button className="bg-[#8052ff] text-[#ffffff] text-[14px] font-[600] uppercase tracking-[0.35px] rounded-[24px] px-[16px] py-[14.4px] hover:bg-[#6c40e6] transition-colors">
+                        Request Access
                     </button>
                 </div>
             </nav>
 
-            <main className="relative z-10 max-w-[1280px] mx-auto px-[24px] md:px-[60px] pt-[120px] md:pt-[160px] pb-[120px]">
+            <main className="relative z-10 max-w-[1280px] mx-auto px-[24px] md:px-[60px] pt-[160px] md:pt-[240px] pb-[120px]">
 
-                {/* HERO SECTION (Centered, glowing backdrop) */}
-                <section className="relative flex flex-col items-center text-center mt-[60px] mb-[120px]">
+                {/* HERO SECTION (2-Column Asymmetric) */}
+                <section className="flex flex-col lg:flex-row items-center gap-[60px] lg:gap-[120px] min-h-[60vh]">
+                    <div className="flex-1 w-full flex flex-col items-start z-20">
+                        <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829] mb-[24px]">
+                            Network Observability
+                        </span>
 
-                    {/* Concentric Glow Background */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] pointer-events-none flex items-center justify-center z-0 opacity-40">
-                        <div className="absolute w-[300px] h-[300px] rounded-full border border-[#1a1a1a]" />
-                        <div className="absolute w-[450px] h-[450px] rounded-full border border-[#1a1a1a]" />
-                        <div className="absolute w-[600px] h-[600px] rounded-full border border-[#1a1a1a]" />
-                        <div className="absolute w-[100%] h-[100%] bg-[radial-gradient(circle_at_center,rgba(128,82,255,0.1)_0%,transparent_60%)]" />
-                    </div>
+                        <h1 className="text-[78px] lg:text-[113px] font-[400] leading-[1.1] tracking-[-3.12px] lg:tracking-[-4.52px] text-[#ffffff] mb-[30px] w-full max-w-[700px]">
+                            See your network. Live.
+                        </h1>
 
-                    <div className="relative z-10 mb-[60px]">
-                        <div className="flex items-center justify-center gap-[12px] mb-[30px]">
-                            <SparkleIcon />
-                            <h1 className="text-[78px] md:text-[113px] font-[400] leading-[1.1] tracking-[-4.52px] text-[#ffffff]">
-                                ProxyPulse AI
-                            </h1>
-                        </div>
-                        <p className="text-[18px] md:text-[24px] font-[200] leading-[1.25] tracking-[-0.48px] text-[#bdbdbd] max-w-[600px] mx-auto mb-[36px]">
-                            Stop reading dead logs. Visualize your network layer in real-time with our zero-config agent.
+                        <p className="text-[18px] font-[200] leading-[1.5] text-[#ffffff] max-w-[480px] mb-[36px]">
+                            Stop reading dead logs. ProxyPulse visualizes every HTTP request in real-time. Connect the lightweight agent and watch your backend traffic breathe, flow, and break—instantly.
                         </p>
 
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-[18px]">
-                            <div className="bg-[#1a1a1a] rounded-[9999px] p-[6px] pl-[24px] flex items-center gap-[12px] border border-[#333]">
-                                <input
-                                    type="text"
-                                    placeholder="Enter your email to join the beta"
-                                    className="bg-transparent border-none text-[15px] font-[400] text-[#ffffff] outline-none w-[220px] placeholder:text-[#9a9a9a]"
-                                />
-                                <button className="bg-[#ffb829] text-[#000000] w-[36px] h-[36px] rounded-[9999px] flex items-center justify-center hover:bg-[#e6a625] transition-colors">
-                                    <ArrowRight />
-                                </button>
-                            </div>
-                        </div>
+                        <button className="bg-[#8052ff] text-[#ffffff] text-[14px] font-[600] uppercase tracking-[0.35px] rounded-[24px] px-[16px] py-[14.4px] hover:bg-[#6c40e6] transition-colors">
+                            Deploy Proxy
+                        </button>
                     </div>
 
-                    <LiveConsole />
+                    <div className="flex-1 w-full h-full min-h-[400px] z-10 hidden lg:block">
+                        {/* Constellation handles the visual weight on the right */}
+                    </div>
                 </section>
 
-                {/* FEATURE 1 */}
-                <section className="mt-[120px] md:mt-[200px] flex flex-col lg:flex-row items-center gap-[60px] lg:gap-[120px]">
-                    <div className="flex-1 w-full flex flex-col gap-[24px]">
-                        <h2 className="text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff]">
+                {/* FEATURE 1: Visual Left, Text Right */}
+                <section className="mt-[160px] md:mt-[240px] flex flex-col-reverse lg:flex-row items-center gap-[60px] lg:gap-[120px]">
+                    <div className="flex-1 w-full">
+                        <LiveTerminal />
+                    </div>
+
+                    <div className="flex-1 w-full flex flex-col items-start">
+                        <h2 className="text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
                             Beyond raw logs.
                         </h2>
                         <p className="text-[18px] font-[200] leading-[1.5] text-[#bdbdbd] max-w-[520px]">
                             Traditional tools force you to search through massive text files. ProxyPulse turns your traffic into an interactive layer. Select a request, inspect headers, and replay it with one click.
                         </p>
                     </div>
-
-                    <div className="flex-1 w-full bg-[#15846e]/10 border border-[#15846e]/30 rounded-[24px] p-[36px] font-mono text-[14px] leading-[1.5] text-[#9a9a9a] flex flex-col gap-[18px]">
-                        <div className="flex gap-[18px]">
-                            <span className="text-[#ffb829]">01</span>
-                            <p>Intercepting internal traffic...</p>
-                        </div>
-                        <div className="flex gap-[18px]">
-                            <span className="text-[#8052ff]">02</span>
-                            <p>Analyzing latency distribution</p>
-                        </div>
-                        <div className="flex gap-[18px]">
-                            <span className="text-[#15846e]">03</span>
-                            <p className="text-[#ffffff]">Identified 42 bottlenecks in /api/v1/metrics</p>
-                        </div>
-                    </div>
                 </section>
 
-                {/* FEATURE 2 */}
-                <section className="mt-[120px] md:mt-[200px] flex flex-col-reverse lg:flex-row items-center gap-[60px] lg:gap-[120px]">
-                    <div className="flex-1 w-full flex flex-col gap-[36px]">
-                        <div className="flex flex-col gap-[6px]">
-                            <span className="text-[12px] font-[600] uppercase tracking-[0.35px] text-[#ffb829]">Backend Developers</span>
-                            <p className="text-[24px] font-[400] tracking-[-0.48px] leading-[1.25]">Debug APIs instantly.</p>
-                        </div>
-                        <div className="flex flex-col gap-[6px]">
-                            <span className="text-[12px] font-[600] uppercase tracking-[0.35px] text-[#8052ff]">DevOps / Infra</span>
-                            <p className="text-[24px] font-[400] tracking-[-0.48px] leading-[1.25] text-[#9a9a9a]">Monitor proxy layer health.</p>
-                        </div>
-                        <div className="flex flex-col gap-[6px]">
-                            <span className="text-[12px] font-[600] uppercase tracking-[0.35px] text-[#15846e]">Mobile Teams</span>
-                            <p className="text-[24px] font-[400] tracking-[-0.48px] leading-[1.25] text-[#9a9a9a]">Track client requests visually.</p>
-                        </div>
-                    </div>
-
-                    <div className="flex-1 w-full flex flex-col gap-[24px]">
-                        <h2 className="text-[42px] md:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff]">
+                {/* FEATURE 2: Text Left, Visual Right */}
+                <section className="mt-[160px] md:mt-[240px] flex flex-col lg:flex-row items-center gap-[60px] lg:gap-[120px]">
+                    <div className="flex-1 w-full flex flex-col items-start">
+                        <h2 className="text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
                             Built for high-performance engineering.
                         </h2>
                         <p className="text-[18px] font-[200] leading-[1.5] text-[#bdbdbd] max-w-[520px]">
                             Whether you are writing microservices in Go, building enterprise backends in C#, or deploying edge functions. The proxy agent runs anywhere with less than 10MB memory footprint.
                         </p>
                     </div>
+
+                    <div className="flex-1 w-full flex flex-col gap-[36px]">
+                        <div className="flex flex-col gap-[6px]">
+                            <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829]">Backend & Frontend</span>
+                            <p className="text-[27px] font-[400] leading-[1.0] text-[#ffffff]">Debug APIs instantly.</p>
+                        </div>
+                        <div className="flex flex-col gap-[6px]">
+                            <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#8052ff]">DevOps / Infra</span>
+                            <p className="text-[27px] font-[400] leading-[1.0] text-[#bdbdbd]">Monitor proxy layer health.</p>
+                        </div>
+                        <div className="flex flex-col gap-[6px]">
+                            <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#15846e]">Mobile Teams</span>
+                            <p className="text-[27px] font-[400] leading-[1.0] text-[#bdbdbd]">Track client requests visually.</p>
+                        </div>
+                    </div>
                 </section>
+
+                {/* TEAM SECTION (Large Portrait Cards floating on void) */}
+                <section className="mt-[160px] md:mt-[240px] flex flex-col items-start">
+                    <h2 className="text-[78px] font-[400] leading-[1.1] tracking-[-3.12px] text-[#ffffff] mb-[60px]">
+                        The Team
+                    </h2>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[60px] w-full">
+                        {/* Team Member Card 1 */}
+                        <div className="flex flex-col gap-[18px]">
+                            <div className="w-full aspect-[3/4] bg-[#1a1a1a] rounded-[24px] overflow-hidden">
+                                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&q=80" alt="Team Member" className="w-full h-full object-cover opacity-80" />
+                            </div>
+                            <div>
+                                <span className="text-[12px] font-[400] uppercase text-[#8052ff] mb-[6px] block">Founder & Backend Lead</span>
+                                <h3 className="text-[27px] font-[400] leading-[1.0] text-[#ffffff]">Alex Dev</h3>
+                            </div>
+                        </div>
+
+                        {/* Team Member Card 2 */}
+                        <div className="flex flex-col gap-[18px]">
+                            <div className="w-full aspect-[3/4] bg-[#1a1a1a] rounded-[24px] overflow-hidden">
+                                <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=800&q=80" alt="Team Member" className="w-full h-full object-cover opacity-80" />
+                            </div>
+                            <div>
+                                <span className="text-[12px] font-[400] uppercase text-[#8052ff] mb-[6px] block">Head of Infrastructure</span>
+                                <h3 className="text-[27px] font-[400] leading-[1.0] text-[#ffffff]">Sarah Jenkins</h3>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
             </main>
 
             {/* FOOTER */}
-            <footer className="w-full px-[24px] md:px-[60px] py-[60px] border-t border-[#1a1a1a] flex flex-col md:flex-row justify-between items-start md:items-center gap-[36px]">
+            <footer className="relative z-10 w-full max-w-[1280px] mx-auto px-[24px] md:px-[60px] py-[60px] flex flex-col md:flex-row justify-between items-start md:items-center gap-[36px]">
                 <div className="flex items-center gap-[12px] opacity-50">
                     <DalaLogo />
-                    <span className="text-[14px] font-[600] tracking-[0.35px] text-[#ffffff]">ProxyPulse</span>
+                    <span className="text-[14px] font-[600] tracking-[0.35px] text-[#ffffff] uppercase">ProxyPulse</span>
                 </div>
 
-                <div className="flex flex-wrap gap-[30px] text-[14px] font-[600] tracking-[0.35px] text-[#555]">
-                    <a href="#" className="hover:text-[#ffffff] transition-colors">Twitter</a>
-                    <a href="#" className="hover:text-[#ffffff] transition-colors">GitHub</a>
-                    <a href="#" className="hover:text-[#ffffff] transition-colors">Discord</a>
-                    <a href="#" className="hover:text-[#ffffff] transition-colors">Privacy</a>
+                <div className="flex flex-wrap gap-[30px] text-[14px] font-[400] text-[#9a9a9a]">
+                    <Link href="#" className="hover:text-[#ffffff] transition-colors">Twitter</Link>
+                    <Link href="#" className="hover:text-[#ffffff] transition-colors">GitHub</Link>
+                    <Link href="#" className="hover:text-[#ffffff] transition-colors">LinkedIn</Link>
                 </div>
             </footer>
         </div>
