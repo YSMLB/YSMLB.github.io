@@ -30,132 +30,217 @@ const DalaLogo = () => (
 );
 
 // =====================================================================
-// CANVAS MORPHING ENGINE
+// 3D CANVAS MORPHING ENGINE
 // =====================================================================
 const ParticleConstellation = ({ activeShape }: { activeShape: string }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const particlesRef = useRef<any[]>([]);
+    const ambientRef = useRef<any[]>([]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { alpha: false }); // Оптимизация
         if (!ctx) return;
 
         let width = canvas.width = window.innerWidth;
         let height = canvas.height = window.innerHeight;
         const isMobile = width < 768;
-        const particleCount = isMobile ? 300 : 800; // Плотный рой частиц
+
+        // Увеличиваем плотность для эффекта "дорогого" 3D
+        const SHAPE_PARTICLES = isMobile ? 1200 : 3500;
+        const AMBIENT_PARTICLES = isMobile ? 150 : 400;
+
         const colors = [tokens.electricIris, tokens.saffronSpark, tokens.deepVerdant, '#e845f2', '#45bcf2', '#ffffff'];
 
-        // Инициализация частиц, если они еще не созданы
+        // Генератор 3D-форм
+        const getShapeTarget = (index: number, total: number, shape: string) => {
+            let x = 0, y = 0, z = 0;
+
+            if (shape === 'brain') {
+                // Две полусферы с шумом
+                const isLeft = index % 2 === 0;
+                const u = Math.random() * Math.PI;
+                const v = Math.random() * 2 * Math.PI;
+                // Более плотная внешняя кора и рыхлая сердцевина
+                const r = 100 + Math.pow(Math.random(), 0.5) * 60;
+                const sign = isLeft ? -1 : 1;
+                x = (r * Math.sin(u) * Math.cos(v)) * 0.75 + (sign * 60);
+                y = (r * Math.sin(u) * Math.sin(v)) * 1.1;
+                z = r * Math.cos(u) * 0.9;
+            }
+            else if (shape === 'globe') {
+                // Сфера с материками (используем синусоидальный шум)
+                let found = false;
+                while (!found) {
+                    const u = Math.random() * Math.PI;
+                    const v = Math.random() * 2 * Math.PI;
+                    const r = 160;
+                    // Создаем участки высокой плотности (материки)
+                    const noise = Math.sin(u * 5) * Math.cos(v * 4) + Math.sin(u * 8) * 0.5;
+                    // 85% частиц собираются на "материках", 15% раскиданы по океану
+                    if (noise > 0.1 || Math.random() > 0.85) {
+                        const depth = noise > 0.2 ? Math.random() * 15 : 0; // Рельеф
+                        x = (r + depth) * Math.sin(u) * Math.cos(v);
+                        y = (r + depth) * Math.cos(u);
+                        z = (r + depth) * Math.sin(u) * Math.sin(v);
+                        found = true;
+                    }
+                }
+            }
+            else if (shape === 'bulb') {
+                // Лампочка: сфера (колба) + цилиндр (цоколь)
+                const isBulb = Math.random() > 0.25;
+                if (isBulb) {
+                    const u = Math.random() * Math.PI;
+                    const v = Math.random() * 2 * Math.PI;
+                    const r = 110 + Math.random() * 20;
+                    x = r * Math.sin(u) * Math.cos(v);
+                    y = r * Math.cos(u) - 50; // Сдвиг вверх
+                    z = r * Math.sin(u) * Math.sin(v);
+                } else {
+                    const v = Math.random() * 2 * Math.PI;
+                    const r = 40 + Math.random() * 10;
+                    const h = Math.random() * 90; // Высота цоколя
+                    x = r * Math.cos(v);
+                    y = h + 80; // Сдвиг вниз
+                    z = r * Math.sin(v);
+                }
+            }
+
+            // Добавляем микро-отклонения, чтобы форма не была искусственно ровной
+            return {
+                tx: x + (Math.random() - 0.5) * 10,
+                ty: y + (Math.random() - 0.5) * 10,
+                tz: z + (Math.random() - 0.5) * 10
+            };
+        };
+
+        // Инициализация структурных частиц
         if (particlesRef.current.length === 0) {
-            for (let i = 0; i < particleCount; i++) {
+            for (let i = 0; i < SHAPE_PARTICLES; i++) {
+                const startShape = getShapeTarget(i, SHAPE_PARTICLES, 'brain');
                 particlesRef.current.push({
-                    x: Math.random() * width,
-                    y: Math.random() * height,
-                    targetX: width / 2,
-                    targetY: height / 2,
-                    baseX: 0,
-                    baseY: 0,
-                    size: Math.random() * 2.5 + 0.5,
+                    x: startShape.tx + (Math.random() - 0.5) * 1000, // Появляются из хаоса
+                    y: startShape.ty + (Math.random() - 0.5) * 1000,
+                    z: startShape.tz + (Math.random() - 0.5) * 1000,
+                    tx: startShape.tx,
+                    ty: startShape.ty,
+                    tz: startShape.tz,
                     color: colors[Math.floor(Math.random() * colors.length)],
+                    size: Math.random() * 1.5 + 0.5,
                     angle: Math.random() * Math.PI * 2,
-                    rotationSpeed: (Math.random() - 0.5) * 0.05,
-                    wobbleSpeed: Math.random() * 0.05 + 0.01,
-                    wobbleOffset: Math.random() * Math.PI * 2
                 });
             }
         }
 
-        const particles = particlesRef.current;
-        const centerX = isMobile ? width / 2 : width * 0.7; // Смещаем центры вправо для десктопа
-        const centerY = height / 2;
-
-        // Генерация целевых координат в зависимости от активной секции
-        particles.forEach((p, i) => {
-            let tx = centerX;
-            let ty = centerY;
-
-            if (activeShape === 'brain') {
-                // Две полусферы
-                const isLeft = i % 2 === 0;
-                const radiusX = (Math.random() * 150) + 50;
-                const radiusY = (Math.random() * 200) + 50;
-                const angle = Math.random() * Math.PI * 2;
-                const xOffset = isLeft ? -90 : 90;
-                tx = centerX + xOffset + Math.cos(angle) * radiusX;
-                ty = centerY + Math.sin(angle) * radiusY;
+        // Инициализация фоновых (эмбиент) частиц
+        if (ambientRef.current.length === 0) {
+            for (let i = 0; i < AMBIENT_PARTICLES; i++) {
+                ambientRef.current.push({
+                    x: (Math.random() - 0.5) * 2000,
+                    y: (Math.random() - 0.5) * 2000,
+                    z: (Math.random() - 0.5) * 2000,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: (Math.random() - 0.5) * 0.5,
+                    vz: (Math.random() - 0.5) * 0.5,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    size: Math.random() * 2 + 0.5,
+                    angle: Math.random() * Math.PI * 2,
+                });
             }
-            else if (activeShape === 'globe') {
-                // Сфера с концентрацией к краям
-                const radius = 250;
-                const r = radius * Math.sqrt(Math.random());
-                const theta = Math.random() * 2 * Math.PI;
-                tx = centerX + r * Math.cos(theta);
-                ty = centerY + r * Math.sin(theta);
-            }
-            else if (activeShape === 'cross') {
-                // Х-образная геометрия
-                const arm = i % 4;
-                const distance = Math.random() * 250;
-                const spread = (Math.random() - 0.5) * 40;
-                if (arm === 0) { tx = centerX + distance; ty = centerY + distance + spread; }
-                if (arm === 1) { tx = centerX - distance; ty = centerY - distance + spread; }
-                if (arm === 2) { tx = centerX + distance; ty = centerY - distance + spread; }
-                if (arm === 3) { tx = centerX - distance; ty = centerY + distance + spread; }
-            }
+        }
 
-            // Добавляем немного случайного разлета, чтобы форма не была слишком жесткой
-            p.baseX = tx + (Math.random() - 0.5) * 30;
-            p.baseY = ty + (Math.random() - 0.5) * 30;
+        // Обновляем цели при смене формы
+        particlesRef.current.forEach((p, i) => {
+            const target = getShapeTarget(i, SHAPE_PARTICLES, activeShape);
+            p.tx = target.tx;
+            p.ty = target.ty;
+            p.tz = target.tz;
         });
 
         let animationFrameId: number;
+        let time = 0;
 
-        const animate = (time: number) => {
-            ctx.clearRect(0, 0, width, height);
+        const animate = () => {
+            time += 0.005;
+            // Рисуем черный фон (вместо clearRect, чтобы работал альфа-канал без артефактов)
+            ctx.fillStyle = tokens.void;
+            ctx.fillRect(0, 0, width, height);
 
-            particles.forEach((p) => {
-                // Легкое дрожание на месте (wobble)
-                const wobbleX = Math.cos(time * p.wobbleSpeed + p.wobbleOffset) * 15;
-                const wobbleY = Math.sin(time * p.wobbleSpeed + p.wobbleOffset) * 15;
+            const centerX = isMobile ? width / 2 : width * 0.7; // Визуализация справа на десктопе
+            const centerY = height / 2;
+            const FOV = 600; // Перспектива
 
-                // Плавное перетекание (Lerp) к целевой позиции + дрожание
-                p.x += ((p.baseX + wobbleX) - p.x) * 0.03;
-                p.y += ((p.baseY + wobbleY) - p.y) * 0.03;
-                p.angle += p.rotationSpeed;
+            // Глобальное вращение 3D сцены
+            const rotationY = time * 0.5;
+            const rotationX = Math.sin(time * 0.3) * 0.2;
 
-                // Рисуем ТОЛЬКО треугольники (без линий связи)
+            const drawParticle = (p: any, isAmbient: boolean) => {
+                // 1. Применяем лерпинг к целевой позиции (только для структурных частиц)
+                if (!isAmbient) {
+                    p.x += (p.tx - p.x) * 0.04;
+                    p.y += (p.ty - p.y) * 0.04;
+                    p.z += (p.tz - p.z) * 0.04;
+                } else {
+                    p.x += p.vx; p.y += p.vy; p.z += p.vz;
+                    // Возврат в границы
+                    if (p.x > 1000) p.x = -1000; else if (p.x < -1000) p.x = 1000;
+                    if (p.y > 1000) p.y = -1000; else if (p.y < -1000) p.y = 1000;
+                    if (p.z > 1000) p.z = -1000; else if (p.z < -1000) p.z = 1000;
+                }
+
+                // 2. 3D Вращение (по оси Y и X)
+                const cosY = Math.cos(rotationY), sinY = Math.sin(rotationY);
+                const cosX = Math.cos(rotationX), sinX = Math.sin(rotationX);
+
+                let rx = p.x * cosY - p.z * sinY;
+                let rz = p.z * cosY + p.x * sinY;
+
+                let ry = p.y * cosX - rz * sinX;
+                let finalZ = rz * cosX + p.y * sinX;
+
+                // 3. Проекция 3D -> 2D
+                if (finalZ < -FOV) return; // Отсекаем то, что за камерой
+                const scale = FOV / (FOV + finalZ);
+                const projectedX = centerX + rx * scale;
+                const projectedY = centerY + ry * scale;
+                const projectedSize = Math.max(0.1, p.size * scale);
+
+                // Отрисовка треугольника
                 ctx.save();
-                ctx.translate(p.x, p.y);
-                ctx.rotate(p.angle);
+                ctx.translate(projectedX, projectedY);
+                ctx.rotate(p.angle + time); // Частицы вращаются вокруг своей оси
                 ctx.beginPath();
-                ctx.moveTo(0, -p.size);
-                ctx.lineTo(p.size * 0.866, p.size * 0.5);
-                ctx.lineTo(-p.size * 0.866, p.size * 0.5);
+                ctx.moveTo(0, -projectedSize);
+                ctx.lineTo(projectedSize * 0.866, projectedSize * 0.5);
+                ctx.lineTo(-projectedSize * 0.866, projectedSize * 0.5);
                 ctx.closePath();
 
                 ctx.strokeStyle = p.color;
-                ctx.lineWidth = 1;
-                // Чем ближе частица к центру экрана, тем она ярче
-                const distToCenter = Math.sqrt(Math.pow(p.x - width / 2, 2) + Math.pow(p.y - height / 2, 2));
-                ctx.globalAlpha = Math.max(0.2, 1 - (distToCenter / (width * 0.8)));
+                ctx.lineWidth = isAmbient ? 0.5 : 1;
+
+                // Эффект глубины и затухания
+                const depthAlpha = Math.max(0, Math.min(1, scale * 1.2));
+                ctx.globalAlpha = isAmbient ? depthAlpha * 0.3 : depthAlpha * 0.8;
 
                 ctx.stroke();
                 ctx.restore();
-            });
+            };
+
+            // Рендерим все частицы. Сортировка по Z для идеального наложения бьет по FPS, 
+            // поэтому полагаемся на аддитивный/естественный блендинг
+            ambientRef.current.forEach(p => drawParticle(p, true));
+            particlesRef.current.forEach(p => drawParticle(p, false));
 
             animationFrameId = requestAnimationFrame(animate);
         };
 
-        animate(0);
+        animate();
 
         const handleResize = () => {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
-            // Триггерим пересчет позиций
-            setActiveShape(activeShape);
         };
 
         window.addEventListener('resize', handleResize);
@@ -163,7 +248,7 @@ const ParticleConstellation = ({ activeShape }: { activeShape: string }) => {
             window.removeEventListener('resize', handleResize);
             cancelAnimationFrame(animationFrameId);
         };
-    }, [activeShape]); // Перезапускаем расчет при смене формы
+    }, [activeShape]);
 
     return (
         <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none" />
@@ -171,7 +256,7 @@ const ParticleConstellation = ({ activeShape }: { activeShape: string }) => {
 };
 
 // =====================================================================
-// LIVE REQUEST TERMINAL (Strict Grid = No Jumping)
+// LIVE REQUEST TERMINAL (Strict Grid)
 // =====================================================================
 const backendLogs = [
     { method: "GET", path: "/api/v1/go/metrics", status: 200, time: "12ms" },
@@ -192,7 +277,6 @@ const LiveTerminal = () => {
             setRequests(prev => {
                 const newReq = backendLogs[index % backendLogs.length];
                 index++;
-                // Держим ровно 7 строк, чтобы контейнер не прыгал
                 return [newReq, ...prev].slice(0, 7);
             });
         }, 800);
@@ -204,12 +288,12 @@ const LiveTerminal = () => {
             <AnimatePresence mode="popLayout">
                 {requests.map((req, i) => (
                     <motion.div
-                        key={`${req.path}-${i}-${Date.now()}`} // Уникальный ключ для анимации
+                        key={`${req.path}-${i}-${Date.now()}`}
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1 - i * 0.12, x: 0 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        // ЖЕСТКИЙ GRID: колонки зафиксированы, текст обрезается, высота h-8
+                        // Жесткая сетка - ни один пиксель не сместится
                         className="grid grid-cols-[45px_1fr_40px_50px] gap-4 items-center h-8"
                     >
                         <span className={`font-[600] text-left ${req.method === 'GET' ? 'text-[#8052ff]' : req.method === 'POST' ? 'text-[#15846e]' : req.method === 'DEL' ? 'text-[#e845f2]' : 'text-[#ffb829]'}`}>
@@ -240,7 +324,6 @@ const LiveTerminal = () => {
 export default function ProxyPulse() {
     const [activeShape, setActiveShape] = useState('brain');
 
-    // Настраиваем IntersectionObserver для отслеживания секций на экране
     useEffect(() => {
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
@@ -249,7 +332,7 @@ export default function ProxyPulse() {
                     if (shape) setActiveShape(shape);
                 }
             });
-        }, { threshold: 0.5 }); // Срабатывает, когда секция на 50% в экране
+        }, { threshold: 0.5 });
 
         const sections = document.querySelectorAll('.shape-trigger');
         sections.forEach(section => observer.observe(section));
@@ -260,7 +343,6 @@ export default function ProxyPulse() {
     return (
         <div className="bg-[#000000] text-[#ffffff] min-h-screen font-sans selection:bg-[#8052ff] selection:text-[#ffffff] overflow-x-hidden relative">
 
-            {/* Глобальный канвас на фоне, меняет форму в зависимости от activeShape */}
             <ParticleConstellation activeShape={activeShape} />
 
             <nav className="fixed top-0 left-0 w-full z-50 py-[24px] px-[24px] md:px-[60px] flex justify-between items-center mix-blend-difference">
@@ -270,19 +352,19 @@ export default function ProxyPulse() {
                 </div>
                 <div className="hidden md:flex items-center gap-[36px]">
                     <Link href="#manifesto" className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">Manifesto</Link>
-                    <Link href="#team" className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">Docs</Link>
-                    <Link href="#blog" className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">GitHub</Link>
+                    <Link href="#docs" className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">Docs</Link>
+                    <Link href="#github" className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">GitHub</Link>
                 </div>
                 <div className="flex items-center">
                     <button className="bg-[#8052ff] text-[#ffffff] text-[14px] font-[600] uppercase tracking-[0.35px] rounded-[24px] px-[16px] py-[14.4px] hover:bg-[#6c40e6] transition-colors">
-                        Request Access
+                        Deploy Agent
                     </button>
                 </div>
             </nav>
 
             <main className="relative z-10 max-w-[1280px] mx-auto px-[24px] md:px-[60px]">
 
-                {/* HERO SECTION -> Форма МОЗГА */}
+                {/* Секция 1: МОЗГ */}
                 <section data-shape="brain" className="shape-trigger flex flex-col justify-center min-h-screen pt-[120px] pb-[120px] pointer-events-none">
                     <div className="w-full max-w-[600px] pointer-events-auto">
                         <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829] mb-[24px] block">
@@ -303,18 +385,17 @@ export default function ProxyPulse() {
                     </div>
                 </section>
 
-                {/* FEATURE 1 -> Форма ГЛОБУСА */}
-                <section data-shape="globe" className="shape-trigger flex flex-col justify-center min-h-[80vh] py-[120px] pointer-events-none">
+                {/* Секция 2: ГЛОБУС С МАТЕРИКАМИ */}
+                <section data-shape="globe" className="shape-trigger flex flex-col justify-center min-h-screen py-[120px] pointer-events-none">
                     <div className="w-full max-w-[520px] pointer-events-auto">
                         <h2 className="text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
-                            Beyond raw logs.
+                            Global traffic layer.
                         </h2>
                         <p className="text-[18px] font-[200] leading-[1.5] text-[#bdbdbd] mb-[48px]">
-                            Traditional tools force you to search through massive text files. ProxyPulse turns your traffic into an interactive layer. Select a request, inspect headers, and replay it with one click.
+                            Traditional tools force you to search through massive text files. ProxyPulse turns your traffic into an interactive map. See where your requests are bottlenecking geographically.
                         </p>
 
-                        {/* Жестко зафиксированный терминал логов */}
-                        <div className="bg-[#000000] border border-[#1a1a1a] rounded-[24px] p-[30px] w-full max-w-[480px] backdrop-blur-sm">
+                        <div className="bg-[#000000] border border-[#1a1a1a] rounded-[24px] p-[30px] w-full max-w-[480px]">
                             <span className="text-[12px] font-[600] text-[#15846e] uppercase tracking-[0.35px] mb-[18px] block border-b border-[#1a1a1a] pb-4">
                                 Agent Proxy Activity
                             </span>
@@ -323,14 +404,14 @@ export default function ProxyPulse() {
                     </div>
                 </section>
 
-                {/* FEATURE 2 -> Форма КРЕСТА/ЛОГО */}
-                <section data-shape="cross" className="shape-trigger flex flex-col lg:flex-row items-center gap-[60px] lg:gap-[120px] min-h-[80vh] py-[120px] pointer-events-none">
+                {/* Секция 3: ЛАМПОЧКА (Идея/Инсайт) */}
+                <section data-shape="bulb" className="shape-trigger flex flex-col lg:flex-row items-center gap-[60px] lg:gap-[120px] min-h-screen py-[120px] pointer-events-none">
                     <div className="flex-1 w-full pointer-events-auto">
                         <h2 className="text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
                             Built for high-performance engineering.
                         </h2>
                         <p className="text-[18px] font-[200] leading-[1.5] text-[#bdbdbd] max-w-[520px]">
-                            Whether you are writing microservices in Go, building enterprise backends in C#, or deploying edge functions. The proxy agent runs anywhere with less than 10MB memory footprint.
+                            Whether you are writing microservices in Go, building enterprise backends in C#, or deploying edge functions. The proxy agent runs anywhere with less than 10MB memory footprint, surfacing insights immediately.
                         </p>
                     </div>
 
