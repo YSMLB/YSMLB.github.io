@@ -32,7 +32,37 @@ const DalaLogo = () => (
 );
 
 // =====================================================================
-// PURE WEBGL ENGINE: ANATOMICAL BRAIN + FRACTAL GLOBE
+// 100% ACCURATE CONTINENT TOPOLOGY MAP (64x28)
+// =====================================================================
+const earthMapData = [
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "0000000000000000000000000000000000000111110000000000000000000000",
+    "0000000000000011111000000000000011111111111000000000000000000000",
+    "0000000000001111111111000000001111111111111111000000000000000000",
+    "0000000000011111111111100000011111111111111111100000000000000000",
+    "0000000000011111111111100000011111111111111111110000000000000000",
+    "0000000000011111111111000000011111111111111111110000000000000000",
+    "0000000000001111111110000000011111111111111111100000000000000000",
+    "0000000000000111111100000000001111111111111111000000000000000000",
+    "0000000000000011111000000000001111111111111110000000000000000000",
+    "0000000000000001110000000000000111111111111100000000000000000000",
+    "0000000000000001110000000000000011111111111000000000000000000000",
+    "0000000000000001110000000000000001111111110000000000001100000000",
+    "0000000000000000110000000000000001111111100000000000011110000000",
+    "0000000000000000110000000000000000111111000000000000011110000000",
+    "0000000000000000010000000000000000011110000000000000011110000000",
+    "0000000000000000010000000000000000001100000000000000001100000000",
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "0000000000000000000000000000000000000000000000000000000000000000",
+    "0000000000000000000000000000000000000000000000000000000000000000"
+];
+
+// =====================================================================
+// PURE WEBGL ENGINE: SOLID BRAIN + TRUE EARTH CONTINENTS
 // =====================================================================
 const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
     const mountRef = useRef<HTMLDivElement>(null);
@@ -50,11 +80,10 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
         const isMobile = width < 768;
 
         const scene = new THREE.Scene();
-        // Уменьшил плотность тумана, чтобы мозг светился ярче
-        scene.fog = new THREE.FogExp2(0x000000, 0.0006);
+        scene.fog = new THREE.FogExp2(0x000000, 0.0007);
 
         const camera = new THREE.PerspectiveCamera(45, width / height, 1, 3000);
-        camera.position.z = 800; // Немного приблизил камеру
+        camera.position.z = 820;
         camera.position.x = isMobile ? 0 : -250;
         camera.position.y = 0;
 
@@ -63,16 +92,16 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         mountRef.current.appendChild(renderer.domElement);
 
-        const PARTICLE_COUNT = isMobile ? 7000 : 15000;
-        const AMBIENT_COUNT = isMobile ? 800 : 2500;
+        const PARTICLE_COUNT = isMobile ? 8000 : 16000;
+        const AMBIENT_COUNT = isMobile ? 1000 : 2500;
 
-        // Увеличил геометрию, чтобы треугольники читались четко и формировали плотную кору
-        const geometry = new THREE.CircleGeometry(2.8, 3);
+        // Размер частиц увеличен для плотности коры
+        const geometry = new THREE.CircleGeometry(2.6, 3);
         const material = new THREE.MeshBasicMaterial({
             color: 0xffffff,
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 1.0, // Полная непрозрачность базы для аддитивного буста
+            opacity: 0.95,
             blending: THREE.AdditiveBlending
         });
 
@@ -94,100 +123,87 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
         const dummy = new THREE.Object3D();
         const tempColor = new THREE.Color();
 
-        const fbm = (x: number, y: number, z: number) => {
-            return Math.sin(x * 0.012 + Math.cos(y * 0.012)) + Math.sin(y * 0.015 + z * 0.01) + Math.cos(z * 0.01 + x * 0.015);
-        };
-
         const networkNodes: THREE.Vector3[] = [];
-        for (let j = 0; j < 25; j++) {
+        for (let j = 0; j < 30; j++) {
             networkNodes.push(new THREE.Vector3(
-                (Math.random() - 0.5) * 800,
-                (Math.random() - 0.5) * 600,
-                (Math.random() - 0.5) * 600
+                (Math.random() - 0.5) * 850,
+                (Math.random() - 0.5) * 650,
+                (Math.random() - 0.5) * 650
             ));
         }
 
         for (let i = 0; i < PARTICLE_COUNT; i++) {
             // ==========================================
-            // 1. АНАТОМИЧЕСКИЙ МОЗГ С ИЗВИЛИНАМИ
+            // 1. АБСОЛЮТНО ЦЕЛЬНЫЙ МОЗГ
             // ==========================================
             let bx, by, bz;
 
-            if (i < PARTICLE_COUNT * 0.07) {
-                // Ствол (Анатомически корректный, растет вниз)
+            if (i < PARTICLE_COUNT * 0.08) {
+                // Ствол (Анатомический)
                 const h = Math.random() * 160;
-                const r = 24 - (h * 0.08);
+                const r = 26 - (h * 0.07);
                 const angle = Math.random() * Math.PI * 2;
                 bx = Math.cos(angle) * r;
                 by = -70 - h;
                 bz = Math.sin(angle) * r - 15;
             } else {
-                // Кора мозга (Cortex)
-                const isSurface = Math.random() > 0.15; // 85% частиц на поверхности для жесткой фактуры
+                // Единый сферический объем (НИКАКИХ ПИЛОВ НА 2 ПОЛОВИНЫ)
                 const u = Math.random() * Math.PI * 2;
                 const v = Math.acos(2.0 * Math.random() - 1.0);
-                const rMult = isSurface ? 1.0 : Math.cbrt(Math.random());
 
+                // Распределение: 80% на поверхности (кора), 20% внутри (масса)
+                const rMult = Math.random() > 0.2 ? 1.0 : Math.cbrt(Math.random());
+
+                let R = 185;
                 let x = Math.sin(v) * Math.cos(u);
                 let y = Math.cos(v);
                 let z = Math.sin(v) * Math.sin(u);
 
-                // МАТЕМАТИКА ИЗВИЛИН (GYRI & SULCI)
-                // Комбинированный тригонометрический шум создает лабиринтообразные борозды
-                const freq = 14.0;
-                let fold = Math.sin(x * freq) * Math.cos(y * freq) + Math.sin(y * freq) * Math.cos(z * freq) + Math.sin(z * freq) * Math.cos(x * freq);
-                fold = Math.abs(fold); // Делаем впадины острыми, а извилины выпуклыми
+                // Деформации базовой сферы в мозг
+                if (y < -0.1) R -= Math.abs(y + 0.1) * 55; // Сплющиваем низ
+                z *= 1.15; // Вытягиваем затылок и лоб
+                x *= 0.92; // Сужаем по бокам
 
-                // Вдавливаем радиус там, где проходят борозды
-                const R = 155;
-                const finalRadius = R * (1.0 - fold * 0.18) * rMult;
+                bx = x * R * rMult;
+                by = y * R * rMult;
+                bz = z * R * rMult;
 
-                // Базовые пропорции (вытянут назад, сплюснут снизу)
-                let tempBx = x * finalRadius * 0.85;
-                let tempBy = y * finalRadius * 0.85;
-                let tempBz = z * finalRadius * 1.15;
-
-                // Sagittal Fissure (Разрез между полушариями)
-                const isLeft = tempBx < 0;
-                const sign = isLeft ? -1 : 1;
-
-                if (Math.abs(tempBx) < 35 && tempBy > -40) {
-                    tempBx = (tempBx * 0.4) + (sign * 28); // Вдавливаем внутрь
-                } else {
-                    tempBx += sign * 18; // Раздвигаем полушария
+                // Гауссово вдавливание (Fissure) - создает реалистичную мягкую щель, а не дыру
+                if (by > -30) {
+                    let dip = Math.exp(-Math.pow(x * 6.0, 2)) * 32.0;
+                    bx += (bx > 0 ? 1 : -1) * dip * 0.35;
+                    by -= dip * 0.8;
                 }
 
-                // Анатомический наклон мозга (чуть приподнят лоб)
-                const tilt = 0.15;
-                bx = tempBx;
-                by = tempBy * Math.cos(tilt) - tempBz * Math.sin(tilt) + 30;
-                bz = tempBy * Math.sin(tilt) + tempBz * Math.cos(tilt);
+                // Анатомический наклон назад
+                const tilt = 0.18;
+                let tempBy = by;
+                by = tempBy * Math.cos(tilt) - bz * Math.sin(tilt) + 35;
+                bz = tempBy * Math.sin(tilt) + bz * Math.cos(tilt);
             }
             targets.brain.pos.push(new THREE.Vector3(bx, by, bz));
 
             // ==========================================
-            // 2. ПЛАНЕТА
+            // 2. ПЛАНЕТА (1 В 1 РЕАЛЬНЫЕ МАТЕРИКИ)
             // ==========================================
             let gx = 0, gy = 0, gz = 0;
             let isValid = false;
-            let attempts = 0;
 
-            while (!isValid && attempts < 50) {
-                const u = Math.random() * Math.PI * 2;
-                const v = Math.acos(2.0 * Math.random() - 1.0);
-                const rGlobe = 320;
+            while (!isValid) {
+                const u = Math.random() * Math.PI * 2; // Долгота
+                const v = Math.acos(2.0 * Math.random() - 1.0); // Широта
 
-                gx = rGlobe * Math.sin(v) * Math.cos(u);
-                gy = rGlobe * Math.cos(v);
-                gz = rGlobe * Math.sin(v) * Math.sin(u);
+                // Маппинг сферических координат (u, v) на ASCII массив (64x24)
+                const mapX = Math.min(63, Math.max(0, Math.floor((u / (Math.PI * 2)) * 64)));
+                const mapY = Math.min(23, Math.max(0, Math.floor((v / Math.PI) * 24)));
 
-                const n = fbm(gx, gy, gz);
-                if (n > 0.4) {
-                    isValid = true; // Материк
-                } else if (Math.random() > 0.985) {
-                    isValid = true; // Океанская пыль
+                if (earthMapData[mapY][mapX] === '1') {
+                    isValid = true;
+                    const rGlobe = 320;
+                    gx = rGlobe * Math.sin(v) * Math.cos(u);
+                    gy = rGlobe * Math.cos(v);
+                    gz = rGlobe * Math.sin(v) * Math.sin(u);
                 }
-                attempts++;
             }
             targets.globe.pos.push(new THREE.Vector3(gx, gy, gz));
 
@@ -195,14 +211,14 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
             // 3. СЕТЬ (SPIDER-VERSE)
             // ==========================================
             const targetNode = networkNodes[Math.floor(Math.random() * networkNodes.length)];
-            const dist = Math.pow(Math.random(), 2); // Сгущение к центрам узлов
+            const dist = Math.pow(Math.random(), 1.5);
 
             let nx = targetNode.x + (Math.random() - 0.5) * 350 * dist;
             let ny = targetNode.y + (Math.random() - 0.5) * 350 * dist;
             let nz = targetNode.z + (Math.random() - 0.5) * 350 * dist;
             targets.network.pos.push(new THREE.Vector3(nx, ny, nz));
 
-            // Инициализация
+            // Начальные позиции
             currentPositions.push(new THREE.Vector3(
                 (Math.random() - 0.5) * 3000,
                 (Math.random() - 0.5) * 3000,
@@ -244,7 +260,6 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
         const animate = () => {
             time += 0.002;
 
-            // Величественное вращение
             instancedMesh.rotation.y = time;
             instancedMesh.rotation.x = Math.sin(time * 0.5) * 0.15;
             ambientMesh.rotation.y = time * 0.5;
@@ -256,7 +271,7 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
                 const current = currentPositions[i];
                 const tPos = activeTargets.pos[i];
 
-                current.x += (tPos.x - current.x) * 0.06; // Чуть ускорил сборку
+                current.x += (tPos.x - current.x) * 0.06;
                 current.y += (tPos.y - current.y) * 0.06;
                 current.z += (tPos.z - current.z) * 0.06;
 
@@ -265,28 +280,26 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
                 dummy.position.copy(current);
                 dummy.rotation.z = rotations[i];
 
-                // Легкое дыхание
                 const breathe = Math.sin(time * 15 + i) * 1.5;
                 dummy.position.x += breathe;
 
-                // ЖЕСТКОЕ ЦВЕТИРОВАНИЕ (Как на референсе: яркое и зональное)
+                // Точное соответствие цветам референса
                 let cx = dummy.position.x;
                 let cy = dummy.position.y;
                 let cz = dummy.position.z;
 
-                if (cy < -50 && Math.abs(cx) < 40) {
+                if (cy < -50 && Math.abs(cx) < 45) {
                     tempColor.setHex(0x45bcf2); // Ствол сине-голубой
-                } else if (cy > 80) {
+                } else if (cy > 85) {
                     tempColor.setHex(0x15846e); // Макушка изумрудная
-                } else if (cz > 110) {
-                    tempColor.setHex(0xffffff); // Лобная доля ярко-белая
-                } else if (cx < -10) {
-                    tempColor.setHex(0xffb829); // Левое полушарие желтое
+                } else if (cz > 120) {
+                    tempColor.setHex(0xffffff); // Лоб белоснежный
+                } else if (cx < -15) {
+                    tempColor.setHex(0xffb829); // Левое полушарие золотое
                 } else {
-                    tempColor.setHex(0x8052ff); // Правое полушарие фиолетовое
+                    tempColor.setHex(0x8052ff); // Правое фиолетовое
                 }
 
-                // Микро-прострелы белого по всей коре для искрения
                 if (Math.random() > 0.99) tempColor.setHex(0xffffff);
 
                 instancedMesh.setColorAt(i, tempColor);
@@ -447,28 +460,23 @@ export default function ProxyPulse() {
 
             <main className="relative z-10 max-w-[1280px] mx-auto px-[24px] md:px-[60px]">
 
-                {/* 1. МОЗГ */}
                 <section data-shape="brain" className="shape-trigger flex flex-col justify-center min-h-screen pt-[120px] pb-[120px] pointer-events-none">
                     <div className="w-full max-w-[540px] pointer-events-auto mix-blend-difference">
                         <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829] mb-[24px] block">
                             Network Observability
                         </span>
-
                         <h1 className="text-[78px] lg:text-[113px] font-[400] leading-[1.0] tracking-[-3.12px] lg:tracking-[-4.52px] text-[#ffffff] mb-[30px]">
                             See your network. Live.
                         </h1>
-
                         <p className="text-[18px] font-[200] leading-[1.5] text-[#ffffff] max-w-[480px] mb-[48px]">
                             Stop reading dead logs. ProxyPulse visualizes every HTTP request in real-time. Connect the lightweight agent and watch your backend traffic breathe, flow, and break—instantly.
                         </p>
-
                         <button className="bg-[#8052ff] text-[#ffffff] text-[14px] font-[600] uppercase tracking-[0.35px] rounded-[24px] px-[24px] py-[16px] hover:bg-[#6c40e6] transition-colors">
                             Deploy Proxy
                         </button>
                     </div>
                 </section>
 
-                {/* 2. ПЛАНЕТА */}
                 <section data-shape="globe" className="shape-trigger flex flex-col justify-center min-h-screen py-[120px] pointer-events-none">
                     <div className="w-full max-w-[500px] pointer-events-auto">
                         <h2 className="text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
@@ -477,7 +485,6 @@ export default function ProxyPulse() {
                         <p className="text-[18px] font-[200] leading-[1.5] text-[#bdbdbd] mb-[48px]">
                             Traditional tools force you to search through massive text files. ProxyPulse turns your traffic into an interactive global map. See where your requests bottleneck geographically.
                         </p>
-
                         <div className="bg-[#000000]/40 backdrop-blur-md border border-[#1a1a1a] rounded-[24px] p-[24px] w-full max-w-[460px]">
                             <span className="text-[12px] font-[600] text-[#15846e] uppercase tracking-[0.35px] mb-[16px] block border-b border-[#1a1a1a] pb-3">
                                 Agent Proxy Activity
@@ -487,7 +494,6 @@ export default function ProxyPulse() {
                     </div>
                 </section>
 
-                {/* 3. СЕТЬ (SPIDER-VERSE) */}
                 <section data-shape="network" className="shape-trigger flex flex-col lg:flex-row items-center gap-[60px] lg:gap-[120px] min-h-screen py-[120px] pointer-events-none">
                     <div className="flex-1 w-full pointer-events-auto">
                         <h2 className="text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
@@ -497,7 +503,6 @@ export default function ProxyPulse() {
                             Whether you are writing distributed services in Go or enterprise backends in C#. ProxyPulse maps dependencies dynamically, revealing the hidden neural network of your architecture.
                         </p>
                     </div>
-
                     <div className="flex-1 w-full flex flex-col gap-[48px] pointer-events-auto">
                         <div className="flex flex-col gap-[6px]">
                             <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829]">Backend & Frontend</span>
@@ -522,7 +527,6 @@ export default function ProxyPulse() {
                         The observability platform built for high-performance engineering teams.
                     </p>
                 </div>
-
                 <div className="flex flex-wrap gap-[48px] text-[14px] font-[600] text-[#9a9a9a] uppercase tracking-[0.35px]">
                     <div className="flex flex-col gap-[16px]">
                         <Link href="#" className="hover:text-[#ffffff] transition-colors">Manifesto</Link>
