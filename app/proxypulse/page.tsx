@@ -3,9 +3,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import * as THREE from 'three';
 
 // =====================================================================
-// DALA DESIGN TOKENS
+// DESIGN TOKENS
 // =====================================================================
 const tokens = {
     void: "#000000",
@@ -30,273 +31,219 @@ const DalaLogo = () => (
 );
 
 // =====================================================================
-// MASSIVE 1:1 DALA 3D ENGINE (Fibonacci Sphere + Zonal Coloring)
+// PURE WEBGL THREE.JS ENGINE (THE REAL DEAL)
 // =====================================================================
-const ParticleConstellation = ({ activeShape }: { activeShape: string }) => {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const particlesRef = useRef<any[]>([]);
+const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
+    const mountRef = useRef<HTMLDivElement>(null);
+    const shapeRef = useRef(activeShape);
+
+    // Синхронизируем стейт реакта с рефом для animation loop
+    useEffect(() => {
+        shapeRef.current = activeShape;
+    }, [activeShape]);
 
     useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d', { alpha: false });
-        if (!ctx) return;
+        if (!mountRef.current) return;
 
-        // Retina display support for crispy sharp triangles
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        let width = window.innerWidth;
-        let height = window.innerHeight;
-
-        canvas.width = width * dpr;
-        canvas.height = height * dpr;
-        ctx.scale(dpr, dpr);
-
+        const width = window.innerWidth;
+        const height = window.innerHeight;
         const isMobile = width < 768;
 
-        // Массивное количество частиц для плотной оболочки (как на референсе)
-        const TOTAL_PARTICLES = isMobile ? 3000 : 9000;
+        // 1. НАСТРОЙКА СЦЕНЫ
+        const scene = new THREE.Scene();
+        // Тот самый эффект "глубины" - частицы вдалеке растворяются во тьме
+        scene.fog = new THREE.FogExp2(0x000000, 0.0015);
 
-        // Зональная покраска (как на скрине 155422_2.jpg - кучность цветов)
-        const getZonalColor = (x: number, y: number, z: number) => {
-            if (x > 80 && y < 0) return tokens.saffronSpark; // Правый верх - желтый
-            if (x < -80 && y < 0) return tokens.electricIris; // Левый верх - фиолетовый
-            if (y > 100) return tokens.deepVerdant; // Низ - изумрудный
-            if (z > 150) return '#e845f2'; // Фронт - маджента
-            if (Math.random() > 0.8) return tokens.boneWhite; // Прострелы белого
-            // Дефолтная смесь
-            const mix = [tokens.electricIris, tokens.saffronSpark, '#45bcf2'];
-            return mix[Math.floor(Math.random() * mix.length)];
-        };
+        const camera = new THREE.PerspectiveCamera(45, width / height, 1, 2500);
+        camera.position.z = 850;
+        camera.position.x = isMobile ? 0 : -200; // Сдвигаем камеру влево, чтобы объект был справа
+        camera.position.y = 0;
 
-        const getShapeTarget = (index: number, shape: string) => {
-            let x = 0, y = 0, z = 0;
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        mountRef.current.appendChild(renderer.domElement);
 
-            if (shape === 'brain') {
-                // 1. СТВОЛ МОЗГА (Снизу)
-                if (index < TOTAL_PARTICLES * 0.08) {
-                    const u = Math.random() * Math.PI * 2;
-                    const h = Math.random() * 180;
-                    const r = 35 - (h * 0.1); // Сужение книзу
-                    x = Math.cos(u) * r;
-                    y = h + 120;
-                    z = Math.sin(u) * r;
-                }
-                // 2. ПОЛУШАРИЯ (Оболочка с помощью распределения Фибоначчи)
-                else {
-                    const cortexParticles = TOTAL_PARTICLES * 0.92;
-                    const i = index - (TOTAL_PARTICLES * 0.08);
+        // 2. ГЕОМЕТРИЯ (Реальные треугольники)
+        const PARTICLE_COUNT = isMobile ? 4000 : 12000;
 
-                    const isLeft = i % 2 === 0;
-                    const sign = isLeft ? -1 : 1;
-
-                    // Фибоначчи для равномерного покрытия сферы
-                    const samples = Math.floor(cortexParticles / 2);
-                    const localI = Math.floor(i / 2);
-                    const phi = Math.PI * (3 - Math.sqrt(5));
-
-                    const localY = 1 - (localI / (samples - 1)) * 2;
-                    const radiusAtY = Math.sqrt(1 - localY * localY);
-                    const theta = phi * localI;
-
-                    x = Math.cos(theta) * radiusAtY;
-                    y = localY;
-                    z = Math.sin(theta) * radiusAtY;
-
-                    // Масштабируем сферу в форму мозга
-                    const R = 280; // Огромный размер
-                    x *= R; y *= R; z *= R;
-
-                    // Формируем щель (sagittal fissure) и вытягиваем
-                    x = (x * 0.75) + (sign * 85);
-                    y = y * 0.85 - 40; // Слегка сплющиваем сверху/снизу
-                    z = z * 1.15; // Вытягиваем лобную/затылочную доли
-
-                    // Добавляем микро-рельеф (извилины)
-                    const noise = Math.sin(x * 0.04) * Math.cos(y * 0.04) * Math.sin(z * 0.04) * 15;
-                    x += noise; y += noise; z += noise;
-                }
-            }
-            else if (shape === 'globe') {
-                // ПЛОТНАЯ ПЛАНЕТА
-                const i = index;
-                const phi = Math.PI * (3 - Math.sqrt(5));
-                const localY = 1 - (i / (TOTAL_PARTICLES - 1)) * 2;
-                const radiusAtY = Math.sqrt(1 - localY * localY);
-                const theta = phi * i;
-
-                const R = 320;
-                x = Math.cos(theta) * radiusAtY * R;
-                y = localY * R;
-                z = Math.sin(theta) * radiusAtY * R;
-
-                // Генерация материков
-                const noise = Math.sin(x * 0.02) * Math.cos(y * 0.02) + Math.sin(z * 0.03);
-                if (noise < -0.2 && Math.random() > 0.1) {
-                    // Океан - удаляем частицы к центру, создавая пустоты
-                    x *= 0.1; y *= 0.1; z *= 0.1;
-                } else {
-                    // Материк - выпячиваем
-                    x *= 1.05; y *= 1.05; z *= 1.05;
-                }
-            }
-            else if (shape === 'bulb') {
-                // ЛАМПОЧКА (Идея)
-                if (index < TOTAL_PARTICLES * 0.2) {
-                    const u = Math.random() * Math.PI * 2;
-                    const h = Math.random() * 140;
-                    const r = 70 + Math.sin(h * 0.1) * 10; // Резьба
-                    x = Math.cos(u) * r;
-                    y = h + 150;
-                    z = Math.sin(u) * r;
-                } else {
-                    const cortexParticles = TOTAL_PARTICLES * 0.8;
-                    const i = index - (TOTAL_PARTICLES * 0.2);
-                    const phi = Math.PI * (3 - Math.sqrt(5));
-                    const localY = 1 - (i / (cortexParticles - 1)) * 2;
-                    const radiusAtY = Math.sqrt(1 - localY * localY);
-                    const theta = phi * i;
-
-                    const R = 220;
-                    x = Math.cos(theta) * radiusAtY * R;
-                    y = localY * R - 80;
-                    z = Math.sin(theta) * radiusAtY * R;
-                }
-            }
-
-            // Рандомный отступ для создания "пушистости" оболочки
-            return {
-                tx: x + (Math.random() - 0.5) * 15,
-                ty: y + (Math.random() - 0.5) * 15,
-                tz: z + (Math.random() - 0.5) * 15
-            };
-        };
-
-        if (particlesRef.current.length === 0) {
-            for (let i = 0; i < TOTAL_PARTICLES; i++) {
-                const target = getShapeTarget(i, 'brain');
-                particlesRef.current.push({
-                    x: target.tx + (Math.random() - 0.5) * 2000, // Вылет из космоса
-                    y: target.ty + (Math.random() - 0.5) * 2000,
-                    z: target.tz + (Math.random() - 0.5) * 2000,
-                    tx: target.tx,
-                    ty: target.ty,
-                    tz: target.tz,
-                    color: getZonalColor(target.tx, target.ty, target.tz),
-                    size: Math.random() * 2.5 + 1.0, // Крупные, четкие
-                    angle: Math.random() * Math.PI * 2,
-                    spin: (Math.random() - 0.5) * 0.02
-                });
-            }
-        }
-
-        particlesRef.current.forEach((p, i) => {
-            const target = getShapeTarget(i, activeShape);
-            p.tx = target.tx;
-            p.ty = target.ty;
-            p.tz = target.tz;
-            // Перекрашиваем под новую форму
-            p.color = getZonalColor(target.tx, target.ty, target.tz);
+        // CircleGeometry с 3 сегментами дает ровный треугольник
+        const geometry = new THREE.CircleGeometry(1.4, 3);
+        const material = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending // Заставляет их светиться при наложении
         });
 
-        let animationFrameId: number;
-        let time = 0;
+        // InstancedMesh позволяет видеокарте рендерить 12к объектов за один вызов
+        const instancedMesh = new THREE.InstancedMesh(geometry, material, PARTICLE_COUNT);
+        scene.add(instancedMesh);
 
-        const animate = () => {
-            time += 0.003; // Очень медленное, величественное вращение
+        // 3. МАТЕМАТИКА ФОРМ
+        const dummy = new THREE.Object3D();
+        const colors = new Float32Array(PARTICLE_COUNT * 3);
 
-            // Чистим фон
-            ctx.fillStyle = tokens.void;
-            ctx.fillRect(0, 0, width, height);
+        const brainPositions: THREE.Vector3[] = [];
+        const globePositions: THREE.Vector3[] = [];
+        const currentPositions: THREE.Vector3[] = [];
+        const rotations: number[] = [];
+        const spinSpeeds: number[] = [];
 
-            // Эффект свечения при наложении треугольников
-            ctx.globalCompositeOperation = 'screen';
+        const colorObj = new THREE.Color();
 
-            const centerX = isMobile ? width / 2 : width * 0.72; // Центр смещен вправо
-            const centerY = height / 2;
-            const FOV = 900; // Меньше искажения перспективы
+        // Цветовые зоны (Золотой справа, Фиолетовый слева, Изумрудный снизу)
+        const applyZonalColor = (x: number, y: number, z: number, index: number) => {
+            if (x > 50 && y < 50) colorObj.setHex(0xffb829); // saffron
+            else if (x < -50 && y < 50) colorObj.setHex(0x8052ff); // electric
+            else if (y > 80) colorObj.setHex(0x15846e); // verdant
+            else if (z > 100) colorObj.setHex(0xe845f2); // magenta
+            else if (Math.random() > 0.8) colorObj.setHex(0xffffff); // bone white
+            else colorObj.setHex(0x45bcf2);
 
-            const rotY = time * 0.3;
-            const rotX = Math.sin(time * 0.2) * 0.1;
+            colorObj.toArray(colors, index * 3);
+            instancedMesh.setColorAt(index, colorObj);
+        };
 
-            const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
-            const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            // ФИБОНАЧЧИ ДЛЯ РАВНОМЕРНОГО ПОКРЫТИЯ СФЕРЫ
+            const phi = Math.acos(-1 + (2 * i) / PARTICLE_COUNT);
+            const theta = Math.sqrt(PARTICLE_COUNT * Math.PI) * phi;
 
-            // Сортировка по Z (O(n log n)) нужна для правильного свечения, но бьет по FPS.
-            // При screen-наложении мы можем пропустить сортировку и получить шикарный эффект.
+            // --- ФОРМА: ПЛАНЕТА ---
+            const rGlobe = 280;
+            let gx = rGlobe * Math.cos(theta) * Math.sin(phi);
+            let gy = rGlobe * Math.cos(phi);
+            let gz = rGlobe * Math.sin(theta) * Math.sin(phi);
 
-            for (let i = 0; i < particlesRef.current.length; i++) {
-                const p = particlesRef.current[i];
+            // Шум для материков
+            const noise = Math.sin(gx * 0.015) * Math.cos(gy * 0.015) + Math.sin(gz * 0.02);
+            if (noise < -0.1 && Math.random() > 0.2) {
+                gx *= 0.2; gy *= 0.2; gz *= 0.2; // Океанские впадины
+            } else {
+                gx *= 1.05; gy *= 1.05; gz *= 1.05; // Материки
+            }
+            globePositions.push(new THREE.Vector3(gx, gy, gz));
 
-                // Лерпинг к форме
-                p.x += (p.tx - p.x) * 0.06;
-                p.y += (p.ty - p.y) * 0.06;
-                p.z += (p.tz - p.z) * 0.06;
+            // --- ФОРМА: МОЗГ ---
+            const rBrain = 260;
+            let bx = rBrain * Math.cos(theta) * Math.sin(phi);
+            let by = rBrain * Math.cos(phi);
+            let bz = rBrain * Math.sin(theta) * Math.sin(phi);
 
-                // 3D Трансформация
-                let rx = p.x * cosY - p.z * sinY;
-                let rz = p.z * cosY + p.x * sinY;
-                let ry = p.y * cosX - rz * sinX;
-                let finalZ = rz * cosX + p.y * sinX;
+            // Искажаем сферу в мозг
+            const isLeft = bx < 0;
+            const sign = isLeft ? -1 : 1;
 
-                if (finalZ < -FOV + 100) continue; // Отсечение невидимого
+            bx = (bx * 0.7) + (sign * 60); // Полушария и продольная щель
+            by = by * 0.8 - 30; // Приплюснуть сверху и снизу
+            bz = bz * 1.1; // Вытянуть лоб и затылок
 
-                const scale = FOV / (FOV + finalZ);
-                const projectedX = centerX + rx * scale;
-                const projectedY = centerY + ry * scale;
-                const projectedSize = Math.max(0.5, p.size * scale);
+            // Извилины
+            const brainNoise = Math.sin(bx * 0.03) * Math.cos(by * 0.03) * Math.sin(bz * 0.03) * 20;
+            bx += brainNoise; by += brainNoise; bz += brainNoise;
 
-                p.angle += p.spin;
-
-                // Рисуем острый треугольник
-                ctx.save();
-                ctx.translate(projectedX, projectedY);
-                ctx.rotate(p.angle);
-                ctx.beginPath();
-                ctx.moveTo(0, -projectedSize);
-                ctx.lineTo(projectedSize * 0.866, projectedSize * 0.5);
-                ctx.lineTo(-projectedSize * 0.866, projectedSize * 0.5);
-                ctx.closePath();
-
-                ctx.strokeStyle = p.color;
-                ctx.lineWidth = 1.2 * scale; // Толщина зависит от глубины
-
-                // Прозрачность зависит от глубины (задние темнее)
-                const depthAlpha = Math.max(0.05, Math.min(0.9, scale * 1.5));
-                ctx.globalAlpha = depthAlpha;
-
-                ctx.stroke();
-                ctx.restore();
+            // Добавляем ствол мозга
+            if (i < PARTICLE_COUNT * 0.05) {
+                const stemH = Math.random() * 150;
+                bx = Math.cos(theta) * 25;
+                by = stemH + 100;
+                bz = Math.sin(theta) * 25;
             }
 
-            // Возвращаем дефолтный режим
-            ctx.globalCompositeOperation = 'source-over';
+            brainPositions.push(new THREE.Vector3(bx, by, bz));
+
+            // Начальная позиция - взрыв из центра
+            currentPositions.push(new THREE.Vector3(
+                (Math.random() - 0.5) * 2000,
+                (Math.random() - 0.5) * 2000,
+                (Math.random() - 0.5) * 2000
+            ));
+
+            rotations.push(Math.random() * Math.PI * 2);
+            spinSpeeds.push((Math.random() - 0.5) * 0.05);
+
+            // Красим по целевой позиции мозга (основная форма)
+            applyZonalColor(bx, by, bz, i);
+        }
+
+        if (instancedMesh.instanceColor) instancedMesh.instanceColor.needsUpdate = true;
+
+        // 4. АНИМАЦИОННЫЙ ЦИКЛ
+        let time = 0;
+        let animationFrameId: number;
+
+        const animate = () => {
+            time += 0.002;
+
+            // Медленное вращение всей конструкции
+            instancedMesh.rotation.y = time;
+            instancedMesh.rotation.x = Math.sin(time * 0.5) * 0.1;
+
+            const targets = shapeRef.current === 'globe' ? globePositions : brainPositions;
+
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const current = currentPositions[i];
+                const target = targets[i];
+
+                // Плавное перетекание (Lerp) к целевой форме
+                current.x += (target.x - current.x) * 0.04;
+                current.y += (target.y - current.y) * 0.04;
+                current.z += (target.z - current.z) * 0.04;
+
+                rotations[i] += spinSpeeds[i];
+
+                dummy.position.copy(current);
+                dummy.rotation.z = rotations[i];
+                // Микро-колебания (дыхание)
+                const breathe = Math.sin(time * 10 + i) * 1.5;
+                dummy.position.x += breathe;
+                dummy.position.y += breathe;
+
+                dummy.updateMatrix();
+                instancedMesh.setMatrixAt(i, dummy.matrix);
+            }
+
+            instancedMesh.instanceMatrix.needsUpdate = true;
+            renderer.render(scene, camera);
             animationFrameId = requestAnimationFrame(animate);
         };
 
         animate();
 
+        // 5. РЕСАЙЗ
         const handleResize = () => {
-            width = window.innerWidth;
-            height = window.innerHeight;
-            canvas.width = width * dpr;
-            canvas.height = height * dpr;
-            ctx.scale(dpr, dpr);
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+            camera.position.x = w < 768 ? 0 : -200;
         };
 
         window.addEventListener('resize', handleResize);
+
         return () => {
             window.removeEventListener('resize', handleResize);
             cancelAnimationFrame(animationFrameId);
+            mountRef.current?.removeChild(renderer.domElement);
+            geometry.dispose();
+            material.dispose();
+            renderer.dispose();
         };
-    }, [activeShape]);
+    }, []);
 
     return (
-        <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none" />
+        <div
+            ref={mountRef}
+            className="fixed inset-0 z-0 pointer-events-none bg-[#000000]"
+        />
     );
 };
 
 // =====================================================================
-// LIVE REQUEST TERMINAL (Strict Grid = No Jumping)
+// LIVE REQUEST TERMINAL (Grid based)
 // =====================================================================
 const backendLogs = [
     { method: "GET", path: "/api/v1/go/metrics", status: 200, time: "12ms" },
@@ -373,9 +320,9 @@ export default function ProxyPulse() {
     }, []);
 
     return (
-        <div className="bg-[#000000] text-[#ffffff] min-h-screen font-sans selection:bg-[#8052ff] selection:text-[#ffffff] overflow-x-hidden relative">
+        <div className="bg-transparent text-[#ffffff] min-h-screen font-sans selection:bg-[#8052ff] selection:text-[#ffffff] overflow-x-hidden relative">
 
-            <ParticleConstellation activeShape={activeShape} />
+            <WebGLConstellation activeShape={activeShape} />
 
             <nav className="fixed top-0 left-0 w-full z-50 py-[24px] px-[24px] md:px-[60px] flex justify-between items-center mix-blend-difference">
                 <div className="flex items-center gap-[12px]">
@@ -397,7 +344,7 @@ export default function ProxyPulse() {
             <main className="relative z-10 max-w-[1280px] mx-auto px-[24px] md:px-[60px]">
 
                 <section data-shape="brain" className="shape-trigger flex flex-col justify-center min-h-screen pt-[120px] pb-[120px] pointer-events-none">
-                    <div className="w-full max-w-[540px] pointer-events-auto">
+                    <div className="w-full max-w-[540px] pointer-events-auto mix-blend-difference">
                         <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829] mb-[24px] block">
                             Network Observability
                         </span>
@@ -425,7 +372,7 @@ export default function ProxyPulse() {
                             Traditional tools force you to search through massive text files. ProxyPulse turns your traffic into an interactive global map. See where your requests bottleneck geographically.
                         </p>
 
-                        <div className="bg-[#000000] border border-[#1a1a1a] rounded-[24px] p-[24px] w-full max-w-[460px]">
+                        <div className="bg-[#000000]/40 backdrop-blur-md border border-[#1a1a1a] rounded-[24px] p-[24px] w-full max-w-[460px]">
                             <span className="text-[12px] font-[600] text-[#15846e] uppercase tracking-[0.35px] mb-[16px] block border-b border-[#1a1a1a] pb-3">
                                 Agent Proxy Activity
                             </span>
@@ -434,46 +381,7 @@ export default function ProxyPulse() {
                     </div>
                 </section>
 
-                <section data-shape="bulb" className="shape-trigger flex flex-col lg:flex-row items-center gap-[60px] lg:gap-[120px] min-h-screen py-[120px] pointer-events-none">
-                    <div className="flex-1 w-full pointer-events-auto">
-                        <h2 className="text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
-                            Built for high-performance engineering.
-                        </h2>
-                        <p className="text-[18px] font-[200] leading-[1.5] text-[#bdbdbd] max-w-[520px]">
-                            Whether you are writing microservices in Go, building enterprise backends in C#, or deploying edge functions. The proxy agent runs anywhere with less than 10MB memory footprint, surfacing insights immediately.
-                        </p>
-                    </div>
-
-                    <div className="flex-1 w-full flex flex-col gap-[48px] pointer-events-auto">
-                        <div className="flex flex-col gap-[6px]">
-                            <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829]">Backend & Frontend</span>
-                            <p className="text-[27px] font-[400] leading-[1.0] text-[#ffffff]">Debug APIs instantly.</p>
-                        </div>
-                        <div className="flex flex-col gap-[6px]">
-                            <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#8052ff]">DevOps / Infra</span>
-                            <p className="text-[27px] font-[400] leading-[1.0] text-[#bdbdbd]">Monitor proxy layer health.</p>
-                        </div>
-                        <div className="flex flex-col gap-[6px]">
-                            <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#15846e]">Mobile Teams</span>
-                            <p className="text-[27px] font-[400] leading-[1.0] text-[#bdbdbd]">Track client requests visually.</p>
-                        </div>
-                    </div>
-                </section>
-
             </main>
-
-            <footer className="relative z-10 w-full max-w-[1280px] mx-auto px-[24px] md:px-[60px] py-[60px] flex flex-col md:flex-row justify-between items-start md:items-center gap-[36px]">
-                <div className="flex items-center gap-[12px] opacity-50">
-                    <DalaLogo />
-                    <span className="text-[14px] font-[600] tracking-[0.35px] text-[#ffffff] uppercase">ProxyPulse</span>
-                </div>
-
-                <div className="flex flex-wrap gap-[30px] text-[14px] font-[400] text-[#9a9a9a]">
-                    <Link href="#" className="hover:text-[#ffffff] transition-colors">Twitter</Link>
-                    <Link href="#" className="hover:text-[#ffffff] transition-colors">GitHub</Link>
-                    <Link href="#" className="hover:text-[#ffffff] transition-colors">LinkedIn</Link>
-                </div>
-            </footer>
         </div>
     );
 }
