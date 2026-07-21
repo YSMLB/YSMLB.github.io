@@ -32,7 +32,16 @@ const DalaLogo = () => (
 );
 
 // =====================================================================
-// PURE WEBGL THREE.JS ENGINE (1:1 POINT CLOUD MATCH)
+// 3D MATH & NOISE ENGINE
+// =====================================================================
+const pseudoNoise3D = (x: number, y: number, z: number) => {
+    let n = Math.sin(x * 1.2 + y) + Math.sin(y * 1.2 + z) + Math.sin(z * 1.2 + x);
+    n += Math.sin(x * 2.5 - y * 1.5) * 0.5 + Math.cos(z * 2.5 + x * 1.5) * 0.5;
+    return n;
+};
+
+// =====================================================================
+// PURE WEBGL ENGINE: HIGH-FIDELITY POINT CLOUDS
 // =====================================================================
 const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
     const mountRef = useRef<HTMLDivElement>(null);
@@ -50,28 +59,27 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
         const isMobile = width < 768;
 
         const scene = new THREE.Scene();
-        // Глубокий туман для поглощения частиц на заднем плане
-        scene.fog = new THREE.FogExp2(0x000000, 0.0012);
+        scene.fog = new THREE.FogExp2(0x000000, 0.0006);
 
-        const camera = new THREE.PerspectiveCamera(45, width / height, 1, 3000);
-        camera.position.z = 900;
-        camera.position.x = isMobile ? 0 : -250;
+        const camera = new THREE.PerspectiveCamera(45, width / height, 1, 4000);
+        camera.position.z = 1000;
+        camera.position.x = isMobile ? 0 : -350;
         camera.position.y = 0;
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
         renderer.setSize(width, height);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         mountRef.current.appendChild(renderer.domElement);
 
-        const PARTICLE_COUNT = isMobile ? 6000 : 12000;
-        const AMBIENT_COUNT = isMobile ? 800 : 2500;
+        const PARTICLE_COUNT = isMobile ? 8000 : 20000;
+        const AMBIENT_COUNT = isMobile ? 500 : 1500;
 
-        const geometry = new THREE.CircleGeometry(1.6, 3);
+        const geometry = new THREE.CircleGeometry(3.0, 3);
         const material = new THREE.MeshBasicMaterial({
             color: 0xffffff,
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 0.9,
+            opacity: 0.85,
             blending: THREE.AdditiveBlending
         });
 
@@ -89,156 +97,132 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
 
         const currentPositions: THREE.Vector3[] = [];
         const rotations: number[] = [];
+        const scales: number[] = [];
         const spinSpeeds: number[] = [];
         const dummy = new THREE.Object3D();
         const tempColor = new THREE.Color();
 
-        // Простой фрактальный шум для генерации материков
-        const fbm = (x: number, y: number, z: number) => {
-            return Math.sin(x * 0.012 + Math.cos(y * 0.012)) + Math.sin(y * 0.015 + z * 0.01) + Math.cos(z * 0.01 + x * 0.015);
-        };
+        // --------------------------------------------------------
+        // 1. ГЕНЕРАЦИЯ МОЗГА
+        // --------------------------------------------------------
+        let brainPointsFound = 0;
+        while (brainPointsFound < PARTICLE_COUNT) {
+            const x = (Math.random() - 0.5) * 450;
+            const y = (Math.random() - 0.5) * 350;
+            const z = (Math.random() - 0.5) * 400;
 
-        // Генерация узлов для сети
-        const networkNodes: THREE.Vector3[] = [];
-        for (let j = 0; j < 20; j++) {
-            networkNodes.push(new THREE.Vector3(
-                (Math.random() - 0.5) * 700,
-                (Math.random() - 0.5) * 500,
-                (Math.random() - 0.5) * 500
-            ));
-        }
+            let isBrain = false;
 
-        for (let i = 0; i < PARTICLE_COUNT; i++) {
-            // --------------------------------------------------------
-            // 1. ГЕНЕРАЦИЯ МОЗГА (КОРАЛЛОВАЯ СКОРЛУПА И ИЗВИЛИНЫ)
-            // --------------------------------------------------------
-            let brainPointsFound = 0;
-            while (brainPointsFound < PARTICLE_COUNT) {
-                // Генерируем точки в пределах ограничивающего бокса
-                const x = (Math.random() - 0.5) * 450;
-                const y = (Math.random() - 0.5) * 380;
-                const z = (Math.random() - 0.5) * 450;
+            if (y < -80 && y > -200 && Math.abs(x) < 30 && Math.abs(z) < 40) {
+                isBrain = true;
+            } else {
+                const isLeft = x < -5;
+                const isRight = x > 5;
 
-                let isBrain = false;
+                if (isLeft || isRight) {
+                    const cx = isLeft ? x + 40 : x - 40;
+                    const cy = y;
+                    const cz = z;
 
-                // Анатомический ствол (плотный, сужающийся книзу)
-                if (y < -60 && y > -180 && Math.abs(x) < 22 && Math.abs(z) < 30) {
-                    isBrain = true;
-                } else {
-                    // Полушария с жестким разрезом по центру (Fissure)
-                    // Отступ 8 единиц от центра формирует ту самую четкую щель
-                    const isLeft = x < -8;
-                    const isRight = x > 8;
+                    const dist = (cx * cx) / (110 * 110) + (cy * cy) / (130 * 130) + (cz * cz) / (160 * 160);
 
-                    if (isLeft || isRight) {
-                        const sign = isLeft ? -1 : 1;
-                        const cx = x - sign * 35; // Смещаем центры полушарий наружу
-                        const cy = y;
-                        const cz = z;
-
-                        // Формируем эллипсоид: вытянут по Z, сплюснут снизу
-                        let dist = (cx * cx) / (110 * 110) + (cy * cy) / (125 * 125) + (cz * cz) / (155 * 155);
-                        if (y < -10) dist += Math.abs(y) * 0.003; // Жесткое сплющивание нижней части мозга
-
-                        // Толстая скорлупа (от 0.5 до 1.0), внутри пусто — как на референсе Dala
-                        if (dist < 1.0 && dist > 0.5) {
-                            // Высокочастотный тригонометрический шум для создания борозд
-                            const f = 0.055; // Частота складок
-                            const fold = Math.sin(x * f) * Math.cos(y * f) + Math.sin(y * f) * Math.cos(z * f) + Math.sin(z * f) * Math.cos(x * f);
-
-                            // Оставляем только те точки, которые лежат на "хребтах" шума (извилины),
-                            // или создаем базовую плотность у самой поверхности
-                            if (Math.abs(fold) > 0.65 || (dist > 0.85 && Math.random() > 0.6)) {
-                                isBrain = true;
-                            }
+                    if (dist < 1.0) {
+                        const noiseVal = pseudoNoise3D(x * 0.03, y * 0.03, z * 0.03);
+                        if (Math.abs(noiseVal) > 0.4 || dist > 0.85) {
+                            isBrain = true;
                         }
                     }
                 }
-
-                if (isBrain) {
-                    // Анатомический наклон мозга назад (чтобы лоб смотрел чуть вверх)
-                    const tilt = 0.18;
-                    const tiltedY = y * Math.cos(tilt) - z * Math.sin(tilt) + 30;
-                    const tiltedZ = y * Math.sin(tilt) + z * Math.cos(tilt);
-
-                    targets.brain.pos.push(new THREE.Vector3(x, tiltedY, tiltedZ));
-                    brainPointsFound++;
-                }
             }
-            targets.brain.pos.push(new THREE.Vector3(bx, by, bz));
 
-            // ==========================================
-            // 2. ФОРМА: ПЛАНЕТА (По референсу image_e3a49b)
-            // ==========================================
-            let gx = 0, gy = 0, gz = 0;
-            let isValid = false;
-            let attempts = 0;
+            if (isBrain) {
+                const tilt = 0.2;
+                const tiltedY = y * Math.cos(tilt) - z * Math.sin(tilt);
+                const tiltedZ = y * Math.sin(tilt) + z * Math.cos(tilt);
 
-            // Rejection Sampling: Ищем точку на поверхности сферы, пока она не попадет на "материк"
-            while (!isValid && attempts < 50) {
-                const u = Math.random() * Math.PI * 2;
-                const v = Math.acos(2.0 * Math.random() - 1.0);
-                const rGlobe = 290;
-
-                gx = rGlobe * Math.sin(v) * Math.cos(u);
-                gy = rGlobe * Math.cos(v);
-                gz = rGlobe * Math.sin(v) * Math.sin(u);
-
-                const n = fbm(gx, gy, gz);
-                if (n > 0.4) {
-                    isValid = true; // Попали в материк
-                } else if (Math.random() > 0.98) {
-                    isValid = true; // 2% шанс оставить частицу в океане (для текстуры)
-                }
-                attempts++;
+                targets.brain.pos.push(new THREE.Vector3(x, tiltedY + 50, tiltedZ));
+                brainPointsFound++;
             }
-            targets.globe.pos.push(new THREE.Vector3(gx, gy, gz));
-
-            // ==========================================
-            // 3. ФОРМА: СЕТЬ (Spider-Verse)
-            // ==========================================
-            const targetNode = networkNodes[Math.floor(Math.random() * networkNodes.length)];
-            const dist = Math.random(); // Распределение вдоль нити
-
-            let nx = targetNode.x + (Math.random() - 0.5) * 250 * dist;
-            let ny = targetNode.y + (Math.random() - 0.5) * 250 * dist;
-            let nz = targetNode.z + (Math.random() - 0.5) * 250 * dist;
-            targets.network.pos.push(new THREE.Vector3(nx, ny, nz));
-
-            // ==========================================
-            // ИНИЦИАЛИЗАЦИЯ
-            // ==========================================
-            currentPositions.push(new THREE.Vector3(
-                (Math.random() - 0.5) * 2500,
-                (Math.random() - 0.5) * 2500,
-                (Math.random() - 0.5) * 2500
-            ));
-            rotations.push(Math.random() * Math.PI * 2);
-            spinSpeeds.push((Math.random() - 0.5) * 0.04);
         }
 
-        // ==========================================
-        // ГЛУБИНА (Эмбиентные частицы на фоне)
-        // ==========================================
-        const ambientSpeeds: THREE.Vector3[] = [];
-        for (let i = 0; i < AMBIENT_COUNT; i++) {
-            dummy.position.set(
+        // --------------------------------------------------------
+        // 2. ГЕНЕРАЦИЯ ПЛАНЕТЫ
+        // --------------------------------------------------------
+        const R = 320;
+        let globePointsFound = 0;
+        let pIndex = 0;
+
+        while (globePointsFound < PARTICLE_COUNT) {
+            const phi = Math.acos(1 - 2 * (pIndex / (PARTICLE_COUNT * 2.5)));
+            const theta = Math.PI * (1 + Math.sqrt(5)) * pIndex;
+
+            const gx = R * Math.cos(theta) * Math.sin(phi);
+            const gy = R * Math.cos(phi);
+            const gz = R * Math.sin(theta) * Math.sin(phi);
+
+            const continentNoise = pseudoNoise3D(gx * 0.008, gy * 0.008, gz * 0.008);
+
+            if (continentNoise > 0.2) {
+                targets.globe.pos.push(new THREE.Vector3(gx, gy, gz));
+                globePointsFound++;
+            } else if (Math.random() > 0.97) {
+                targets.globe.pos.push(new THREE.Vector3(gx, gy, gz));
+                globePointsFound++;
+            }
+            pIndex++;
+        }
+
+        // --------------------------------------------------------
+        // 3. ГЕНЕРАЦИЯ СЕТИ
+        // --------------------------------------------------------
+        const networkNodes: THREE.Vector3[] = [];
+        for (let j = 0; j < 35; j++) {
+            networkNodes.push(new THREE.Vector3(
+                (Math.random() - 0.5) * 900,
+                (Math.random() - 0.5) * 700,
+                (Math.random() - 0.5) * 700
+            ));
+        }
+
+        for (let k = 0; k < PARTICLE_COUNT; k++) {
+            const targetNode = networkNodes[Math.floor(Math.random() * networkNodes.length)];
+            const dist = Math.pow(Math.random(), 2);
+
+            let nx = targetNode.x + (Math.random() - 0.5) * 450 * dist;
+            let ny = targetNode.y + (Math.random() - 0.5) * 450 * dist;
+            let nz = targetNode.z + (Math.random() - 0.5) * 450 * dist;
+            targets.network.pos.push(new THREE.Vector3(nx, ny, nz));
+
+            currentPositions.push(new THREE.Vector3(
                 (Math.random() - 0.5) * 3000,
                 (Math.random() - 0.5) * 3000,
                 (Math.random() - 0.5) * 3000
+            ));
+            rotations.push(Math.random() * Math.PI * 2);
+            scales.push(Math.random() * 0.8 + 0.4);
+            spinSpeeds.push((Math.random() - 0.5) * 0.08);
+        }
+
+        // ГЛУБИНА
+        const ambientSpeeds: THREE.Vector3[] = [];
+        for (let j = 0; j < AMBIENT_COUNT; j++) {
+            dummy.position.set(
+                (Math.random() - 0.5) * 4000,
+                (Math.random() - 0.5) * 4000,
+                (Math.random() - 0.5) * 4000
             );
             dummy.rotation.z = Math.random() * Math.PI;
-            dummy.scale.setScalar(Math.random() * 0.8 + 0.2);
+            dummy.scale.setScalar(Math.random() * 2.0 + 0.5);
             dummy.updateMatrix();
-            ambientMesh.setMatrixAt(i, dummy.matrix);
+            ambientMesh.setMatrixAt(j, dummy.matrix);
 
             tempColor.setHex(Math.random() > 0.5 ? 0x8052ff : 0x15846e);
-            ambientMesh.setColorAt(i, tempColor);
+            ambientMesh.setColorAt(j, tempColor);
 
             ambientSpeeds.push(new THREE.Vector3(
-                (Math.random() - 0.5) * 0.6,
-                (Math.random() - 0.5) * 0.6,
-                (Math.random() - 0.5) * 0.6
+                (Math.random() - 0.5) * 1.2,
+                (Math.random() - 0.5) * 1.2,
+                (Math.random() - 0.5) * 1.2
             ));
         }
         if (ambientMesh.instanceColor) ambientMesh.instanceColor.needsUpdate = true;
@@ -247,12 +231,11 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
         let animationFrameId: number;
 
         const animate = () => {
-            time += 0.002;
+            time += 0.0015;
 
-            // Вращение сцены
             instancedMesh.rotation.y = time;
-            instancedMesh.rotation.x = Math.sin(time * 0.5) * 0.15;
-            ambientMesh.rotation.y = time * 0.5;
+            instancedMesh.rotation.x = Math.sin(time * 0.5) * 0.1;
+            ambientMesh.rotation.y = time * 0.3;
 
             const activeTargets = shapeRef.current === 'globe' ? targets.globe :
                 shapeRef.current === 'network' ? targets.network : targets.brain;
@@ -261,33 +244,36 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
                 const current = currentPositions[i];
                 const tPos = activeTargets.pos[i];
 
-                // Плавное притяжение
-                current.x += (tPos.x - current.x) * 0.04;
-                current.y += (tPos.y - current.y) * 0.04;
-                current.z += (tPos.z - current.z) * 0.04;
+                current.x += (tPos.x - current.x) * 0.07;
+                current.y += (tPos.y - current.y) * 0.07;
+                current.z += (tPos.z - current.z) * 0.07;
 
                 rotations[i] += spinSpeeds[i];
 
                 dummy.position.copy(current);
                 dummy.rotation.z = rotations[i];
+                dummy.scale.setScalar(scales[i]);
 
-                // Дыхание частиц
-                const breathe = Math.sin(time * 15 + i) * 1.5;
+                const breathe = Math.sin(time * 10 + i * 0.1) * 2.0;
                 dummy.position.x += breathe;
 
-                // Цветовые зоны в реальном времени (как на референсах)
                 let cx = dummy.position.x;
                 let cy = dummy.position.y;
+                let cz = dummy.position.z;
 
-                if (cy < -60 && Math.abs(cx) < 50) {
-                    tempColor.setHex(0x45bcf2); // Ствол - синий
-                } else if (cy > 70) {
-                    tempColor.setHex(0x15846e); // Верх - изумрудный
-                } else if (cx < 0) {
-                    tempColor.setHex(0xffb829); // Лево - золотой
+                if (cy < -30 && Math.abs(cx) < 50 && cz < 50) {
+                    tempColor.setHex(0x45bcf2);
+                } else if (cy > 90) {
+                    tempColor.setHex(0x15846e);
+                } else if (cz > 130) {
+                    tempColor.setHex(0xffffff);
+                } else if (cx < -20) {
+                    tempColor.setHex(0xffb829);
                 } else {
-                    tempColor.setHex(0x8052ff); // Право - фиолетовый
+                    tempColor.setHex(0x8052ff);
                 }
+
+                if (i % 20 === 0) tempColor.setHex(0xffffff);
 
                 instancedMesh.setColorAt(i, tempColor);
                 dummy.updateMatrix();
@@ -296,19 +282,18 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
             instancedMesh.instanceMatrix.needsUpdate = true;
             if (instancedMesh.instanceColor) instancedMesh.instanceColor.needsUpdate = true;
 
-            // Анимация глубины
             for (let i = 0; i < AMBIENT_COUNT; i++) {
                 ambientMesh.getMatrixAt(i, dummy.matrix);
                 dummy.position.setFromMatrixPosition(dummy.matrix);
 
                 dummy.position.add(ambientSpeeds[i]);
-                // Бесконечный цикл
-                if (dummy.position.x > 1500) dummy.position.x = -1500;
-                else if (dummy.position.x < -1500) dummy.position.x = 1500;
-                if (dummy.position.y > 1500) dummy.position.y = -1500;
-                else if (dummy.position.y < -1500) dummy.position.y = 1500;
-                if (dummy.position.z > 1500) dummy.position.z = -1500;
-                else if (dummy.position.z < -1500) dummy.position.z = 1500;
+                const B = 2000;
+                if (dummy.position.x > B) dummy.position.x = -B;
+                else if (dummy.position.x < -B) dummy.position.x = B;
+                if (dummy.position.y > B) dummy.position.y = -B;
+                else if (dummy.position.y < -B) dummy.position.y = B;
+                if (dummy.position.z > B) dummy.position.z = -B;
+                else if (dummy.position.z < -B) dummy.position.z = B;
 
                 dummy.rotation.z += 0.01;
                 dummy.updateMatrix();
@@ -328,7 +313,7 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
             camera.aspect = w / h;
             camera.updateProjectionMatrix();
             renderer.setSize(w, h);
-            camera.position.x = w < 768 ? 0 : -250;
+            camera.position.x = w < 768 ? 0 : -350;
         };
 
         window.addEventListener('resize', handleResize);
@@ -426,7 +411,7 @@ export default function ProxyPulse() {
     }, []);
 
     return (
-        <div className="bg-transparent text-[#ffffff] min-h-screen font-sans selection:bg-[#8052ff] selection:text-[#ffffff] overflow-x-hidden relative">
+        <div className="bg-[#000000] text-[#ffffff] min-h-screen font-sans selection:bg-[#8052ff] selection:text-[#ffffff] overflow-x-hidden relative">
 
             <WebGLConstellation activeShape={activeShape} />
 
@@ -447,7 +432,7 @@ export default function ProxyPulse() {
                 </div>
             </nav>
 
-            <main className="relative z-10 max-w-[1280px] mx-auto px-[24px] md:px-[60px]">
+            <main className="relative z-10 max-w-[1440px] mx-auto px-[24px] md:px-[60px]">
 
                 {/* 1. МОЗГ */}
                 <section data-shape="brain" className="shape-trigger flex flex-col justify-center min-h-screen pt-[120px] pb-[120px] pointer-events-none">
@@ -455,15 +440,12 @@ export default function ProxyPulse() {
                         <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829] mb-[24px] block">
                             Network Observability
                         </span>
-
                         <h1 className="text-[78px] lg:text-[113px] font-[400] leading-[1.0] tracking-[-3.12px] lg:tracking-[-4.52px] text-[#ffffff] mb-[30px]">
                             See your network. Live.
                         </h1>
-
                         <p className="text-[18px] font-[200] leading-[1.5] text-[#ffffff] max-w-[480px] mb-[48px]">
                             Stop reading dead logs. ProxyPulse visualizes every HTTP request in real-time. Connect the lightweight agent and watch your backend traffic breathe, flow, and break—instantly.
                         </p>
-
                         <button className="bg-[#8052ff] text-[#ffffff] text-[14px] font-[600] uppercase tracking-[0.35px] rounded-[24px] px-[24px] py-[16px] hover:bg-[#6c40e6] transition-colors">
                             Deploy Proxy
                         </button>
@@ -472,14 +454,13 @@ export default function ProxyPulse() {
 
                 {/* 2. ПЛАНЕТА */}
                 <section data-shape="globe" className="shape-trigger flex flex-col justify-center min-h-screen py-[120px] pointer-events-none">
-                    <div className="w-full max-w-[500px] pointer-events-auto">
+                    <div className="w-full max-w-[500px] pointer-events-auto mix-blend-difference">
                         <h2 className="text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
                             Global traffic layer.
                         </h2>
                         <p className="text-[18px] font-[200] leading-[1.5] text-[#bdbdbd] mb-[48px]">
                             Traditional tools force you to search through massive text files. ProxyPulse turns your traffic into an interactive global map. See where your requests bottleneck geographically.
                         </p>
-
                         <div className="bg-[#000000]/40 backdrop-blur-md border border-[#1a1a1a] rounded-[24px] p-[24px] w-full max-w-[460px]">
                             <span className="text-[12px] font-[600] text-[#15846e] uppercase tracking-[0.35px] mb-[16px] block border-b border-[#1a1a1a] pb-3">
                                 Agent Proxy Activity
@@ -489,33 +470,32 @@ export default function ProxyPulse() {
                     </div>
                 </section>
 
-                {/* 3. СЕТЬ (SPIDER-VERSE) */}
-                <section data-shape="network" className="shape-trigger flex flex-col lg:flex-row items-center gap-[60px] lg:gap-[120px] min-h-screen py-[120px] pointer-events-none">
-                    <div className="flex-1 w-full pointer-events-auto">
+                {/* 3. СЕТЬ */}
+                <section data-shape="network" className="shape-trigger flex flex-col justify-center min-h-screen py-[120px] pointer-events-none">
+                    <div className="w-full max-w-[500px] pointer-events-auto mix-blend-difference">
                         <h2 className="text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
                             Connect every microservice.
                         </h2>
-                        <p className="text-[18px] font-[200] leading-[1.5] text-[#bdbdbd] max-w-[520px]">
+                        <p className="text-[18px] font-[200] leading-[1.5] text-[#bdbdbd] max-w-[520px] mb-[48px]">
                             Whether you are writing distributed services in Go or enterprise backends in C#. ProxyPulse maps dependencies dynamically, revealing the hidden neural network of your architecture.
                         </p>
-                    </div>
 
-                    <div className="flex-1 w-full flex flex-col gap-[48px] pointer-events-auto">
-                        <div className="flex flex-col gap-[6px]">
-                            <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829]">Backend & Frontend</span>
-                            <p className="text-[27px] font-[400] leading-[1.0] text-[#ffffff]">Debug APIs instantly.</p>
-                        </div>
-                        <div className="flex flex-col gap-[6px]">
-                            <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#8052ff]">DevOps / Infra</span>
-                            <p className="text-[27px] font-[400] leading-[1.0] text-[#bdbdbd]">Monitor proxy layer health.</p>
+                        <div className="flex flex-col gap-[36px]">
+                            <div className="flex flex-col gap-[6px]">
+                                <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829]">Backend & Frontend</span>
+                                <p className="text-[27px] font-[400] leading-[1.0] text-[#ffffff]">Debug APIs instantly.</p>
+                            </div>
+                            <div className="flex flex-col gap-[6px]">
+                                <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#8052ff]">DevOps / Infra</span>
+                                <p className="text-[27px] font-[400] leading-[1.0] text-[#bdbdbd]">Monitor proxy layer health.</p>
+                            </div>
                         </div>
                     </div>
                 </section>
 
             </main>
 
-            {/* ВЕРНУЛ ПОДВАЛ */}
-            <footer className="relative z-10 w-full max-w-[1280px] mx-auto px-[24px] md:px-[60px] py-[60px] flex flex-col md:flex-row justify-between items-start md:items-center gap-[36px] border-t border-[#1a1a1a]">
+            <footer className="relative z-10 w-full max-w-[1440px] mx-auto px-[24px] md:px-[60px] py-[60px] flex flex-col md:flex-row justify-between items-start md:items-center gap-[36px] border-t border-[#1a1a1a] bg-[#000000]">
                 <div className="flex flex-col gap-[16px]">
                     <div className="flex items-center gap-[12px]">
                         <DalaLogo />
@@ -525,7 +505,6 @@ export default function ProxyPulse() {
                         The observability platform built for high-performance engineering teams.
                     </p>
                 </div>
-
                 <div className="flex flex-wrap gap-[48px] text-[14px] font-[600] text-[#9a9a9a] uppercase tracking-[0.35px]">
                     <div className="flex flex-col gap-[16px]">
                         <Link href="#" className="hover:text-[#ffffff] transition-colors">Manifesto</Link>
