@@ -30,7 +30,7 @@ const DalaLogo = () => (
 );
 
 // =====================================================================
-// 3D CANVAS MORPHING ENGINE
+// MASSIVE 3D PARTICLE ENGINE (DALA 1:1 STYLE)
 // =====================================================================
 const ParticleConstellation = ({ activeShape }: { activeShape: string }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -40,120 +40,112 @@ const ParticleConstellation = ({ activeShape }: { activeShape: string }) => {
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        const ctx = canvas.getContext('2d', { alpha: false }); // Оптимизация
+        const ctx = canvas.getContext('2d', { alpha: false });
         if (!ctx) return;
 
         let width = canvas.width = window.innerWidth;
         let height = canvas.height = window.innerHeight;
         const isMobile = width < 768;
 
-        // Увеличиваем плотность для эффекта "дорогого" 3D
-        const SHAPE_PARTICLES = isMobile ? 1200 : 3500;
-        const AMBIENT_PARTICLES = isMobile ? 150 : 400;
+        // Массивное количество частиц для плотности референса
+        const TOTAL_PARTICLES = isMobile ? 2500 : 6000;
+        const AMBIENT_COUNT = isMobile ? 100 : 300;
 
-        const colors = [tokens.electricIris, tokens.saffronSpark, tokens.deepVerdant, '#e845f2', '#45bcf2', '#ffffff'];
+        const palette = [tokens.electricIris, tokens.saffronSpark, tokens.deepVerdant, '#ffffff', '#e845f2', '#45bcf2'];
 
-        // Генератор 3D-форм
-        const getShapeTarget = (index: number, total: number, shape: string) => {
+        // Генератор объемных 3D-структур
+        const getShapeTarget = (index: number, shape: string) => {
             let x = 0, y = 0, z = 0;
 
             if (shape === 'brain') {
-                // Две полусферы с шумом
+                // Плотные полусферы мозга с глубоким разделением по центру
                 const isLeft = index % 2 === 0;
                 const u = Math.random() * Math.PI;
                 const v = Math.random() * 2 * Math.PI;
-                // Более плотная внешняя кора и рыхлая сердцевина
-                const r = 100 + Math.pow(Math.random(), 0.5) * 60;
+                const r = 180 + Math.pow(Math.random(), 0.4) * 80;
                 const sign = isLeft ? -1 : 1;
-                x = (r * Math.sin(u) * Math.cos(v)) * 0.75 + (sign * 60);
-                y = (r * Math.sin(u) * Math.sin(v)) * 1.1;
+                x = (r * Math.sin(u) * Math.cos(v)) * 0.7 + (sign * 85);
+                y = (r * Math.sin(u) * Math.sin(v)) * 0.95;
                 z = r * Math.cos(u) * 0.9;
             }
             else if (shape === 'globe') {
-                // Сфера с материками (используем синусоидальный шум)
-                let found = false;
-                while (!found) {
-                    const u = Math.random() * Math.PI;
-                    const v = Math.random() * 2 * Math.PI;
-                    const r = 160;
-                    // Создаем участки высокой плотности (материки)
-                    const noise = Math.sin(u * 5) * Math.cos(v * 4) + Math.sin(u * 8) * 0.5;
-                    // 85% частиц собираются на "материках", 15% раскиданы по океану
-                    if (noise > 0.1 || Math.random() > 0.85) {
-                        const depth = noise > 0.2 ? Math.random() * 15 : 0; // Рельеф
-                        x = (r + depth) * Math.sin(u) * Math.cos(v);
-                        y = (r + depth) * Math.cos(u);
-                        z = (r + depth) * Math.sin(u) * Math.sin(v);
-                        found = true;
-                    }
-                }
+                // Планета с очертаниями континентов
+                const u = Math.random() * Math.PI;
+                const v = Math.random() * 2 * Math.PI;
+                const r = 240;
+                const noise = Math.sin(u * 6) * Math.cos(v * 5) + Math.sin(u * 12) * 0.3;
+                const elevation = noise > 0.05 ? 25 : 0;
+                x = (r + elevation) * Math.sin(u) * Math.cos(v);
+                y = (r + elevation) * Math.cos(u);
+                z = (r + elevation) * Math.sin(u) * Math.sin(v);
             }
             else if (shape === 'bulb') {
-                // Лампочка: сфера (колба) + цилиндр (цоколь)
-                const isBulb = Math.random() > 0.25;
-                if (isBulb) {
+                // Абстрактная лампочка (инсайт / идея)
+                const isSphere = Math.random() > 0.3;
+                if (isSphere) {
                     const u = Math.random() * Math.PI;
                     const v = Math.random() * 2 * Math.PI;
-                    const r = 110 + Math.random() * 20;
+                    const r = 160 + Math.random() * 20;
                     x = r * Math.sin(u) * Math.cos(v);
-                    y = r * Math.cos(u) - 50; // Сдвиг вверх
+                    y = r * Math.cos(u) - 40;
                     z = r * Math.sin(u) * Math.sin(v);
                 } else {
+                    // Цоколь лампы
                     const v = Math.random() * 2 * Math.PI;
-                    const r = 40 + Math.random() * 10;
-                    const h = Math.random() * 90; // Высота цоколя
+                    const r = 60 + Math.random() * 10;
+                    const h = Math.random() * 120;
                     x = r * Math.cos(v);
-                    y = h + 80; // Сдвиг вниз
+                    y = h + 110;
                     z = r * Math.sin(v);
                 }
             }
 
-            // Добавляем микро-отклонения, чтобы форма не была искусственно ровной
             return {
-                tx: x + (Math.random() - 0.5) * 10,
-                ty: y + (Math.random() - 0.5) * 10,
-                tz: z + (Math.random() - 0.5) * 10
+                tx: x + (Math.random() - 0.5) * 8,
+                ty: y + (Math.random() - 0.5) * 8,
+                tz: z + (Math.random() - 0.5) * 8
             };
         };
 
-        // Инициализация структурных частиц
+        // Инициализация основных частиц
         if (particlesRef.current.length === 0) {
-            for (let i = 0; i < SHAPE_PARTICLES; i++) {
-                const startShape = getShapeTarget(i, SHAPE_PARTICLES, 'brain');
+            for (let i = 0; i < TOTAL_PARTICLES; i++) {
+                const target = getShapeTarget(i, 'brain');
                 particlesRef.current.push({
-                    x: startShape.tx + (Math.random() - 0.5) * 1000, // Появляются из хаоса
-                    y: startShape.ty + (Math.random() - 0.5) * 1000,
-                    z: startShape.tz + (Math.random() - 0.5) * 1000,
-                    tx: startShape.tx,
-                    ty: startShape.ty,
-                    tz: startShape.tz,
-                    color: colors[Math.floor(Math.random() * colors.length)],
-                    size: Math.random() * 1.5 + 0.5,
+                    x: target.tx + (Math.random() - 0.5) * 800,
+                    y: target.ty + (Math.random() - 0.5) * 800,
+                    z: target.tz + (Math.random() - 0.5) * 800,
+                    tx: target.tx,
+                    ty: target.ty,
+                    tz: target.tz,
+                    color: palette[Math.floor(Math.random() * palette.length)],
+                    size: Math.random() * 2.2 + 0.8,
                     angle: Math.random() * Math.PI * 2,
+                    spin: (Math.random() - 0.5) * 0.04
                 });
             }
         }
 
-        // Инициализация фоновых (эмбиент) частиц
+        // Фоновые пылинки
         if (ambientRef.current.length === 0) {
-            for (let i = 0; i < AMBIENT_PARTICLES; i++) {
+            for (let i = 0; i < AMBIENT_COUNT; i++) {
                 ambientRef.current.push({
-                    x: (Math.random() - 0.5) * 2000,
-                    y: (Math.random() - 0.5) * 2000,
-                    z: (Math.random() - 0.5) * 2000,
-                    vx: (Math.random() - 0.5) * 0.5,
-                    vy: (Math.random() - 0.5) * 0.5,
-                    vz: (Math.random() - 0.5) * 0.5,
-                    color: colors[Math.floor(Math.random() * colors.length)],
-                    size: Math.random() * 2 + 0.5,
-                    angle: Math.random() * Math.PI * 2,
+                    x: (Math.random() - 0.5) * 1600,
+                    y: (Math.random() - 0.5) * 1600,
+                    z: (Math.random() - 0.5) * 1600,
+                    vx: (Math.random() - 0.5) * 0.4,
+                    vy: (Math.random() - 0.5) * 0.4,
+                    vz: (Math.random() - 0.5) * 0.4,
+                    color: palette[Math.floor(Math.random() * palette.length)],
+                    size: Math.random() * 1.5 + 0.5,
+                    angle: Math.random() * Math.PI * 2
                 });
             }
         }
 
-        // Обновляем цели при смене формы
+        // Обновляем цели при смене формы скроллом
         particlesRef.current.forEach((p, i) => {
-            const target = getShapeTarget(i, SHAPE_PARTICLES, activeShape);
+            const target = getShapeTarget(i, activeShape);
             p.tx = target.tx;
             p.ty = target.ty;
             p.tz = target.tz;
@@ -163,54 +155,51 @@ const ParticleConstellation = ({ activeShape }: { activeShape: string }) => {
         let time = 0;
 
         const animate = () => {
-            time += 0.005;
-            // Рисуем черный фон (вместо clearRect, чтобы работал альфа-канал без артефактов)
+            time += 0.004;
             ctx.fillStyle = tokens.void;
             ctx.fillRect(0, 0, width, height);
 
-            const centerX = isMobile ? width / 2 : width * 0.7; // Визуализация справа на десктопе
+            // Центр модели смещен вправо, чтобы не перекрывать левый текст
+            const centerX = isMobile ? width / 2 : width * 0.72;
             const centerY = height / 2;
-            const FOV = 600; // Перспектива
+            const FOV = 700;
 
-            // Глобальное вращение 3D сцены
-            const rotationY = time * 0.5;
-            const rotationX = Math.sin(time * 0.3) * 0.2;
+            // Плавное вращение модели
+            const rotY = time * 0.4;
+            const rotX = Math.sin(time * 0.25) * 0.15;
 
-            const drawParticle = (p: any, isAmbient: boolean) => {
-                // 1. Применяем лерпинг к целевой позиции (только для структурных частиц)
+            const renderParticle = (p: any, isAmbient: boolean) => {
                 if (!isAmbient) {
-                    p.x += (p.tx - p.x) * 0.04;
-                    p.y += (p.ty - p.y) * 0.04;
-                    p.z += (p.tz - p.z) * 0.04;
+                    // Плавное притяжение к целевым координатам формы (интерполяция)
+                    p.x += (p.tx - p.x) * 0.05;
+                    p.y += (p.ty - p.y) * 0.05;
+                    p.z += (p.tz - p.z) * 0.05;
                 } else {
                     p.x += p.vx; p.y += p.vy; p.z += p.vz;
-                    // Возврат в границы
-                    if (p.x > 1000) p.x = -1000; else if (p.x < -1000) p.x = 1000;
-                    if (p.y > 1000) p.y = -1000; else if (p.y < -1000) p.y = 1000;
-                    if (p.z > 1000) p.z = -1000; else if (p.z < -1000) p.z = 1000;
+                    if (p.x > 800) p.x = -800; else if (p.x < -800) p.x = 800;
+                    if (p.y > 800) p.y = -800; else if (p.y < -800) p.y = 800;
+                    if (p.z > 800) p.z = -800; else if (p.z < -800) p.z = 800;
                 }
 
-                // 2. 3D Вращение (по оси Y и X)
-                const cosY = Math.cos(rotationY), sinY = Math.sin(rotationY);
-                const cosX = Math.cos(rotationX), sinX = Math.sin(rotationX);
+                // Матрица 3D вращения
+                const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+                const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
 
                 let rx = p.x * cosY - p.z * sinY;
                 let rz = p.z * cosY + p.x * sinY;
-
                 let ry = p.y * cosX - rz * sinX;
                 let finalZ = rz * cosX + p.y * sinX;
 
-                // 3. Проекция 3D -> 2D
-                if (finalZ < -FOV) return; // Отсекаем то, что за камерой
+                if (finalZ < -FOV) return;
+
                 const scale = FOV / (FOV + finalZ);
                 const projectedX = centerX + rx * scale;
                 const projectedY = centerY + ry * scale;
-                const projectedSize = Math.max(0.1, p.size * scale);
+                const projectedSize = Math.max(0.2, p.size * scale);
 
-                // Отрисовка треугольника
                 ctx.save();
                 ctx.translate(projectedX, projectedY);
-                ctx.rotate(p.angle + time); // Частицы вращаются вокруг своей оси
+                ctx.rotate(p.angle + time);
                 ctx.beginPath();
                 ctx.moveTo(0, -projectedSize);
                 ctx.lineTo(projectedSize * 0.866, projectedSize * 0.5);
@@ -218,20 +207,17 @@ const ParticleConstellation = ({ activeShape }: { activeShape: string }) => {
                 ctx.closePath();
 
                 ctx.strokeStyle = p.color;
-                ctx.lineWidth = isAmbient ? 0.5 : 1;
+                ctx.lineWidth = 1;
 
-                // Эффект глубины и затухания
-                const depthAlpha = Math.max(0, Math.min(1, scale * 1.2));
-                ctx.globalAlpha = isAmbient ? depthAlpha * 0.3 : depthAlpha * 0.8;
+                const depthAlpha = Math.max(0.1, Math.min(1, scale * 1.3));
+                ctx.globalAlpha = isAmbient ? depthAlpha * 0.25 : depthAlpha * 0.85;
 
                 ctx.stroke();
                 ctx.restore();
             };
 
-            // Рендерим все частицы. Сортировка по Z для идеального наложения бьет по FPS, 
-            // поэтому полагаемся на аддитивный/естественный блендинг
-            ambientRef.current.forEach(p => drawParticle(p, true));
-            particlesRef.current.forEach(p => drawParticle(p, false));
+            ambientRef.current.forEach(p => renderParticle(p, true));
+            particlesRef.current.forEach(p => renderParticle(p, false));
 
             animationFrameId = requestAnimationFrame(animate);
         };
@@ -293,7 +279,6 @@ const LiveTerminal = () => {
                         animate={{ opacity: 1 - i * 0.12, x: 0 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        // Жесткая сетка - ни один пиксель не сместится
                         className="grid grid-cols-[45px_1fr_40px_50px] gap-4 items-center h-8"
                     >
                         <span className={`font-[600] text-left ${req.method === 'GET' ? 'text-[#8052ff]' : req.method === 'POST' ? 'text-[#15846e]' : req.method === 'DEL' ? 'text-[#e845f2]' : 'text-[#ffb829]'}`}>
@@ -332,7 +317,7 @@ export default function ProxyPulse() {
                     if (shape) setActiveShape(shape);
                 }
             });
-        }, { threshold: 0.5 });
+        }, { threshold: 0.4 });
 
         const sections = document.querySelectorAll('.shape-trigger');
         sections.forEach(section => observer.observe(section));
@@ -357,7 +342,7 @@ export default function ProxyPulse() {
                 </div>
                 <div className="flex items-center">
                     <button className="bg-[#8052ff] text-[#ffffff] text-[14px] font-[600] uppercase tracking-[0.35px] rounded-[24px] px-[16px] py-[14.4px] hover:bg-[#6c40e6] transition-colors">
-                        Deploy Agent
+                        Request Access
                     </button>
                 </div>
             </nav>
@@ -366,7 +351,7 @@ export default function ProxyPulse() {
 
                 {/* Секция 1: МОЗГ */}
                 <section data-shape="brain" className="shape-trigger flex flex-col justify-center min-h-screen pt-[120px] pb-[120px] pointer-events-none">
-                    <div className="w-full max-w-[600px] pointer-events-auto">
+                    <div className="w-full max-w-[540px] pointer-events-auto">
                         <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829] mb-[24px] block">
                             Network Observability
                         </span>
@@ -385,18 +370,18 @@ export default function ProxyPulse() {
                     </div>
                 </section>
 
-                {/* Секция 2: ГЛОБУС С МАТЕРИКАМИ */}
+                {/* Секция 2: ПЛАНЕТА / ГЛОБУС */}
                 <section data-shape="globe" className="shape-trigger flex flex-col justify-center min-h-screen py-[120px] pointer-events-none">
-                    <div className="w-full max-w-[520px] pointer-events-auto">
+                    <div className="w-full max-w-[500px] pointer-events-auto">
                         <h2 className="text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
                             Global traffic layer.
                         </h2>
                         <p className="text-[18px] font-[200] leading-[1.5] text-[#bdbdbd] mb-[48px]">
-                            Traditional tools force you to search through massive text files. ProxyPulse turns your traffic into an interactive map. See where your requests are bottlenecking geographically.
+                            Traditional tools force you to search through massive text files. ProxyPulse turns your traffic into an interactive global map. See where your requests bottleneck geographically.
                         </p>
 
-                        <div className="bg-[#000000] border border-[#1a1a1a] rounded-[24px] p-[30px] w-full max-w-[480px]">
-                            <span className="text-[12px] font-[600] text-[#15846e] uppercase tracking-[0.35px] mb-[18px] block border-b border-[#1a1a1a] pb-4">
+                        <div className="bg-[#000000] border border-[#1a1a1a] rounded-[24px] p-[24px] w-full max-w-[460px]">
+                            <span className="text-[12px] font-[600] text-[#15846e] uppercase tracking-[0.35px] mb-[16px] block border-b border-[#1a1a1a] pb-3">
                                 Agent Proxy Activity
                             </span>
                             <LiveTerminal />
@@ -404,7 +389,7 @@ export default function ProxyPulse() {
                     </div>
                 </section>
 
-                {/* Секция 3: ЛАМПОЧКА (Идея/Инсайт) */}
+                {/* Секция 3: ЛАМПОЧКА (ИНСАЙТ / ИДЕЯ) */}
                 <section data-shape="bulb" className="shape-trigger flex flex-col lg:flex-row items-center gap-[60px] lg:gap-[120px] min-h-screen py-[120px] pointer-events-none">
                     <div className="flex-1 w-full pointer-events-auto">
                         <h2 className="text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
