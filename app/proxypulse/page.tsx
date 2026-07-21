@@ -32,7 +32,7 @@ const DalaLogo = () => (
 );
 
 // =====================================================================
-// PURE WEBGL THREE.JS ENGINE (1:1 POINT CLOUD MATCH)
+// PURE WEBGL ENGINE: ANATOMICAL BRAIN + FRACTAL GLOBE
 // =====================================================================
 const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
     const mountRef = useRef<HTMLDivElement>(null);
@@ -50,11 +50,11 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
         const isMobile = width < 768;
 
         const scene = new THREE.Scene();
-        // Глубокий туман для поглощения частиц на заднем плане
-        scene.fog = new THREE.FogExp2(0x000000, 0.0012);
+        // Уменьшил плотность тумана, чтобы мозг светился ярче
+        scene.fog = new THREE.FogExp2(0x000000, 0.0006);
 
         const camera = new THREE.PerspectiveCamera(45, width / height, 1, 3000);
-        camera.position.z = 900;
+        camera.position.z = 800; // Немного приблизил камеру
         camera.position.x = isMobile ? 0 : -250;
         camera.position.y = 0;
 
@@ -63,15 +63,16 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         mountRef.current.appendChild(renderer.domElement);
 
-        const PARTICLE_COUNT = isMobile ? 6000 : 12000;
+        const PARTICLE_COUNT = isMobile ? 7000 : 15000;
         const AMBIENT_COUNT = isMobile ? 800 : 2500;
 
-        const geometry = new THREE.CircleGeometry(1.6, 3);
+        // Увеличил геометрию, чтобы треугольники читались четко и формировали плотную кору
+        const geometry = new THREE.CircleGeometry(2.8, 3);
         const material = new THREE.MeshBasicMaterial({
             color: 0xffffff,
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 0.9,
+            opacity: 1.0, // Полная непрозрачность базы для аддитивного буста
             blending: THREE.AdditiveBlending
         });
 
@@ -93,70 +94,88 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
         const dummy = new THREE.Object3D();
         const tempColor = new THREE.Color();
 
-        // Простой фрактальный шум для генерации материков
         const fbm = (x: number, y: number, z: number) => {
             return Math.sin(x * 0.012 + Math.cos(y * 0.012)) + Math.sin(y * 0.015 + z * 0.01) + Math.cos(z * 0.01 + x * 0.015);
         };
 
-        // Генерация узлов для сети
         const networkNodes: THREE.Vector3[] = [];
-        for (let j = 0; j < 20; j++) {
+        for (let j = 0; j < 25; j++) {
             networkNodes.push(new THREE.Vector3(
-                (Math.random() - 0.5) * 700,
-                (Math.random() - 0.5) * 500,
-                (Math.random() - 0.5) * 500
+                (Math.random() - 0.5) * 800,
+                (Math.random() - 0.5) * 600,
+                (Math.random() - 0.5) * 600
             ));
         }
 
         for (let i = 0; i < PARTICLE_COUNT; i++) {
             // ==========================================
-            // 1. ФОРМА: МОЗГ (По референсу image_e3a47e)
+            // 1. АНАТОМИЧЕСКИЙ МОЗГ С ИЗВИЛИНАМИ
             // ==========================================
             let bx, by, bz;
 
-            if (i < PARTICLE_COUNT * 0.06) {
-                // Ствол (Stem) - растет вниз из центра
-                const h = Math.random() * 140; // Длина ствола
-                const r = 22 - (h * 0.08);     // Сужение книзу
+            if (i < PARTICLE_COUNT * 0.07) {
+                // Ствол (Анатомически корректный, растет вниз)
+                const h = Math.random() * 160;
+                const r = 24 - (h * 0.08);
                 const angle = Math.random() * Math.PI * 2;
-
                 bx = Math.cos(angle) * r;
-                by = -90 - h; // Начинается на -90 и уходит вниз до -230
-                bz = Math.sin(angle) * r;
+                by = -70 - h;
+                bz = Math.sin(angle) * r - 15;
             } else {
-                // Два раздельных полушария (Объемное заполнение)
-                const isLeft = i % 2 === 0;
+                // Кора мозга (Cortex)
+                const isSurface = Math.random() > 0.15; // 85% частиц на поверхности для жесткой фактуры
                 const u = Math.random() * Math.PI * 2;
                 const v = Math.acos(2.0 * Math.random() - 1.0);
-                const rVolume = Math.cbrt(Math.random()); // Кубический корень для равномерности объема
+                const rMult = isSurface ? 1.0 : Math.cbrt(Math.random());
 
-                // Базовый эллипсоид
-                let x = rVolume * Math.sin(v) * Math.cos(u) * 85;
-                let y = rVolume * Math.cos(v) * 115;
-                let z = rVolume * Math.sin(v) * Math.sin(u) * 105;
+                let x = Math.sin(v) * Math.cos(u);
+                let y = Math.cos(v);
+                let z = Math.sin(v) * Math.sin(u);
 
-                if (isLeft) {
-                    bx = x - 90; // Сдвиг влево (fissure)
+                // МАТЕМАТИКА ИЗВИЛИН (GYRI & SULCI)
+                // Комбинированный тригонометрический шум создает лабиринтообразные борозды
+                const freq = 14.0;
+                let fold = Math.sin(x * freq) * Math.cos(y * freq) + Math.sin(y * freq) * Math.cos(z * freq) + Math.sin(z * freq) * Math.cos(x * freq);
+                fold = Math.abs(fold); // Делаем впадины острыми, а извилины выпуклыми
+
+                // Вдавливаем радиус там, где проходят борозды
+                const R = 155;
+                const finalRadius = R * (1.0 - fold * 0.18) * rMult;
+
+                // Базовые пропорции (вытянут назад, сплюснут снизу)
+                let tempBx = x * finalRadius * 0.85;
+                let tempBy = y * finalRadius * 0.85;
+                let tempBz = z * finalRadius * 1.15;
+
+                // Sagittal Fissure (Разрез между полушариями)
+                const isLeft = tempBx < 0;
+                const sign = isLeft ? -1 : 1;
+
+                if (Math.abs(tempBx) < 35 && tempBy > -40) {
+                    tempBx = (tempBx * 0.4) + (sign * 28); // Вдавливаем внутрь
                 } else {
-                    bx = x + 90; // Сдвиг вправо
+                    tempBx += sign * 18; // Раздвигаем полушария
                 }
-                by = y + 20;
-                bz = z;
+
+                // Анатомический наклон мозга (чуть приподнят лоб)
+                const tilt = 0.15;
+                bx = tempBx;
+                by = tempBy * Math.cos(tilt) - tempBz * Math.sin(tilt) + 30;
+                bz = tempBy * Math.sin(tilt) + tempBz * Math.cos(tilt);
             }
             targets.brain.pos.push(new THREE.Vector3(bx, by, bz));
 
             // ==========================================
-            // 2. ФОРМА: ПЛАНЕТА (По референсу image_e3a49b)
+            // 2. ПЛАНЕТА
             // ==========================================
             let gx = 0, gy = 0, gz = 0;
             let isValid = false;
             let attempts = 0;
 
-            // Rejection Sampling: Ищем точку на поверхности сферы, пока она не попадет на "материк"
             while (!isValid && attempts < 50) {
                 const u = Math.random() * Math.PI * 2;
                 const v = Math.acos(2.0 * Math.random() - 1.0);
-                const rGlobe = 290;
+                const rGlobe = 320;
 
                 gx = rGlobe * Math.sin(v) * Math.cos(u);
                 gy = rGlobe * Math.cos(v);
@@ -164,46 +183,44 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
 
                 const n = fbm(gx, gy, gz);
                 if (n > 0.4) {
-                    isValid = true; // Попали в материк
-                } else if (Math.random() > 0.98) {
-                    isValid = true; // 2% шанс оставить частицу в океане (для текстуры)
+                    isValid = true; // Материк
+                } else if (Math.random() > 0.985) {
+                    isValid = true; // Океанская пыль
                 }
                 attempts++;
             }
             targets.globe.pos.push(new THREE.Vector3(gx, gy, gz));
 
             // ==========================================
-            // 3. ФОРМА: СЕТЬ (Spider-Verse)
+            // 3. СЕТЬ (SPIDER-VERSE)
             // ==========================================
             const targetNode = networkNodes[Math.floor(Math.random() * networkNodes.length)];
-            const dist = Math.random(); // Распределение вдоль нити
+            const dist = Math.pow(Math.random(), 2); // Сгущение к центрам узлов
 
-            let nx = targetNode.x + (Math.random() - 0.5) * 250 * dist;
-            let ny = targetNode.y + (Math.random() - 0.5) * 250 * dist;
-            let nz = targetNode.z + (Math.random() - 0.5) * 250 * dist;
+            let nx = targetNode.x + (Math.random() - 0.5) * 350 * dist;
+            let ny = targetNode.y + (Math.random() - 0.5) * 350 * dist;
+            let nz = targetNode.z + (Math.random() - 0.5) * 350 * dist;
             targets.network.pos.push(new THREE.Vector3(nx, ny, nz));
 
-            // ==========================================
-            // ИНИЦИАЛИЗАЦИЯ
-            // ==========================================
+            // Инициализация
             currentPositions.push(new THREE.Vector3(
-                (Math.random() - 0.5) * 2500,
-                (Math.random() - 0.5) * 2500,
-                (Math.random() - 0.5) * 2500
+                (Math.random() - 0.5) * 3000,
+                (Math.random() - 0.5) * 3000,
+                (Math.random() - 0.5) * 3000
             ));
             rotations.push(Math.random() * Math.PI * 2);
-            spinSpeeds.push((Math.random() - 0.5) * 0.04);
+            spinSpeeds.push((Math.random() - 0.5) * 0.05);
         }
 
         // ==========================================
-        // ГЛУБИНА (Эмбиентные частицы на фоне)
+        // ГЛУБИНА (Эмбиент)
         // ==========================================
         const ambientSpeeds: THREE.Vector3[] = [];
         for (let i = 0; i < AMBIENT_COUNT; i++) {
             dummy.position.set(
-                (Math.random() - 0.5) * 3000,
-                (Math.random() - 0.5) * 3000,
-                (Math.random() - 0.5) * 3000
+                (Math.random() - 0.5) * 3500,
+                (Math.random() - 0.5) * 3500,
+                (Math.random() - 0.5) * 3500
             );
             dummy.rotation.z = Math.random() * Math.PI;
             dummy.scale.setScalar(Math.random() * 0.8 + 0.2);
@@ -214,9 +231,9 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
             ambientMesh.setColorAt(i, tempColor);
 
             ambientSpeeds.push(new THREE.Vector3(
-                (Math.random() - 0.5) * 0.6,
-                (Math.random() - 0.5) * 0.6,
-                (Math.random() - 0.5) * 0.6
+                (Math.random() - 0.5) * 0.8,
+                (Math.random() - 0.5) * 0.8,
+                (Math.random() - 0.5) * 0.8
             ));
         }
         if (ambientMesh.instanceColor) ambientMesh.instanceColor.needsUpdate = true;
@@ -227,7 +244,7 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
         const animate = () => {
             time += 0.002;
 
-            // Вращение сцены
+            // Величественное вращение
             instancedMesh.rotation.y = time;
             instancedMesh.rotation.x = Math.sin(time * 0.5) * 0.15;
             ambientMesh.rotation.y = time * 0.5;
@@ -239,33 +256,38 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
                 const current = currentPositions[i];
                 const tPos = activeTargets.pos[i];
 
-                // Плавное притяжение
-                current.x += (tPos.x - current.x) * 0.04;
-                current.y += (tPos.y - current.y) * 0.04;
-                current.z += (tPos.z - current.z) * 0.04;
+                current.x += (tPos.x - current.x) * 0.06; // Чуть ускорил сборку
+                current.y += (tPos.y - current.y) * 0.06;
+                current.z += (tPos.z - current.z) * 0.06;
 
                 rotations[i] += spinSpeeds[i];
 
                 dummy.position.copy(current);
                 dummy.rotation.z = rotations[i];
 
-                // Дыхание частиц
+                // Легкое дыхание
                 const breathe = Math.sin(time * 15 + i) * 1.5;
                 dummy.position.x += breathe;
 
-                // Цветовые зоны в реальном времени (как на референсах)
+                // ЖЕСТКОЕ ЦВЕТИРОВАНИЕ (Как на референсе: яркое и зональное)
                 let cx = dummy.position.x;
                 let cy = dummy.position.y;
+                let cz = dummy.position.z;
 
-                if (cy < -60 && Math.abs(cx) < 50) {
-                    tempColor.setHex(0x45bcf2); // Ствол - синий
-                } else if (cy > 70) {
-                    tempColor.setHex(0x15846e); // Верх - изумрудный
-                } else if (cx < 0) {
-                    tempColor.setHex(0xffb829); // Лево - золотой
+                if (cy < -50 && Math.abs(cx) < 40) {
+                    tempColor.setHex(0x45bcf2); // Ствол сине-голубой
+                } else if (cy > 80) {
+                    tempColor.setHex(0x15846e); // Макушка изумрудная
+                } else if (cz > 110) {
+                    tempColor.setHex(0xffffff); // Лобная доля ярко-белая
+                } else if (cx < -10) {
+                    tempColor.setHex(0xffb829); // Левое полушарие желтое
                 } else {
-                    tempColor.setHex(0x8052ff); // Право - фиолетовый
+                    tempColor.setHex(0x8052ff); // Правое полушарие фиолетовое
                 }
+
+                // Микро-прострелы белого по всей коре для искрения
+                if (Math.random() > 0.99) tempColor.setHex(0xffffff);
 
                 instancedMesh.setColorAt(i, tempColor);
                 dummy.updateMatrix();
@@ -274,19 +296,17 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
             instancedMesh.instanceMatrix.needsUpdate = true;
             if (instancedMesh.instanceColor) instancedMesh.instanceColor.needsUpdate = true;
 
-            // Анимация глубины
             for (let i = 0; i < AMBIENT_COUNT; i++) {
                 ambientMesh.getMatrixAt(i, dummy.matrix);
                 dummy.position.setFromMatrixPosition(dummy.matrix);
 
                 dummy.position.add(ambientSpeeds[i]);
-                // Бесконечный цикл
-                if (dummy.position.x > 1500) dummy.position.x = -1500;
-                else if (dummy.position.x < -1500) dummy.position.x = 1500;
-                if (dummy.position.y > 1500) dummy.position.y = -1500;
-                else if (dummy.position.y < -1500) dummy.position.y = 1500;
-                if (dummy.position.z > 1500) dummy.position.z = -1500;
-                else if (dummy.position.z < -1500) dummy.position.z = 1500;
+                if (dummy.position.x > 1700) dummy.position.x = -1700;
+                else if (dummy.position.x < -1700) dummy.position.x = 1700;
+                if (dummy.position.y > 1700) dummy.position.y = -1700;
+                else if (dummy.position.y < -1700) dummy.position.y = 1700;
+                if (dummy.position.z > 1700) dummy.position.z = -1700;
+                else if (dummy.position.z < -1700) dummy.position.z = 1700;
 
                 dummy.rotation.z += 0.01;
                 dummy.updateMatrix();
@@ -492,7 +512,6 @@ export default function ProxyPulse() {
 
             </main>
 
-            {/* ВЕРНУЛ ПОДВАЛ */}
             <footer className="relative z-10 w-full max-w-[1280px] mx-auto px-[24px] md:px-[60px] py-[60px] flex flex-col md:flex-row justify-between items-start md:items-center gap-[36px] border-t border-[#1a1a1a]">
                 <div className="flex flex-col gap-[16px]">
                     <div className="flex items-center gap-[12px]">
