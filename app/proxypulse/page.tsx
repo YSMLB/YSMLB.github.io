@@ -6,7 +6,7 @@ import Link from "next/link";
 import * as THREE from 'three';
 
 // =====================================================================
-// DESIGN TOKENS
+// DESIGN TOKENS (DALA STYLE V1)
 // =====================================================================
 const tokens = {
     void: "#000000",
@@ -15,8 +15,7 @@ const tokens = {
     silverMist: "#bdbdbd",
     electricIris: "#8052ff",
     saffronSpark: "#ffb829",
-    deepVerdant: "#15846e",
-    stemBlue: "#45bcf2"
+    deepVerdant: "#15846e"
 };
 
 const DalaLogo = () => (
@@ -32,16 +31,7 @@ const DalaLogo = () => (
 );
 
 // =====================================================================
-// 3D MATH & NOISE ENGINE
-// =====================================================================
-const pseudoNoise3D = (x: number, y: number, z: number) => {
-    let n = Math.sin(x * 1.2 + y) + Math.sin(y * 1.2 + z) + Math.sin(z * 1.2 + x);
-    n += Math.sin(x * 2.5 - y * 1.5) * 0.5 + Math.cos(z * 2.5 + x * 1.5) * 0.5;
-    return n;
-};
-
-// =====================================================================
-// PURE WEBGL ENGINE: HIGH-FIDELITY POINT CLOUDS
+// AIRY WEBGL ENGINE (DEEP, SUBTLE, UN-BLINDING)
 // =====================================================================
 const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
     const mountRef = useRef<HTMLDivElement>(null);
@@ -59,28 +49,30 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
         const isMobile = width < 768;
 
         const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x000000, 0.0006);
+        // Глубокий, плотный туман, растворяющий объекты в идеальной темноте
+        scene.fog = new THREE.FogExp2(0x000000, 0.0018);
 
-        const camera = new THREE.PerspectiveCamera(45, width / height, 1, 4000);
-        camera.position.z = 1000;
-        camera.position.x = isMobile ? 0 : -350;
+        const camera = new THREE.PerspectiveCamera(45, width / height, 1, 3000);
+        camera.position.z = 900;
+        camera.position.x = isMobile ? 0 : -250;
         camera.position.y = 0;
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
         renderer.setSize(width, height);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         mountRef.current.appendChild(renderer.domElement);
 
-        const PARTICLE_COUNT = isMobile ? 8000 : 20000;
-        const AMBIENT_COUNT = isMobile ? 500 : 1500;
+        const PARTICLE_COUNT = isMobile ? 3000 : 7000; // Умеренное количество для воздуха
+        const AMBIENT_COUNT = isMobile ? 400 : 1200;
 
-        const geometry = new THREE.CircleGeometry(3.0, 3);
+        // Тонкие, изящные треугольники
+        const geometry = new THREE.CircleGeometry(1.8, 3);
         const material = new THREE.MeshBasicMaterial({
             color: 0xffffff,
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 0.85,
-            blending: THREE.AdditiveBlending
+            opacity: 0.55, // Ненавязчивая полупрозрачность
+            blending: THREE.NormalBlending
         });
 
         const instancedMesh = new THREE.InstancedMesh(geometry, material, PARTICLE_COUNT);
@@ -102,128 +94,88 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
         const dummy = new THREE.Object3D();
         const tempColor = new THREE.Color();
 
-        // --------------------------------------------------------
-        // 1. ГЕНЕРАЦИЯ МОЗГА
-        // --------------------------------------------------------
-        let brainPointsFound = 0;
-        while (brainPointsFound < PARTICLE_COUNT) {
-            const x = (Math.random() - 0.5) * 450;
-            const y = (Math.random() - 0.5) * 350;
-            const z = (Math.random() - 0.5) * 400;
-
-            let isBrain = false;
-
-            if (y < -80 && y > -200 && Math.abs(x) < 30 && Math.abs(z) < 40) {
-                isBrain = true;
-            } else {
-                const isLeft = x < -5;
-                const isRight = x > 5;
-
-                if (isLeft || isRight) {
-                    const cx = isLeft ? x + 40 : x - 40;
-                    const cy = y;
-                    const cz = z;
-
-                    const dist = (cx * cx) / (110 * 110) + (cy * cy) / (130 * 130) + (cz * cz) / (160 * 160);
-
-                    if (dist < 1.0) {
-                        const noiseVal = pseudoNoise3D(x * 0.03, y * 0.03, z * 0.03);
-                        if (Math.abs(noiseVal) > 0.4 || dist > 0.85) {
-                            isBrain = true;
-                        }
-                    }
-                }
-            }
-
-            if (isBrain) {
-                const tilt = 0.2;
-                const tiltedY = y * Math.cos(tilt) - z * Math.sin(tilt);
-                const tiltedZ = y * Math.sin(tilt) + z * Math.cos(tilt);
-
-                targets.brain.pos.push(new THREE.Vector3(x, tiltedY + 50, tiltedZ));
-                brainPointsFound++;
-            }
-        }
-
-        // --------------------------------------------------------
-        // 2. ГЕНЕРАЦИЯ ПЛАНЕТЫ
-        // --------------------------------------------------------
-        const R = 320;
-        let globePointsFound = 0;
-        let pIndex = 0;
-
-        while (globePointsFound < PARTICLE_COUNT) {
-            const phi = Math.acos(1 - 2 * (pIndex / (PARTICLE_COUNT * 2.5)));
-            const theta = Math.PI * (1 + Math.sqrt(5)) * pIndex;
-
-            const gx = R * Math.cos(theta) * Math.sin(phi);
-            const gy = R * Math.cos(phi);
-            const gz = R * Math.sin(theta) * Math.sin(phi);
-
-            const continentNoise = pseudoNoise3D(gx * 0.008, gy * 0.008, gz * 0.008);
-
-            if (continentNoise > 0.2) {
-                targets.globe.pos.push(new THREE.Vector3(gx, gy, gz));
-                globePointsFound++;
-            } else if (Math.random() > 0.97) {
-                targets.globe.pos.push(new THREE.Vector3(gx, gy, gz));
-                globePointsFound++;
-            }
-            pIndex++;
-        }
-
-        // --------------------------------------------------------
-        // 3. ГЕНЕРАЦИЯ СЕТИ
-        // --------------------------------------------------------
         const networkNodes: THREE.Vector3[] = [];
-        for (let j = 0; j < 35; j++) {
+        for (let j = 0; j < 20; j++) {
             networkNodes.push(new THREE.Vector3(
-                (Math.random() - 0.5) * 900,
                 (Math.random() - 0.5) * 700,
-                (Math.random() - 0.5) * 700
+                (Math.random() - 0.5) * 500,
+                (Math.random() - 0.5) * 500
             ));
         }
 
-        for (let k = 0; k < PARTICLE_COUNT; k++) {
-            const targetNode = networkNodes[Math.floor(Math.random() * networkNodes.length)];
-            const dist = Math.pow(Math.random(), 2);
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            // 1. МОЗГ (Тот самый анатомический силуэт со стволом)
+            let bx, by, bz;
+            if (i < PARTICLE_COUNT * 0.07) {
+                const h = Math.random() * 140;
+                const r = 20 - (h * 0.08);
+                const angle = Math.random() * Math.PI * 2;
+                bx = Math.cos(angle) * r;
+                by = -70 - h;
+                bz = Math.sin(angle) * r;
+            } else {
+                const u = Math.random() * Math.PI * 2;
+                const v = Math.acos(2.0 * Math.random() - 1.0);
+                const rVolume = Math.cbrt(Math.random()) * 220;
 
-            let nx = targetNode.x + (Math.random() - 0.5) * 450 * dist;
-            let ny = targetNode.y + (Math.random() - 0.5) * 450 * dist;
-            let nz = targetNode.z + (Math.random() - 0.5) * 450 * dist;
+                let x = Math.sin(v) * Math.cos(u);
+                let y = Math.cos(v);
+                let z = Math.sin(v) * Math.sin(u);
+
+                const isLeft = x < 0;
+                bx = (x * 0.7 * rVolume) + (isLeft ? -45 : 45);
+                by = (y * 0.85 * rVolume) + 20;
+                bz = z * 1.1 * rVolume;
+            }
+            targets.brain.pos.push(new THREE.Vector3(bx, by, bz));
+
+            // 2. ПЛАНЕТА (Сфера с разреженной сеткой)
+            const phi = Math.acos(-1 + (2 * i) / PARTICLE_COUNT);
+            const theta = Math.sqrt(PARTICLE_COUNT * Math.PI) * phi;
+            const rGlobe = 260;
+            const gx = rGlobe * Math.cos(theta) * Math.sin(phi);
+            const gy = rGlobe * Math.cos(phi);
+            const gz = rGlobe * Math.sin(theta) * Math.sin(phi);
+            targets.globe.pos.push(new THREE.Vector3(gx, gy, gz));
+
+            // 3. СЕТЬ (SPIDER-VERSE)
+            const targetNode = networkNodes[Math.floor(Math.random() * networkNodes.length)];
+            const dist = Math.random();
+            let nx = targetNode.x + (Math.random() - 0.5) * 300 * dist;
+            let ny = targetNode.y + (Math.random() - 0.5) * 300 * dist;
+            let nz = targetNode.z + (Math.random() - 0.5) * 300 * dist;
             targets.network.pos.push(new THREE.Vector3(nx, ny, nz));
 
+            // Старт
             currentPositions.push(new THREE.Vector3(
+                (Math.random() - 0.5) * 2000,
+                (Math.random() - 0.5) * 2000,
+                (Math.random() - 0.5) * 2000
+            ));
+            rotations.push(Math.random() * Math.PI * 2);
+            scales.push(Math.random() * 0.6 + 0.3);
+            spinSpeeds.push((Math.random() - 0.5) * 0.03);
+
+            // Мягкая палитра Dala
+            const palette = [tokens.electricIris, tokens.saffronSpark, tokens.deepVerdant, '#9a9a9a', '#ffffff'];
+            tempColor.set(palette[Math.floor(Math.random() * palette.length)]);
+            instancedMesh.setColorAt(i, tempColor);
+        }
+        if (instancedMesh.instanceColor) instancedMesh.instanceColor.needsUpdate = true;
+
+        // Эмбиент
+        for (let i = 0; i < AMBIENT_COUNT; i++) {
+            dummy.position.set(
                 (Math.random() - 0.5) * 3000,
                 (Math.random() - 0.5) * 3000,
                 (Math.random() - 0.5) * 3000
-            ));
-            rotations.push(Math.random() * Math.PI * 2);
-            scales.push(Math.random() * 0.8 + 0.4);
-            spinSpeeds.push((Math.random() - 0.5) * 0.08);
-        }
-
-        // ГЛУБИНА
-        const ambientSpeeds: THREE.Vector3[] = [];
-        for (let j = 0; j < AMBIENT_COUNT; j++) {
-            dummy.position.set(
-                (Math.random() - 0.5) * 4000,
-                (Math.random() - 0.5) * 4000,
-                (Math.random() - 0.5) * 4000
             );
             dummy.rotation.z = Math.random() * Math.PI;
-            dummy.scale.setScalar(Math.random() * 2.0 + 0.5);
+            dummy.scale.setScalar(Math.random() * 0.5 + 0.2);
             dummy.updateMatrix();
-            ambientMesh.setMatrixAt(j, dummy.matrix);
-
+            ambientMesh.setMatrixAt(i, dummy.matrix);
             tempColor.setHex(Math.random() > 0.5 ? 0x8052ff : 0x15846e);
-            ambientMesh.setColorAt(j, tempColor);
-
-            ambientSpeeds.push(new THREE.Vector3(
-                (Math.random() - 0.5) * 1.2,
-                (Math.random() - 0.5) * 1.2,
-                (Math.random() - 0.5) * 1.2
-            ));
+            ambientMesh.setColorAt(i, tempColor);
         }
         if (ambientMesh.instanceColor) ambientMesh.instanceColor.needsUpdate = true;
 
@@ -234,8 +186,8 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
             time += 0.0015;
 
             instancedMesh.rotation.y = time;
-            instancedMesh.rotation.x = Math.sin(time * 0.5) * 0.1;
-            ambientMesh.rotation.y = time * 0.3;
+            instancedMesh.rotation.x = Math.sin(time * 0.4) * 0.08;
+            ambientMesh.rotation.y = time * 0.2;
 
             const activeTargets = shapeRef.current === 'globe' ? targets.globe :
                 shapeRef.current === 'network' ? targets.network : targets.brain;
@@ -244,9 +196,9 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
                 const current = currentPositions[i];
                 const tPos = activeTargets.pos[i];
 
-                current.x += (tPos.x - current.x) * 0.07;
-                current.y += (tPos.y - current.y) * 0.07;
-                current.z += (tPos.z - current.z) * 0.07;
+                current.x += (tPos.x - current.x) * 0.035;
+                current.y += (tPos.y - current.y) * 0.035;
+                current.z += (tPos.z - current.z) * 0.035;
 
                 rotations[i] += spinSpeeds[i];
 
@@ -254,52 +206,10 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
                 dummy.rotation.z = rotations[i];
                 dummy.scale.setScalar(scales[i]);
 
-                const breathe = Math.sin(time * 10 + i * 0.1) * 2.0;
-                dummy.position.x += breathe;
-
-                let cx = dummy.position.x;
-                let cy = dummy.position.y;
-                let cz = dummy.position.z;
-
-                if (cy < -30 && Math.abs(cx) < 50 && cz < 50) {
-                    tempColor.setHex(0x45bcf2);
-                } else if (cy > 90) {
-                    tempColor.setHex(0x15846e);
-                } else if (cz > 130) {
-                    tempColor.setHex(0xffffff);
-                } else if (cx < -20) {
-                    tempColor.setHex(0xffb829);
-                } else {
-                    tempColor.setHex(0x8052ff);
-                }
-
-                if (i % 20 === 0) tempColor.setHex(0xffffff);
-
-                instancedMesh.setColorAt(i, tempColor);
                 dummy.updateMatrix();
                 instancedMesh.setMatrixAt(i, dummy.matrix);
             }
             instancedMesh.instanceMatrix.needsUpdate = true;
-            if (instancedMesh.instanceColor) instancedMesh.instanceColor.needsUpdate = true;
-
-            for (let i = 0; i < AMBIENT_COUNT; i++) {
-                ambientMesh.getMatrixAt(i, dummy.matrix);
-                dummy.position.setFromMatrixPosition(dummy.matrix);
-
-                dummy.position.add(ambientSpeeds[i]);
-                const B = 2000;
-                if (dummy.position.x > B) dummy.position.x = -B;
-                else if (dummy.position.x < -B) dummy.position.x = B;
-                if (dummy.position.y > B) dummy.position.y = -B;
-                else if (dummy.position.y < -B) dummy.position.y = B;
-                if (dummy.position.z > B) dummy.position.z = -B;
-                else if (dummy.position.z < -B) dummy.position.z = B;
-
-                dummy.rotation.z += 0.01;
-                dummy.updateMatrix();
-                ambientMesh.setMatrixAt(i, dummy.matrix);
-            }
-            ambientMesh.instanceMatrix.needsUpdate = true;
 
             renderer.render(scene, camera);
             animationFrameId = requestAnimationFrame(animate);
@@ -313,7 +223,7 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
             camera.aspect = w / h;
             camera.updateProjectionMatrix();
             renderer.setSize(w, h);
-            camera.position.x = w < 768 ? 0 : -350;
+            camera.position.x = w < 768 ? 0 : -250;
         };
 
         window.addEventListener('resize', handleResize);
