@@ -21,8 +21,8 @@ export const portfolioProjects = [
     },
     {
         id: 4,
-        title: "Comming soon",
-        category: "Backend / Logic",
-        link: "#"
+        title: "ProxyPulse",
+        category: "Backend // HTTPS",
+        link: "/proxypulse"
     },
 ];
