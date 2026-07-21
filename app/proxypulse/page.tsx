@@ -6,7 +6,7 @@ import Link from "next/link";
 import * as THREE from 'three';
 
 // =====================================================================
-// DESIGN TOKENS (DALA STYLE V1)
+// DESIGN TOKENS
 // =====================================================================
 const tokens = {
     void: "#000000",
@@ -15,7 +15,8 @@ const tokens = {
     silverMist: "#bdbdbd",
     electricIris: "#8052ff",
     saffronSpark: "#ffb829",
-    deepVerdant: "#15846e"
+    deepVerdant: "#15846e",
+    stemBlue: "#45bcf2"
 };
 
 const DalaLogo = () => (
@@ -31,7 +32,7 @@ const DalaLogo = () => (
 );
 
 // =====================================================================
-// AIRY WEBGL ENGINE (DEEP, SUBTLE, UN-BLINDING)
+// PURE WEBGL THREE.JS ENGINE (1:1 POINT CLOUD MATCH)
 // =====================================================================
 const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
     const mountRef = useRef<HTMLDivElement>(null);
@@ -49,8 +50,8 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
         const isMobile = width < 768;
 
         const scene = new THREE.Scene();
-        // Глубокий, плотный туман, растворяющий объекты в идеальной темноте
-        scene.fog = new THREE.FogExp2(0x000000, 0.0018);
+        // Глубокий туман для поглощения частиц на заднем плане
+        scene.fog = new THREE.FogExp2(0x000000, 0.0012);
 
         const camera = new THREE.PerspectiveCamera(45, width / height, 1, 3000);
         camera.position.z = 900;
@@ -62,17 +63,16 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         mountRef.current.appendChild(renderer.domElement);
 
-        const PARTICLE_COUNT = isMobile ? 3000 : 7000; // Умеренное количество для воздуха
-        const AMBIENT_COUNT = isMobile ? 400 : 1200;
+        const PARTICLE_COUNT = isMobile ? 6000 : 12000;
+        const AMBIENT_COUNT = isMobile ? 800 : 2500;
 
-        // Тонкие, изящные треугольники
-        const geometry = new THREE.CircleGeometry(1.8, 3);
+        const geometry = new THREE.CircleGeometry(1.6, 3);
         const material = new THREE.MeshBasicMaterial({
             color: 0xffffff,
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 0.55, // Ненавязчивая полупрозрачность
-            blending: THREE.NormalBlending
+            opacity: 0.9,
+            blending: THREE.AdditiveBlending
         });
 
         const instancedMesh = new THREE.InstancedMesh(geometry, material, PARTICLE_COUNT);
@@ -89,11 +89,16 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
 
         const currentPositions: THREE.Vector3[] = [];
         const rotations: number[] = [];
-        const scales: number[] = [];
         const spinSpeeds: number[] = [];
         const dummy = new THREE.Object3D();
         const tempColor = new THREE.Color();
 
+        // Простой фрактальный шум для генерации материков
+        const fbm = (x: number, y: number, z: number) => {
+            return Math.sin(x * 0.012 + Math.cos(y * 0.012)) + Math.sin(y * 0.015 + z * 0.01) + Math.cos(z * 0.01 + x * 0.015);
+        };
+
+        // Генерация узлов для сети
         const networkNodes: THREE.Vector3[] = [];
         for (let j = 0; j < 20; j++) {
             networkNodes.push(new THREE.Vector3(
@@ -104,66 +109,96 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
         }
 
         for (let i = 0; i < PARTICLE_COUNT; i++) {
-            // 1. МОЗГ (Тот самый анатомический силуэт со стволом)
+            // ==========================================
+            // 1. ФОРМА: МОЗГ (По референсу image_e3a47e)
+            // ==========================================
             let bx, by, bz;
-            if (i < PARTICLE_COUNT * 0.07) {
-                const h = Math.random() * 140;
-                const r = 20 - (h * 0.08);
+
+            if (i < PARTICLE_COUNT * 0.06) {
+                // Ствол (Stem) - растет вниз из центра
+                const h = Math.random() * 140; // Длина ствола
+                const r = 22 - (h * 0.08);     // Сужение книзу
                 const angle = Math.random() * Math.PI * 2;
+
                 bx = Math.cos(angle) * r;
-                by = -70 - h;
+                by = -90 - h; // Начинается на -90 и уходит вниз до -230
                 bz = Math.sin(angle) * r;
             } else {
+                // Два раздельных полушария (Объемное заполнение)
+                const isLeft = i % 2 === 0;
                 const u = Math.random() * Math.PI * 2;
                 const v = Math.acos(2.0 * Math.random() - 1.0);
-                const rVolume = Math.cbrt(Math.random()) * 220;
+                const rVolume = Math.cbrt(Math.random()); // Кубический корень для равномерности объема
 
-                let x = Math.sin(v) * Math.cos(u);
-                let y = Math.cos(v);
-                let z = Math.sin(v) * Math.sin(u);
+                // Базовый эллипсоид
+                let x = rVolume * Math.sin(v) * Math.cos(u) * 85;
+                let y = rVolume * Math.cos(v) * 115;
+                let z = rVolume * Math.sin(v) * Math.sin(u) * 105;
 
-                const isLeft = x < 0;
-                bx = (x * 0.7 * rVolume) + (isLeft ? -45 : 45);
-                by = (y * 0.85 * rVolume) + 20;
-                bz = z * 1.1 * rVolume;
+                if (isLeft) {
+                    bx = x - 90; // Сдвиг влево (fissure)
+                } else {
+                    bx = x + 90; // Сдвиг вправо
+                }
+                by = y + 20;
+                bz = z;
             }
             targets.brain.pos.push(new THREE.Vector3(bx, by, bz));
 
-            // 2. ПЛАНЕТА (Сфера с разреженной сеткой)
-            const phi = Math.acos(-1 + (2 * i) / PARTICLE_COUNT);
-            const theta = Math.sqrt(PARTICLE_COUNT * Math.PI) * phi;
-            const rGlobe = 260;
-            const gx = rGlobe * Math.cos(theta) * Math.sin(phi);
-            const gy = rGlobe * Math.cos(phi);
-            const gz = rGlobe * Math.sin(theta) * Math.sin(phi);
+            // ==========================================
+            // 2. ФОРМА: ПЛАНЕТА (По референсу image_e3a49b)
+            // ==========================================
+            let gx = 0, gy = 0, gz = 0;
+            let isValid = false;
+            let attempts = 0;
+
+            // Rejection Sampling: Ищем точку на поверхности сферы, пока она не попадет на "материк"
+            while (!isValid && attempts < 50) {
+                const u = Math.random() * Math.PI * 2;
+                const v = Math.acos(2.0 * Math.random() - 1.0);
+                const rGlobe = 290;
+
+                gx = rGlobe * Math.sin(v) * Math.cos(u);
+                gy = rGlobe * Math.cos(v);
+                gz = rGlobe * Math.sin(v) * Math.sin(u);
+
+                const n = fbm(gx, gy, gz);
+                if (n > 0.4) {
+                    isValid = true; // Попали в материк
+                } else if (Math.random() > 0.98) {
+                    isValid = true; // 2% шанс оставить частицу в океане (для текстуры)
+                }
+                attempts++;
+            }
             targets.globe.pos.push(new THREE.Vector3(gx, gy, gz));
 
-            // 3. СЕТЬ (SPIDER-VERSE)
+            // ==========================================
+            // 3. ФОРМА: СЕТЬ (Spider-Verse)
+            // ==========================================
             const targetNode = networkNodes[Math.floor(Math.random() * networkNodes.length)];
-            const dist = Math.random();
-            let nx = targetNode.x + (Math.random() - 0.5) * 300 * dist;
-            let ny = targetNode.y + (Math.random() - 0.5) * 300 * dist;
-            let nz = targetNode.z + (Math.random() - 0.5) * 300 * dist;
+            const dist = Math.random(); // Распределение вдоль нити
+
+            let nx = targetNode.x + (Math.random() - 0.5) * 250 * dist;
+            let ny = targetNode.y + (Math.random() - 0.5) * 250 * dist;
+            let nz = targetNode.z + (Math.random() - 0.5) * 250 * dist;
             targets.network.pos.push(new THREE.Vector3(nx, ny, nz));
 
-            // Старт
+            // ==========================================
+            // ИНИЦИАЛИЗАЦИЯ
+            // ==========================================
             currentPositions.push(new THREE.Vector3(
-                (Math.random() - 0.5) * 2000,
-                (Math.random() - 0.5) * 2000,
-                (Math.random() - 0.5) * 2000
+                (Math.random() - 0.5) * 2500,
+                (Math.random() - 0.5) * 2500,
+                (Math.random() - 0.5) * 2500
             ));
             rotations.push(Math.random() * Math.PI * 2);
-            scales.push(Math.random() * 0.6 + 0.3);
-            spinSpeeds.push((Math.random() - 0.5) * 0.03);
-
-            // Мягкая палитра Dala
-            const palette = [tokens.electricIris, tokens.saffronSpark, tokens.deepVerdant, '#9a9a9a', '#ffffff'];
-            tempColor.set(palette[Math.floor(Math.random() * palette.length)]);
-            instancedMesh.setColorAt(i, tempColor);
+            spinSpeeds.push((Math.random() - 0.5) * 0.04);
         }
-        if (instancedMesh.instanceColor) instancedMesh.instanceColor.needsUpdate = true;
 
-        // Эмбиент
+        // ==========================================
+        // ГЛУБИНА (Эмбиентные частицы на фоне)
+        // ==========================================
+        const ambientSpeeds: THREE.Vector3[] = [];
         for (let i = 0; i < AMBIENT_COUNT; i++) {
             dummy.position.set(
                 (Math.random() - 0.5) * 3000,
@@ -171,11 +206,18 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
                 (Math.random() - 0.5) * 3000
             );
             dummy.rotation.z = Math.random() * Math.PI;
-            dummy.scale.setScalar(Math.random() * 0.5 + 0.2);
+            dummy.scale.setScalar(Math.random() * 0.8 + 0.2);
             dummy.updateMatrix();
             ambientMesh.setMatrixAt(i, dummy.matrix);
+
             tempColor.setHex(Math.random() > 0.5 ? 0x8052ff : 0x15846e);
             ambientMesh.setColorAt(i, tempColor);
+
+            ambientSpeeds.push(new THREE.Vector3(
+                (Math.random() - 0.5) * 0.6,
+                (Math.random() - 0.5) * 0.6,
+                (Math.random() - 0.5) * 0.6
+            ));
         }
         if (ambientMesh.instanceColor) ambientMesh.instanceColor.needsUpdate = true;
 
@@ -183,11 +225,12 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
         let animationFrameId: number;
 
         const animate = () => {
-            time += 0.0015;
+            time += 0.002;
 
+            // Вращение сцены
             instancedMesh.rotation.y = time;
-            instancedMesh.rotation.x = Math.sin(time * 0.4) * 0.08;
-            ambientMesh.rotation.y = time * 0.2;
+            instancedMesh.rotation.x = Math.sin(time * 0.5) * 0.15;
+            ambientMesh.rotation.y = time * 0.5;
 
             const activeTargets = shapeRef.current === 'globe' ? targets.globe :
                 shapeRef.current === 'network' ? targets.network : targets.brain;
@@ -196,20 +239,60 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
                 const current = currentPositions[i];
                 const tPos = activeTargets.pos[i];
 
-                current.x += (tPos.x - current.x) * 0.035;
-                current.y += (tPos.y - current.y) * 0.035;
-                current.z += (tPos.z - current.z) * 0.035;
+                // Плавное притяжение
+                current.x += (tPos.x - current.x) * 0.04;
+                current.y += (tPos.y - current.y) * 0.04;
+                current.z += (tPos.z - current.z) * 0.04;
 
                 rotations[i] += spinSpeeds[i];
 
                 dummy.position.copy(current);
                 dummy.rotation.z = rotations[i];
-                dummy.scale.setScalar(scales[i]);
 
+                // Дыхание частиц
+                const breathe = Math.sin(time * 15 + i) * 1.5;
+                dummy.position.x += breathe;
+
+                // Цветовые зоны в реальном времени (как на референсах)
+                let cx = dummy.position.x;
+                let cy = dummy.position.y;
+
+                if (cy < -60 && Math.abs(cx) < 50) {
+                    tempColor.setHex(0x45bcf2); // Ствол - синий
+                } else if (cy > 70) {
+                    tempColor.setHex(0x15846e); // Верх - изумрудный
+                } else if (cx < 0) {
+                    tempColor.setHex(0xffb829); // Лево - золотой
+                } else {
+                    tempColor.setHex(0x8052ff); // Право - фиолетовый
+                }
+
+                instancedMesh.setColorAt(i, tempColor);
                 dummy.updateMatrix();
                 instancedMesh.setMatrixAt(i, dummy.matrix);
             }
             instancedMesh.instanceMatrix.needsUpdate = true;
+            if (instancedMesh.instanceColor) instancedMesh.instanceColor.needsUpdate = true;
+
+            // Анимация глубины
+            for (let i = 0; i < AMBIENT_COUNT; i++) {
+                ambientMesh.getMatrixAt(i, dummy.matrix);
+                dummy.position.setFromMatrixPosition(dummy.matrix);
+
+                dummy.position.add(ambientSpeeds[i]);
+                // Бесконечный цикл
+                if (dummy.position.x > 1500) dummy.position.x = -1500;
+                else if (dummy.position.x < -1500) dummy.position.x = 1500;
+                if (dummy.position.y > 1500) dummy.position.y = -1500;
+                else if (dummy.position.y < -1500) dummy.position.y = 1500;
+                if (dummy.position.z > 1500) dummy.position.z = -1500;
+                else if (dummy.position.z < -1500) dummy.position.z = 1500;
+
+                dummy.rotation.z += 0.01;
+                dummy.updateMatrix();
+                ambientMesh.setMatrixAt(i, dummy.matrix);
+            }
+            ambientMesh.instanceMatrix.needsUpdate = true;
 
             renderer.render(scene, camera);
             animationFrameId = requestAnimationFrame(animate);
@@ -321,7 +404,7 @@ export default function ProxyPulse() {
     }, []);
 
     return (
-        <div className="bg-[#000000] text-[#ffffff] min-h-screen font-sans selection:bg-[#8052ff] selection:text-[#ffffff] overflow-x-hidden relative">
+        <div className="bg-transparent text-[#ffffff] min-h-screen font-sans selection:bg-[#8052ff] selection:text-[#ffffff] overflow-x-hidden relative">
 
             <WebGLConstellation activeShape={activeShape} />
 
@@ -342,7 +425,7 @@ export default function ProxyPulse() {
                 </div>
             </nav>
 
-            <main className="relative z-10 max-w-[1440px] mx-auto px-[24px] md:px-[60px]">
+            <main className="relative z-10 max-w-[1280px] mx-auto px-[24px] md:px-[60px]">
 
                 {/* 1. МОЗГ */}
                 <section data-shape="brain" className="shape-trigger flex flex-col justify-center min-h-screen pt-[120px] pb-[120px] pointer-events-none">
@@ -350,12 +433,15 @@ export default function ProxyPulse() {
                         <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829] mb-[24px] block">
                             Network Observability
                         </span>
+
                         <h1 className="text-[78px] lg:text-[113px] font-[400] leading-[1.0] tracking-[-3.12px] lg:tracking-[-4.52px] text-[#ffffff] mb-[30px]">
                             See your network. Live.
                         </h1>
+
                         <p className="text-[18px] font-[200] leading-[1.5] text-[#ffffff] max-w-[480px] mb-[48px]">
                             Stop reading dead logs. ProxyPulse visualizes every HTTP request in real-time. Connect the lightweight agent and watch your backend traffic breathe, flow, and break—instantly.
                         </p>
+
                         <button className="bg-[#8052ff] text-[#ffffff] text-[14px] font-[600] uppercase tracking-[0.35px] rounded-[24px] px-[24px] py-[16px] hover:bg-[#6c40e6] transition-colors">
                             Deploy Proxy
                         </button>
@@ -364,13 +450,14 @@ export default function ProxyPulse() {
 
                 {/* 2. ПЛАНЕТА */}
                 <section data-shape="globe" className="shape-trigger flex flex-col justify-center min-h-screen py-[120px] pointer-events-none">
-                    <div className="w-full max-w-[500px] pointer-events-auto mix-blend-difference">
+                    <div className="w-full max-w-[500px] pointer-events-auto">
                         <h2 className="text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
                             Global traffic layer.
                         </h2>
                         <p className="text-[18px] font-[200] leading-[1.5] text-[#bdbdbd] mb-[48px]">
                             Traditional tools force you to search through massive text files. ProxyPulse turns your traffic into an interactive global map. See where your requests bottleneck geographically.
                         </p>
+
                         <div className="bg-[#000000]/40 backdrop-blur-md border border-[#1a1a1a] rounded-[24px] p-[24px] w-full max-w-[460px]">
                             <span className="text-[12px] font-[600] text-[#15846e] uppercase tracking-[0.35px] mb-[16px] block border-b border-[#1a1a1a] pb-3">
                                 Agent Proxy Activity
@@ -380,32 +467,33 @@ export default function ProxyPulse() {
                     </div>
                 </section>
 
-                {/* 3. СЕТЬ */}
-                <section data-shape="network" className="shape-trigger flex flex-col justify-center min-h-screen py-[120px] pointer-events-none">
-                    <div className="w-full max-w-[500px] pointer-events-auto mix-blend-difference">
+                {/* 3. СЕТЬ (SPIDER-VERSE) */}
+                <section data-shape="network" className="shape-trigger flex flex-col lg:flex-row items-center gap-[60px] lg:gap-[120px] min-h-screen py-[120px] pointer-events-none">
+                    <div className="flex-1 w-full pointer-events-auto">
                         <h2 className="text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
                             Connect every microservice.
                         </h2>
-                        <p className="text-[18px] font-[200] leading-[1.5] text-[#bdbdbd] max-w-[520px] mb-[48px]">
+                        <p className="text-[18px] font-[200] leading-[1.5] text-[#bdbdbd] max-w-[520px]">
                             Whether you are writing distributed services in Go or enterprise backends in C#. ProxyPulse maps dependencies dynamically, revealing the hidden neural network of your architecture.
                         </p>
+                    </div>
 
-                        <div className="flex flex-col gap-[36px]">
-                            <div className="flex flex-col gap-[6px]">
-                                <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829]">Backend & Frontend</span>
-                                <p className="text-[27px] font-[400] leading-[1.0] text-[#ffffff]">Debug APIs instantly.</p>
-                            </div>
-                            <div className="flex flex-col gap-[6px]">
-                                <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#8052ff]">DevOps / Infra</span>
-                                <p className="text-[27px] font-[400] leading-[1.0] text-[#bdbdbd]">Monitor proxy layer health.</p>
-                            </div>
+                    <div className="flex-1 w-full flex flex-col gap-[48px] pointer-events-auto">
+                        <div className="flex flex-col gap-[6px]">
+                            <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829]">Backend & Frontend</span>
+                            <p className="text-[27px] font-[400] leading-[1.0] text-[#ffffff]">Debug APIs instantly.</p>
+                        </div>
+                        <div className="flex flex-col gap-[6px]">
+                            <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#8052ff]">DevOps / Infra</span>
+                            <p className="text-[27px] font-[400] leading-[1.0] text-[#bdbdbd]">Monitor proxy layer health.</p>
                         </div>
                     </div>
                 </section>
 
             </main>
 
-            <footer className="relative z-10 w-full max-w-[1440px] mx-auto px-[24px] md:px-[60px] py-[60px] flex flex-col md:flex-row justify-between items-start md:items-center gap-[36px] border-t border-[#1a1a1a] bg-[#000000]">
+            {/* ВЕРНУЛ ПОДВАЛ */}
+            <footer className="relative z-10 w-full max-w-[1280px] mx-auto px-[24px] md:px-[60px] py-[60px] flex flex-col md:flex-row justify-between items-start md:items-center gap-[36px] border-t border-[#1a1a1a]">
                 <div className="flex flex-col gap-[16px]">
                     <div className="flex items-center gap-[12px]">
                         <DalaLogo />
@@ -415,6 +503,7 @@ export default function ProxyPulse() {
                         The observability platform built for high-performance engineering teams.
                     </p>
                 </div>
+
                 <div className="flex flex-wrap gap-[48px] text-[14px] font-[600] text-[#9a9a9a] uppercase tracking-[0.35px]">
                     <div className="flex flex-col gap-[16px]">
                         <Link href="#" className="hover:text-[#ffffff] transition-colors">Manifesto</Link>
