@@ -1,356 +1,450 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
-// --- Icons ---
-const ArrowRight = ({ size = 24, className = "" }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+// =====================================================================
+// DALA DESIGN TOKENS
+// =====================================================================
+const tokens = {
+    void: "#000000",
+    boneWhite: "#ffffff",
+    ashGray: "#9a9a9a",
+    silverMist: "#bdbdbd",
+    electricIris: "#8052ff",
+    saffronSpark: "#ffb829",
+    deepVerdant: "#15846e"
+};
+
+const DalaLogo = () => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2L22 20H2L12 2Z" fill="url(#paint0_linear)" />
+        <defs>
+            <linearGradient id="paint0_linear" x1="12" y1="2" x2="12" y2="20" gradientUnits="userSpaceOnUse">
+                <stop stopColor={tokens.electricIris} />
+                <stop offset="1" stopColor={tokens.deepVerdant} />
+            </linearGradient>
+        </defs>
+    </svg>
 );
 
-// --- Advanced Particle Visualizer ---
-const Visualizer = ({ type }: { type: 'brain' | 'planet' | 'network' }) => {
+// =====================================================================
+// 3D CANVAS MORPHING ENGINE
+// =====================================================================
+const ParticleConstellation = ({ activeShape }: { activeShape: string }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const particlesRef = useRef<any[]>([]);
+    const ambientRef = useRef<any[]>([]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { alpha: false }); // Оптимизация
         if (!ctx) return;
 
-        let animationFrameId: number;
-        let particles: any[] = [];
-        let time = 0;
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+        const isMobile = width < 768;
 
-        const resize = () => {
-            // Подстраиваемся под контейнер
-            canvas.width = canvas.parentElement?.clientWidth || 800;
-            canvas.height = canvas.parentElement?.clientHeight || 800;
-        };
+        // Увеличиваем плотность для эффекта "дорогого" 3D
+        const SHAPE_PARTICLES = isMobile ? 1200 : 3500;
+        const AMBIENT_PARTICLES = isMobile ? 150 : 400;
 
-        window.addEventListener('resize', resize);
-        resize();
+        const colors = [tokens.electricIris, tokens.saffronSpark, tokens.deepVerdant, '#e845f2', '#45bcf2', '#ffffff'];
 
-        // Палитра строго по дизайн-системе Dala: Electric Iris, Saffron Spark, Deep Verdant + white/grays
-        const colors = ['#8052ff', '#ffb829', '#15846e', '#ffffff', '#9a9a9a', '#bdbdbd'];
+        // Генератор 3D-форм
+        const getShapeTarget = (index: number, total: number, shape: string) => {
+            let x = 0, y = 0, z = 0;
 
-        const initParticles = () => {
-            particles = [];
-            const numParticles = type === 'network' ? 300 : 2500; // Больше плотность для мозга/планеты
-
-            for (let i = 0; i < numParticles; i++) {
-                const color = colors[Math.floor(Math.random() * colors.length)];
-
-                if (type === 'brain') {
-                    // Имитация двух полушарий мозга
-                    const angle = Math.random() * Math.PI * 2;
-                    const u = Math.random() + Math.random();
-                    const r = u > 1 ? 2 - u : u; // распределение ближе к центру
-                    const radius = r * 250;
-
-                    // Создаем щель между полушариями
-                    const isRight = Math.cos(angle) > 0;
-                    const offset = isRight ? 40 : -40;
-
-                    const x = Math.cos(angle) * radius + offset;
-                    const y = Math.sin(angle) * (radius * 0.8) + (Math.sin(x * 0.02) * 20); // Немного изгибаем
-                    const z = Math.random() * 200 - 100;
-
-                    particles.push({ x, y, z, color, angle: Math.random() * Math.PI * 2, speed: Math.random() * 0.02 });
-                } else if (type === 'planet') {
-                    // Распределение по сфере (глобус)
-                    const phi = Math.acos(-1 + (2 * i) / numParticles);
-                    const theta = Math.sqrt(numParticles * Math.PI) * phi;
-                    const radius = 280;
-
-                    const x = radius * Math.cos(theta) * Math.sin(phi);
-                    const y = radius * Math.sin(theta) * Math.sin(phi);
-                    const z = radius * Math.cos(phi);
-
-                    particles.push({ x, y, z, color, baseTheta: theta, phi });
-                } else if (type === 'network') {
-                    // Распределение по всему пространству для Ambient-сети
-                    particles.push({
-                        x: (Math.random() - 0.5) * canvas.width * 1.5,
-                        y: (Math.random() - 0.5) * canvas.height * 1.5,
-                        z: Math.random() * 400 - 200,
-                        color,
-                        speedY: (Math.random() - 0.5) * 0.5,
-                        speedX: (Math.random() - 0.5) * 0.5
-                    });
+            if (shape === 'brain') {
+                // Две полусферы с шумом
+                const isLeft = index % 2 === 0;
+                const u = Math.random() * Math.PI;
+                const v = Math.random() * 2 * Math.PI;
+                // Более плотная внешняя кора и рыхлая сердцевина
+                const r = 100 + Math.pow(Math.random(), 0.5) * 60;
+                const sign = isLeft ? -1 : 1;
+                x = (r * Math.sin(u) * Math.cos(v)) * 0.75 + (sign * 60);
+                y = (r * Math.sin(u) * Math.sin(v)) * 1.1;
+                z = r * Math.cos(u) * 0.9;
+            }
+            else if (shape === 'globe') {
+                // Сфера с материками (используем синусоидальный шум)
+                let found = false;
+                while (!found) {
+                    const u = Math.random() * Math.PI;
+                    const v = Math.random() * 2 * Math.PI;
+                    const r = 160;
+                    // Создаем участки высокой плотности (материки)
+                    const noise = Math.sin(u * 5) * Math.cos(v * 4) + Math.sin(u * 8) * 0.5;
+                    // 85% частиц собираются на "материках", 15% раскиданы по океану
+                    if (noise > 0.1 || Math.random() > 0.85) {
+                        const depth = noise > 0.2 ? Math.random() * 15 : 0; // Рельеф
+                        x = (r + depth) * Math.sin(u) * Math.cos(v);
+                        y = (r + depth) * Math.cos(u);
+                        z = (r + depth) * Math.sin(u) * Math.sin(v);
+                        found = true;
+                    }
                 }
             }
+            else if (shape === 'bulb') {
+                // Лампочка: сфера (колба) + цилиндр (цоколь)
+                const isBulb = Math.random() > 0.25;
+                if (isBulb) {
+                    const u = Math.random() * Math.PI;
+                    const v = Math.random() * 2 * Math.PI;
+                    const r = 110 + Math.random() * 20;
+                    x = r * Math.sin(u) * Math.cos(v);
+                    y = r * Math.cos(u) - 50; // Сдвиг вверх
+                    z = r * Math.sin(u) * Math.sin(v);
+                } else {
+                    const v = Math.random() * 2 * Math.PI;
+                    const r = 40 + Math.random() * 10;
+                    const h = Math.random() * 90; // Высота цоколя
+                    x = r * Math.cos(v);
+                    y = h + 80; // Сдвиг вниз
+                    z = r * Math.sin(v);
+                }
+            }
+
+            // Добавляем микро-отклонения, чтобы форма не была искусственно ровной
+            return {
+                tx: x + (Math.random() - 0.5) * 10,
+                ty: y + (Math.random() - 0.5) * 10,
+                tz: z + (Math.random() - 0.5) * 10
+            };
         };
 
-        initParticles();
+        // Инициализация структурных частиц
+        if (particlesRef.current.length === 0) {
+            for (let i = 0; i < SHAPE_PARTICLES; i++) {
+                const startShape = getShapeTarget(i, SHAPE_PARTICLES, 'brain');
+                particlesRef.current.push({
+                    x: startShape.tx + (Math.random() - 0.5) * 1000, // Появляются из хаоса
+                    y: startShape.ty + (Math.random() - 0.5) * 1000,
+                    z: startShape.tz + (Math.random() - 0.5) * 1000,
+                    tx: startShape.tx,
+                    ty: startShape.ty,
+                    tz: startShape.tz,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    size: Math.random() * 1.5 + 0.5,
+                    angle: Math.random() * Math.PI * 2,
+                });
+            }
+        }
 
-        const drawTriangle = (x: number, y: number, size: number, color: string, rotation: number) => {
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.rotate(rotation);
-            ctx.beginPath();
-            // Равносторонний треугольник
-            ctx.moveTo(0, -size);
-            ctx.lineTo(size * 0.866, size * 0.5);
-            ctx.lineTo(-size * 0.866, size * 0.5);
-            ctx.closePath();
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 1.5; // Тонкие линии как в рефе
-            ctx.stroke();
-            ctx.restore();
-        };
+        // Инициализация фоновых (эмбиент) частиц
+        if (ambientRef.current.length === 0) {
+            for (let i = 0; i < AMBIENT_PARTICLES; i++) {
+                ambientRef.current.push({
+                    x: (Math.random() - 0.5) * 2000,
+                    y: (Math.random() - 0.5) * 2000,
+                    z: (Math.random() - 0.5) * 2000,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: (Math.random() - 0.5) * 0.5,
+                    vz: (Math.random() - 0.5) * 0.5,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    size: Math.random() * 2 + 0.5,
+                    angle: Math.random() * Math.PI * 2,
+                });
+            }
+        }
 
-        const draw = () => {
+        // Обновляем цели при смене формы
+        particlesRef.current.forEach((p, i) => {
+            const target = getShapeTarget(i, SHAPE_PARTICLES, activeShape);
+            p.tx = target.tx;
+            p.ty = target.ty;
+            p.tz = target.tz;
+        });
+
+        let animationFrameId: number;
+        let time = 0;
+
+        const animate = () => {
             time += 0.005;
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // Полностью очищаем для резкости
+            // Рисуем черный фон (вместо clearRect, чтобы работал альфа-канал без артефактов)
+            ctx.fillStyle = tokens.void;
+            ctx.fillRect(0, 0, width, height);
 
-            const cx = canvas.width / 2;
-            const cy = canvas.height / 2;
+            const centerX = isMobile ? width / 2 : width * 0.7; // Визуализация справа на десктопе
+            const centerY = height / 2;
+            const FOV = 600; // Перспектива
 
-            // Сортировка по Z-индексу для правильного перекрытия (опционально, но выглядит лучше)
-            const sortedParticles = [...particles].sort((a, b) => b.z - a.z);
+            // Глобальное вращение 3D сцены
+            const rotationY = time * 0.5;
+            const rotationX = Math.sin(time * 0.3) * 0.2;
 
-            sortedParticles.forEach(p => {
-                let px, py, pz, scale;
-
-                if (type === 'brain') {
-                    p.angle += p.speed * 0.5;
-                    // Легкое "дыхание" частиц
-                    const breath = Math.sin(time * 5 + p.x) * 5;
-                    px = cx + p.x + Math.cos(p.angle) * 5;
-                    py = cy + p.y + Math.sin(p.angle) * 5 + breath;
-                    pz = p.z;
-                } else if (type === 'planet') {
-                    // Вращение сферы
-                    p.baseTheta += 0.002;
-                    const radius = 280;
-                    px = cx + radius * Math.sin(p.phi) * Math.cos(p.baseTheta);
-                    py = cy + radius * Math.cos(p.phi);
-                    pz = radius * Math.sin(p.phi) * Math.sin(p.baseTheta);
-                } else if (type === 'network') {
-                    p.x += p.speedX;
-                    p.y += p.speedY;
-                    if (Math.abs(p.x) > canvas.width) p.x *= -0.9;
-                    if (Math.abs(p.y) > canvas.height) p.y *= -0.9;
-                    px = cx + p.x;
-                    py = cy + p.y;
-                    pz = p.z;
-
-                    // Рисуем связи для сети
-                    particles.forEach(otherP => {
-                        if (p !== otherP) {
-                            const dist = Math.hypot(p.x - otherP.x, p.y - otherP.y);
-                            if (dist < 80 && Math.abs(p.z - otherP.z) < 50) {
-                                ctx.beginPath();
-                                ctx.moveTo(cx + p.x, cy + p.y);
-                                ctx.lineTo(cx + otherP.x, cy + otherP.y);
-                                ctx.strokeStyle = `rgba(128, 82, 255, ${0.15 - dist / 800})`;
-                                ctx.stroke();
-                            }
-                        }
-                    });
+            const drawParticle = (p: any, isAmbient: boolean) => {
+                // 1. Применяем лерпинг к целевой позиции (только для структурных частиц)
+                if (!isAmbient) {
+                    p.x += (p.tx - p.x) * 0.04;
+                    p.y += (p.ty - p.y) * 0.04;
+                    p.z += (p.tz - p.z) * 0.04;
+                } else {
+                    p.x += p.vx; p.y += p.vy; p.z += p.vz;
+                    // Возврат в границы
+                    if (p.x > 1000) p.x = -1000; else if (p.x < -1000) p.x = 1000;
+                    if (p.y > 1000) p.y = -1000; else if (p.y < -1000) p.y = 1000;
+                    if (p.z > 1000) p.z = -1000; else if (p.z < -1000) p.z = 1000;
                 }
 
-                // Простая 3D проекция
-                const focalLength = 400;
-                scale = focalLength / (focalLength + pz);
+                // 2. 3D Вращение (по оси Y и X)
+                const cosY = Math.cos(rotationY), sinY = Math.sin(rotationY);
+                const cosX = Math.cos(rotationX), sinX = Math.sin(rotationX);
 
-                // Рисуем только то, что перед камерой и сглаживаем размер
-                if (scale > 0) {
-                    const finalX = (px - cx) * scale + cx;
-                    const finalY = (py - cy) * scale + cy;
-                    const size = Math.max(0.5, 4 * scale); // Базовый размер треугольника
+                let rx = p.x * cosY - p.z * sinY;
+                let rz = p.z * cosY + p.x * sinY;
 
-                    // Небольшое вращение каждого треугольника
-                    const rotation = time * (p.speed || 1) * 10 + (p.x * 0.01);
+                let ry = p.y * cosX - rz * sinX;
+                let finalZ = rz * cosX + p.y * sinX;
 
-                    // Уменьшаем прозрачность для частиц "сзади"
-                    ctx.globalAlpha = Math.min(1, scale * 1.2);
-                    drawTriangle(finalX, finalY, size, p.color, rotation);
-                    ctx.globalAlpha = 1;
-                }
-            });
+                // 3. Проекция 3D -> 2D
+                if (finalZ < -FOV) return; // Отсекаем то, что за камерой
+                const scale = FOV / (FOV + finalZ);
+                const projectedX = centerX + rx * scale;
+                const projectedY = centerY + ry * scale;
+                const projectedSize = Math.max(0.1, p.size * scale);
 
-            animationFrameId = requestAnimationFrame(draw);
+                // Отрисовка треугольника
+                ctx.save();
+                ctx.translate(projectedX, projectedY);
+                ctx.rotate(p.angle + time); // Частицы вращаются вокруг своей оси
+                ctx.beginPath();
+                ctx.moveTo(0, -projectedSize);
+                ctx.lineTo(projectedSize * 0.866, projectedSize * 0.5);
+                ctx.lineTo(-projectedSize * 0.866, projectedSize * 0.5);
+                ctx.closePath();
+
+                ctx.strokeStyle = p.color;
+                ctx.lineWidth = isAmbient ? 0.5 : 1;
+
+                // Эффект глубины и затухания
+                const depthAlpha = Math.max(0, Math.min(1, scale * 1.2));
+                ctx.globalAlpha = isAmbient ? depthAlpha * 0.3 : depthAlpha * 0.8;
+
+                ctx.stroke();
+                ctx.restore();
+            };
+
+            // Рендерим все частицы. Сортировка по Z для идеального наложения бьет по FPS, 
+            // поэтому полагаемся на аддитивный/естественный блендинг
+            ambientRef.current.forEach(p => drawParticle(p, true));
+            particlesRef.current.forEach(p => drawParticle(p, false));
+
+            animationFrameId = requestAnimationFrame(animate);
         };
 
-        draw();
+        animate();
 
+        const handleResize = () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        };
+
+        window.addEventListener('resize', handleResize);
         return () => {
-            window.removeEventListener('resize', resize);
+            window.removeEventListener('resize', handleResize);
             cancelAnimationFrame(animationFrameId);
         };
-    }, [type]);
+    }, [activeShape]);
 
-    return <canvas ref={canvasRef} className="w-full h-full absolute inset-0 z-0 pointer-events-none" />;
+    return (
+        <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none" />
+    );
 };
 
-// --- Dynamic Log Component ---
-const LiveLogs = () => {
-    const [logs, setLogs] = useState([
-        { method: 'PUT', path: '/api/users/update_profile', status: 400, time: '89ms', color: '#ffb829' },
-        { method: 'GET', path: '/ws/stream/events', status: 101, time: '0ms', color: '#15846e' },
-        { method: 'POST', path: '/auth/csharp/login', status: 201, time: '45ms', color: '#15846e' },
-        { method: 'GET', path: '/api/v1/golang-proxy/health', status: 200, time: '12ms', color: '#15846e' },
-        { method: 'DELETE', path: '/cache/redis/flush', status: 204, time: '5ms', color: '#8052ff' }
-    ]);
+// =====================================================================
+// LIVE REQUEST TERMINAL (Strict Grid)
+// =====================================================================
+const backendLogs = [
+    { method: "GET", path: "/api/v1/go/metrics", status: 200, time: "12ms" },
+    { method: "POST", path: "/auth/csharp/login", status: 201, time: "45ms" },
+    { method: "GET", path: "/ws/stream/events", status: 101, time: "0ms" },
+    { method: "PUT", path: "/api/users/update", status: 400, time: "89ms" },
+    { method: "DEL", path: "/cache/redis/flush", status: 204, time: "5ms" },
+    { method: "GET", path: "/api/healthz", status: 200, time: "2ms" },
+    { method: "POST", path: "/grpc/payment.verify", status: 500, time: "1205ms" },
+];
 
-    const methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
-    const paths = ['/api/v2/metrics', '/auth/verify', '/users/me', '/cdn/images/logo.png', '/webhook/stripe'];
-    const statuses = [200, 201, 400, 401, 404, 500];
+const LiveTerminal = () => {
+    const [requests, setRequests] = useState<typeof backendLogs>([]);
 
     useEffect(() => {
+        let index = 0;
         const interval = setInterval(() => {
-            setLogs(prevLogs => {
-                const newLogs = [...prevLogs];
-                // Убираем старый
-                newLogs.pop();
-
-                // Генерим новый
-                const status = statuses[Math.floor(Math.random() * statuses.length)];
-                let color = '#15846e'; // зеленый
-                if (status >= 400) color = '#ffb829'; // желтый
-                if (status >= 500) color = 'red';
-                if (status === 204) color = '#8052ff'; // фиолетовый для DELETE
-
-                newLogs.unshift({
-                    method: methods[Math.floor(Math.random() * methods.length)],
-                    path: paths[Math.floor(Math.random() * paths.length)],
-                    status: status,
-                    time: `${Math.floor(Math.random() * 150)}ms`,
-                    color: color
-                });
-                return newLogs;
+            setRequests(prev => {
+                const newReq = backendLogs[index % backendLogs.length];
+                index++;
+                return [newReq, ...prev].slice(0, 7);
             });
-        }, 1500); // Обновляем каждые 1.5 секунды
-
+        }, 800);
         return () => clearInterval(interval);
     }, []);
 
     return (
-        <div className="font-mono text-[14px] leading-relaxed w-full max-w-[600px] bg-[#000000] p-8">
-            {logs.map((log, i) => (
-                <div key={i} className="flex items-center justify-between mb-4 opacity-0 animate-[fadeIn_0.5s_ease-out_forwards]">
-                    <span style={{ color: log.color }} className="w-16 font-semibold">{log.method}</span>
-                    <span className="text-[#bdbdbd] flex-1 truncate ml-4">{log.path}</span>
-                    <span style={{ color: log.color }} className="w-12 text-right">{log.status}</span>
-                    <span className="text-[#9a9a9a] w-16 text-right">{log.time}</span>
-                </div>
-            ))}
+        <div className="w-full font-mono text-[14px] leading-[1.5] text-[#bdbdbd] relative z-10 flex flex-col">
+            <AnimatePresence mode="popLayout">
+                {requests.map((req, i) => (
+                    <motion.div
+                        key={`${req.path}-${i}-${Date.now()}`}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1 - i * 0.12, x: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        // Жесткая сетка - ни один пиксель не сместится
+                        className="grid grid-cols-[45px_1fr_40px_50px] gap-4 items-center h-8"
+                    >
+                        <span className={`font-[600] text-left ${req.method === 'GET' ? 'text-[#8052ff]' : req.method === 'POST' ? 'text-[#15846e]' : req.method === 'DEL' ? 'text-[#e845f2]' : 'text-[#ffb829]'}`}>
+                            {req.method}
+                        </span>
+
+                        <span className="text-[#ffffff] truncate">
+                            {req.path}
+                        </span>
+
+                        <span className={`font-[600] text-right ${req.status >= 500 ? 'text-[#e845f2]' : req.status >= 400 ? 'text-[#ffb829]' : 'text-[#15846e]'}`}>
+                            {req.status}
+                        </span>
+
+                        <span className="text-right tabular-nums">
+                            {req.time}
+                        </span>
+                    </motion.div>
+                ))}
+            </AnimatePresence>
         </div>
     );
 };
 
+// =====================================================================
+// MAIN LAYOUT
+// =====================================================================
+export default function ProxyPulse() {
+    const [activeShape, setActiveShape] = useState('brain');
 
-// --- Layout Components ---
-const Navbar = () => (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-12 py-8 bg-transparent">
-        <div className="flex items-center gap-3">
-            {/* Иконка треугольника с градиентом как у Dala */}
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2L22 20H2L12 2Z" fill="url(#paint0_linear)" />
-                <defs>
-                    <linearGradient id="paint0_linear" x1="12" y1="2" x2="12" y2="20" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#8052ff" />
-                        <stop offset="1" stopColor="#15846e" />
-                    </linearGradient>
-                </defs>
-            </svg>
-            <span className="text-[14px] font-normal tracking-[0.35px] text-[#ffffff]">ProxyPulse</span>
-        </div>
-        <div className="hidden md:flex items-center gap-12">
-            <a href="#manifesto" className="text-[14px] tracking-[0.025em] uppercase text-[#9a9a9a] hover:text-[#ffffff] transition-colors font-semibold">Manifesto</a>
-            <a href="#team" className="text-[14px] tracking-[0.025em] uppercase text-[#9a9a9a] hover:text-[#ffffff] transition-colors font-semibold">Docs</a>
-            <a href="#blog" className="text-[14px] tracking-[0.025em] uppercase text-[#9a9a9a] hover:text-[#ffffff] transition-colors font-semibold">Blog</a>
-            <button className="bg-[#8052ff] text-[#ffffff] px-[16px] py-[14.4px] rounded-[22.5px] text-[14px] tracking-[0.025em] uppercase font-semibold">
-                Request Access
-            </button>
-        </div>
-    </nav>
-);
-
-export default function ProxyPulsePage() {
-    // Добавляем глобальные стили для анимации логов
     useEffect(() => {
-        const style = document.createElement('style');
-        style.innerHTML = `
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-    `;
-        document.head.appendChild(style);
-        return () => { document.head.removeChild(style); }
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const shape = entry.target.getAttribute('data-shape');
+                    if (shape) setActiveShape(shape);
+                }
+            });
+        }, { threshold: 0.5 });
+
+        const sections = document.querySelectorAll('.shape-trigger');
+        sections.forEach(section => observer.observe(section));
+
+        return () => sections.forEach(section => observer.unobserve(section));
     }, []);
 
     return (
-        <main className="bg-[#000000] text-[#ffffff] font-sans selection:bg-[#8052ff] selection:text-[#ffffff]">
-            <Navbar />
+        <div className="bg-[#000000] text-[#ffffff] min-h-screen font-sans selection:bg-[#8052ff] selection:text-[#ffffff] overflow-x-hidden relative">
 
-            {/* Hero: Brain */}
-            <section className="relative min-h-[100vh] flex items-center px-[8%] overflow-hidden">
-                <div className="max-w-[1280px] mx-auto w-full flex flex-col md:flex-row items-center relative z-10">
-                    <div className="w-full md:w-1/2 pr-8 z-20">
-                        <h1 className="text-[78px] md:text-[113px] font-normal leading-[1.1] tracking-[-4.52px] mb-8">
-                            Unlock collective wisdom.
+            <ParticleConstellation activeShape={activeShape} />
+
+            <nav className="fixed top-0 left-0 w-full z-50 py-[24px] px-[24px] md:px-[60px] flex justify-between items-center mix-blend-difference">
+                <div className="flex items-center gap-[12px]">
+                    <DalaLogo />
+                    <span className="text-[14px] font-[600] tracking-[0.35px] text-[#ffffff] uppercase">ProxyPulse</span>
+                </div>
+                <div className="hidden md:flex items-center gap-[36px]">
+                    <Link href="#manifesto" className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">Manifesto</Link>
+                    <Link href="#docs" className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">Docs</Link>
+                    <Link href="#github" className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">GitHub</Link>
+                </div>
+                <div className="flex items-center">
+                    <button className="bg-[#8052ff] text-[#ffffff] text-[14px] font-[600] uppercase tracking-[0.35px] rounded-[24px] px-[16px] py-[14.4px] hover:bg-[#6c40e6] transition-colors">
+                        Deploy Agent
+                    </button>
+                </div>
+            </nav>
+
+            <main className="relative z-10 max-w-[1280px] mx-auto px-[24px] md:px-[60px]">
+
+                {/* Секция 1: МОЗГ */}
+                <section data-shape="brain" className="shape-trigger flex flex-col justify-center min-h-screen pt-[120px] pb-[120px] pointer-events-none">
+                    <div className="w-full max-w-[600px] pointer-events-auto">
+                        <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829] mb-[24px] block">
+                            Network Observability
+                        </span>
+
+                        <h1 className="text-[78px] lg:text-[113px] font-[400] leading-[1.0] tracking-[-3.12px] lg:tracking-[-4.52px] text-[#ffffff] mb-[30px]">
+                            See your network. Live.
                         </h1>
-                        <div className="text-[#ffb829] text-[14px] tracking-[0.35px] uppercase font-semibold mb-6">
-                            Stop managing logs. Start using them.
-                        </div>
-                        <p className="text-[18px] leading-[1.5] font-[200] text-[#ffffff] max-w-[480px] mb-12">
-                            Plug into your proxy's shared brainpower. Ask ProxyPulse to instantly visualize any HTTP traffic from your backend system. Focus on doing your best work with context, conviction and clarity.
+
+                        <p className="text-[18px] font-[200] leading-[1.5] text-[#ffffff] max-w-[480px] mb-[48px]">
+                            Stop reading dead logs. ProxyPulse visualizes every HTTP request in real-time. Connect the lightweight agent and watch your backend traffic breathe, flow, and break—instantly.
                         </p>
-                        <button className="bg-[#8052ff] text-[#ffffff] px-[16px] py-[14.4px] rounded-[22.5px] text-[14px] tracking-[0.025em] uppercase font-semibold">
-                            Request Access
+
+                        <button className="bg-[#8052ff] text-[#ffffff] text-[14px] font-[600] uppercase tracking-[0.35px] rounded-[24px] px-[24px] py-[16px] hover:bg-[#6c40e6] transition-colors">
+                            Deploy Proxy
                         </button>
                     </div>
-                    <div className="w-full md:w-1/2 h-[800px] relative pointer-events-none">
-                        <Visualizer type="brain" />
-                    </div>
-                </div>
-            </section>
+                </section>
 
-            {/* Section 2: Planet */}
-            <section className="relative min-h-[100vh] flex items-center px-[8%] py-[120px] overflow-hidden">
-                <div className="max-w-[1280px] mx-auto w-full flex flex-col md:flex-row items-center relative z-10">
-                    <div className="w-full md:w-1/2 h-[800px] relative pointer-events-none order-2 md:order-1">
-                        <Visualizer type="planet" />
-                    </div>
-                    <div className="w-full md:w-1/2 pl-8 z-20 order-1 md:order-2">
-                        <h2 className="text-[78px] md:text-[113px] font-normal leading-[1.1] tracking-[-4.52px] mb-8">
-                            Build a better world of routing.
+                {/* Секция 2: ГЛОБУС С МАТЕРИКАМИ */}
+                <section data-shape="globe" className="shape-trigger flex flex-col justify-center min-h-screen py-[120px] pointer-events-none">
+                    <div className="w-full max-w-[520px] pointer-events-auto">
+                        <h2 className="text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
+                            Global traffic layer.
                         </h2>
-                        <p className="text-[18px] leading-[1.5] font-[200] text-[#ffffff] max-w-[480px]">
-                            Our mission is to make proxy monitoring more coherent and delightful—reframing debugging from reading raw lines to seeing global context. Your happiest and most purposeful moments at work are when you're in flow tracking APIs.
+                        <p className="text-[18px] font-[200] leading-[1.5] text-[#bdbdbd] mb-[48px]">
+                            Traditional tools force you to search through massive text files. ProxyPulse turns your traffic into an interactive map. See where your requests are bottlenecking geographically.
+                        </p>
+
+                        <div className="bg-[#000000] border border-[#1a1a1a] rounded-[24px] p-[30px] w-full max-w-[480px]">
+                            <span className="text-[12px] font-[600] text-[#15846e] uppercase tracking-[0.35px] mb-[18px] block border-b border-[#1a1a1a] pb-4">
+                                Agent Proxy Activity
+                            </span>
+                            <LiveTerminal />
+                        </div>
+                    </div>
+                </section>
+
+                {/* Секция 3: ЛАМПОЧКА (Идея/Инсайт) */}
+                <section data-shape="bulb" className="shape-trigger flex flex-col lg:flex-row items-center gap-[60px] lg:gap-[120px] min-h-screen py-[120px] pointer-events-none">
+                    <div className="flex-1 w-full pointer-events-auto">
+                        <h2 className="text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
+                            Built for high-performance engineering.
+                        </h2>
+                        <p className="text-[18px] font-[200] leading-[1.5] text-[#bdbdbd] max-w-[520px]">
+                            Whether you are writing microservices in Go, building enterprise backends in C#, or deploying edge functions. The proxy agent runs anywhere with less than 10MB memory footprint, surfacing insights immediately.
                         </p>
                     </div>
-                </div>
-            </section>
 
-            {/* Section 3: Live Network & Logs */}
-            <section className="relative min-h-[100vh] flex items-center px-[8%] py-[120px] overflow-hidden">
-                {/* Фоновая ambient-сеть */}
-                <Visualizer type="network" />
-
-                <div className="max-w-[1280px] mx-auto w-full flex flex-col md:flex-row items-center relative z-10">
-                    <div className="w-full md:w-1/2 pr-8 z-20">
-                        <h2 className="text-[48px] md:text-[78px] font-normal leading-[1.1] tracking-[-3.12px] mb-8">
-                            Beyond the logs.
-                        </h2>
-                        <p className="text-[18px] leading-[1.5] font-[200] text-[#bdbdbd] max-w-[480px]">
-                            Traditional tools force you to grep through text. ProxyPulse captures the life cycle of every request, instantly visualizing endpoints, methods, and latencies as they traverse your network.
-                        </p>
+                    <div className="flex-1 w-full flex flex-col gap-[48px] pointer-events-auto">
+                        <div className="flex flex-col gap-[6px]">
+                            <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829]">Backend & Frontend</span>
+                            <p className="text-[27px] font-[400] leading-[1.0] text-[#ffffff]">Debug APIs instantly.</p>
+                        </div>
+                        <div className="flex flex-col gap-[6px]">
+                            <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#8052ff]">DevOps / Infra</span>
+                            <p className="text-[27px] font-[400] leading-[1.0] text-[#bdbdbd]">Monitor proxy layer health.</p>
+                        </div>
+                        <div className="flex flex-col gap-[6px]">
+                            <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#15846e]">Mobile Teams</span>
+                            <p className="text-[27px] font-[400] leading-[1.0] text-[#bdbdbd]">Track client requests visually.</p>
+                        </div>
                     </div>
-                    <div className="w-full md:w-1/2 h-[500px] flex items-center justify-center relative z-20">
-                        {/* Живой обновляющийся терминал */}
-                        <LiveLogs />
-                    </div>
-                </div>
-            </section>
+                </section>
 
-            {/* Simple Footer */}
-            <footer className="py-12 border-t border-[#333333] text-center">
-                <p className="text-[14px] text-[#9a9a9a] font-[200]">© 2026 ProxyPulse. All rights reserved.</p>
+            </main>
+
+            <footer className="relative z-10 w-full max-w-[1280px] mx-auto px-[24px] md:px-[60px] py-[60px] flex flex-col md:flex-row justify-between items-start md:items-center gap-[36px]">
+                <div className="flex items-center gap-[12px] opacity-50">
+                    <DalaLogo />
+                    <span className="text-[14px] font-[600] tracking-[0.35px] text-[#ffffff] uppercase">ProxyPulse</span>
+                </div>
+
+                <div className="flex flex-wrap gap-[30px] text-[14px] font-[400] text-[#9a9a9a]">
+                    <Link href="#" className="hover:text-[#ffffff] transition-colors">Twitter</Link>
+                    <Link href="#" className="hover:text-[#ffffff] transition-colors">GitHub</Link>
+                    <Link href="#" className="hover:text-[#ffffff] transition-colors">LinkedIn</Link>
+                </div>
             </footer>
-        </main>
+        </div>
     );
 }
