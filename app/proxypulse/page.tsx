@@ -1,23 +1,14 @@
 "use client";
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
-// --- Inline Icons (No dependencies) ---
+// --- Icons ---
 const ArrowRight = ({ size = 24, className = "" }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
 );
-const Play = ({ size = 24, className = "" }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="5 3 19 12 5 21 5 3" /></svg>
-);
-const Terminal = ({ size = 24, className = "" }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="4 17 10 11 4 5" /><line x1="12" x2="20" y1="19" y2="19" /></svg>
-);
-const Activity = ({ size = 24, className = "" }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
-);
 
-// --- High-Density Network Canvas ---
-const AdvancedNetwork = () => {
+// --- Advanced Particle Visualizer ---
+const Visualizer = ({ type }: { type: 'brain' | 'planet' | 'network' }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
@@ -27,117 +18,157 @@ const AdvancedNetwork = () => {
         if (!ctx) return;
 
         let animationFrameId: number;
-        let nodes: any[] = [];
-        let packets: any[] = [];
+        let particles: any[] = [];
+        let time = 0;
 
         const resize = () => {
-            canvas.width = canvas.parentElement?.clientWidth || window.innerWidth;
-            canvas.height = canvas.parentElement?.clientHeight || window.innerHeight;
-            initNetwork();
-        };
-
-        const initNetwork = () => {
-            nodes = [];
-            packets = [];
-            const cols = Math.floor(canvas.width / 60);
-            const rows = Math.floor(canvas.height / 60);
-
-            // Create grid nodes
-            for (let i = 0; i < cols; i++) {
-                for (let j = 0; j < rows; j++) {
-                    if (Math.random() > 0.4) {
-                        nodes.push({
-                            x: i * 60 + (Math.random() * 20 - 10),
-                            y: j * 60 + (Math.random() * 20 - 10),
-                            vx: (Math.random() - 0.5) * 0.2,
-                            vy: (Math.random() - 0.5) * 0.2,
-                            baseX: i * 60,
-                            baseY: j * 60,
-                            connections: []
-                        });
-                    }
-                }
-            }
-
-            // Connect nodes
-            nodes.forEach((node, i) => {
-                nodes.forEach((otherNode, j) => {
-                    if (i !== j) {
-                        const dist = Math.hypot(node.x - otherNode.x, node.y - otherNode.y);
-                        if (dist < 100) node.connections.push(j);
-                    }
-                });
-            });
+            // Подстраиваемся под контейнер
+            canvas.width = canvas.parentElement?.clientWidth || 800;
+            canvas.height = canvas.parentElement?.clientHeight || 800;
         };
 
         window.addEventListener('resize', resize);
         resize();
 
-        const draw = () => {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.15)'; // Trail effect
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Палитра строго по дизайн-системе Dala: Electric Iris, Saffron Spark, Deep Verdant + white/grays
+        const colors = ['#8052ff', '#ffb829', '#15846e', '#ffffff', '#9a9a9a', '#bdbdbd'];
 
-            // Update and draw nodes & lines
-            ctx.lineWidth = 1;
-            nodes.forEach((node, i) => {
-                node.x += node.vx;
-                node.y += node.vy;
+        const initParticles = () => {
+            particles = [];
+            const numParticles = type === 'network' ? 300 : 2500; // Больше плотность для мозга/планеты
 
-                // Return to base position smoothly
-                node.x += (node.baseX - node.x) * 0.01;
-                node.y += (node.baseY - node.y) * 0.01;
+            for (let i = 0; i < numParticles; i++) {
+                const color = colors[Math.floor(Math.random() * colors.length)];
 
-                // Draw connections
-                node.connections.forEach((targetIdx: number) => {
-                    const target = nodes[targetIdx];
-                    const dist = Math.hypot(node.x - target.x, node.y - target.y);
-                    if (dist < 120) {
-                        ctx.beginPath();
-                        ctx.moveTo(node.x, node.y);
-                        ctx.lineTo(target.x, target.y);
-                        ctx.strokeStyle = `rgba(128, 82, 255, ${0.15 - dist / 1000})`;
-                        ctx.stroke();
-                    }
-                });
+                if (type === 'brain') {
+                    // Имитация двух полушарий мозга
+                    const angle = Math.random() * Math.PI * 2;
+                    const u = Math.random() + Math.random();
+                    const r = u > 1 ? 2 - u : u; // распределение ближе к центру
+                    const radius = r * 250;
 
-                // Draw node points
-                ctx.beginPath();
-                ctx.arc(node.x, node.y, 1.5, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-                ctx.fill();
+                    // Создаем щель между полушариями
+                    const isRight = Math.cos(angle) > 0;
+                    const offset = isRight ? 40 : -40;
 
-                // Randomly spawn data packets along connections
-                if (Math.random() < 0.01 && node.connections.length > 0) {
-                    const targetIdx = node.connections[Math.floor(Math.random() * node.connections.length)];
-                    packets.push({
-                        startX: node.x, startY: node.y,
-                        endX: nodes[targetIdx].x, endY: nodes[targetIdx].y,
-                        progress: 0,
-                        speed: Math.random() * 0.02 + 0.02,
-                        color: Math.random() > 0.7 ? '#ffb829' : '#8052ff'
+                    const x = Math.cos(angle) * radius + offset;
+                    const y = Math.sin(angle) * (radius * 0.8) + (Math.sin(x * 0.02) * 20); // Немного изгибаем
+                    const z = Math.random() * 200 - 100;
+
+                    particles.push({ x, y, z, color, angle: Math.random() * Math.PI * 2, speed: Math.random() * 0.02 });
+                } else if (type === 'planet') {
+                    // Распределение по сфере (глобус)
+                    const phi = Math.acos(-1 + (2 * i) / numParticles);
+                    const theta = Math.sqrt(numParticles * Math.PI) * phi;
+                    const radius = 280;
+
+                    const x = radius * Math.cos(theta) * Math.sin(phi);
+                    const y = radius * Math.sin(theta) * Math.sin(phi);
+                    const z = radius * Math.cos(phi);
+
+                    particles.push({ x, y, z, color, baseTheta: theta, phi });
+                } else if (type === 'network') {
+                    // Распределение по всему пространству для Ambient-сети
+                    particles.push({
+                        x: (Math.random() - 0.5) * canvas.width * 1.5,
+                        y: (Math.random() - 0.5) * canvas.height * 1.5,
+                        z: Math.random() * 400 - 200,
+                        color,
+                        speedY: (Math.random() - 0.5) * 0.5,
+                        speedX: (Math.random() - 0.5) * 0.5
                     });
                 }
-            });
-
-            // Draw flowing packets
-            for (let i = packets.length - 1; i >= 0; i--) {
-                const p = packets[i];
-                p.progress += p.speed;
-                if (p.progress >= 1) {
-                    packets.splice(i, 1);
-                    continue;
-                }
-                const px = p.startX + (p.endX - p.startX) * p.progress;
-                const py = p.startY + (p.endY - p.startY) * p.progress;
-
-                ctx.beginPath();
-                ctx.arc(px, py, 2.5, 0, Math.PI * 2);
-                ctx.fillStyle = p.color;
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = p.color;
-                ctx.fill();
-                ctx.shadowBlur = 0; // reset
             }
+        };
+
+        initParticles();
+
+        const drawTriangle = (x: number, y: number, size: number, color: string, rotation: number) => {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rotation);
+            ctx.beginPath();
+            // Равносторонний треугольник
+            ctx.moveTo(0, -size);
+            ctx.lineTo(size * 0.866, size * 0.5);
+            ctx.lineTo(-size * 0.866, size * 0.5);
+            ctx.closePath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5; // Тонкие линии как в рефе
+            ctx.stroke();
+            ctx.restore();
+        };
+
+        const draw = () => {
+            time += 0.005;
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Полностью очищаем для резкости
+
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+
+            // Сортировка по Z-индексу для правильного перекрытия (опционально, но выглядит лучше)
+            const sortedParticles = [...particles].sort((a, b) => b.z - a.z);
+
+            sortedParticles.forEach(p => {
+                let px, py, pz, scale;
+
+                if (type === 'brain') {
+                    p.angle += p.speed * 0.5;
+                    // Легкое "дыхание" частиц
+                    const breath = Math.sin(time * 5 + p.x) * 5;
+                    px = cx + p.x + Math.cos(p.angle) * 5;
+                    py = cy + p.y + Math.sin(p.angle) * 5 + breath;
+                    pz = p.z;
+                } else if (type === 'planet') {
+                    // Вращение сферы
+                    p.baseTheta += 0.002;
+                    const radius = 280;
+                    px = cx + radius * Math.sin(p.phi) * Math.cos(p.baseTheta);
+                    py = cy + radius * Math.cos(p.phi);
+                    pz = radius * Math.sin(p.phi) * Math.sin(p.baseTheta);
+                } else if (type === 'network') {
+                    p.x += p.speedX;
+                    p.y += p.speedY;
+                    if (Math.abs(p.x) > canvas.width) p.x *= -0.9;
+                    if (Math.abs(p.y) > canvas.height) p.y *= -0.9;
+                    px = cx + p.x;
+                    py = cy + p.y;
+                    pz = p.z;
+
+                    // Рисуем связи для сети
+                    particles.forEach(otherP => {
+                        if (p !== otherP) {
+                            const dist = Math.hypot(p.x - otherP.x, p.y - otherP.y);
+                            if (dist < 80 && Math.abs(p.z - otherP.z) < 50) {
+                                ctx.beginPath();
+                                ctx.moveTo(cx + p.x, cy + p.y);
+                                ctx.lineTo(cx + otherP.x, cy + otherP.y);
+                                ctx.strokeStyle = `rgba(128, 82, 255, ${0.15 - dist / 800})`;
+                                ctx.stroke();
+                            }
+                        }
+                    });
+                }
+
+                // Простая 3D проекция
+                const focalLength = 400;
+                scale = focalLength / (focalLength + pz);
+
+                // Рисуем только то, что перед камерой и сглаживаем размер
+                if (scale > 0) {
+                    const finalX = (px - cx) * scale + cx;
+                    const finalY = (py - cy) * scale + cy;
+                    const size = Math.max(0.5, 4 * scale); // Базовый размер треугольника
+
+                    // Небольшое вращение каждого треугольника
+                    const rotation = time * (p.speed || 1) * 10 + (p.x * 0.01);
+
+                    // Уменьшаем прозрачность для частиц "сзади"
+                    ctx.globalAlpha = Math.min(1, scale * 1.2);
+                    drawTriangle(finalX, finalY, size, p.color, rotation);
+                    ctx.globalAlpha = 1;
+                }
+            });
 
             animationFrameId = requestAnimationFrame(draw);
         };
@@ -148,168 +179,178 @@ const AdvancedNetwork = () => {
             window.removeEventListener('resize', resize);
             cancelAnimationFrame(animationFrameId);
         };
+    }, [type]);
+
+    return <canvas ref={canvasRef} className="w-full h-full absolute inset-0 z-0 pointer-events-none" />;
+};
+
+// --- Dynamic Log Component ---
+const LiveLogs = () => {
+    const [logs, setLogs] = useState([
+        { method: 'PUT', path: '/api/users/update_profile', status: 400, time: '89ms', color: '#ffb829' },
+        { method: 'GET', path: '/ws/stream/events', status: 101, time: '0ms', color: '#15846e' },
+        { method: 'POST', path: '/auth/csharp/login', status: 201, time: '45ms', color: '#15846e' },
+        { method: 'GET', path: '/api/v1/golang-proxy/health', status: 200, time: '12ms', color: '#15846e' },
+        { method: 'DELETE', path: '/cache/redis/flush', status: 204, time: '5ms', color: '#8052ff' }
+    ]);
+
+    const methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
+    const paths = ['/api/v2/metrics', '/auth/verify', '/users/me', '/cdn/images/logo.png', '/webhook/stripe'];
+    const statuses = [200, 201, 400, 401, 404, 500];
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setLogs(prevLogs => {
+                const newLogs = [...prevLogs];
+                // Убираем старый
+                newLogs.pop();
+
+                // Генерим новый
+                const status = statuses[Math.floor(Math.random() * statuses.length)];
+                let color = '#15846e'; // зеленый
+                if (status >= 400) color = '#ffb829'; // желтый
+                if (status >= 500) color = 'red';
+                if (status === 204) color = '#8052ff'; // фиолетовый для DELETE
+
+                newLogs.unshift({
+                    method: methods[Math.floor(Math.random() * methods.length)],
+                    path: paths[Math.floor(Math.random() * paths.length)],
+                    status: status,
+                    time: `${Math.floor(Math.random() * 150)}ms`,
+                    color: color
+                });
+                return newLogs;
+            });
+        }, 1500); // Обновляем каждые 1.5 секунды
+
+        return () => clearInterval(interval);
     }, []);
 
-    return <canvas ref={canvasRef} className="w-full h-full absolute inset-0 z-0 opacity-60" />;
+    return (
+        <div className="font-mono text-[14px] leading-relaxed w-full max-w-[600px] bg-[#000000] p-8">
+            {logs.map((log, i) => (
+                <div key={i} className="flex items-center justify-between mb-4 opacity-0 animate-[fadeIn_0.5s_ease-out_forwards]">
+                    <span style={{ color: log.color }} className="w-16 font-semibold">{log.method}</span>
+                    <span className="text-[#bdbdbd] flex-1 truncate ml-4">{log.path}</span>
+                    <span style={{ color: log.color }} className="w-12 text-right">{log.status}</span>
+                    <span className="text-[#9a9a9a] w-16 text-right">{log.time}</span>
+                </div>
+            ))}
+        </div>
+    );
 };
+
 
 // --- Layout Components ---
 const Navbar = () => (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-6 bg-black/50 backdrop-blur-xl border-b border-white/5">
+    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-12 py-8 bg-transparent">
         <div className="flex items-center gap-3">
-            <div className="w-6 h-6 bg-gradient-to-br from-[#8052ff] to-[#15846e] rounded-sm transform rotate-45 shadow-[0_0_15px_rgba(128,82,255,0.5)]"></div>
-            <span className="font-semibold text-lg tracking-tight text-white">ProxyPulse</span>
+            {/* Иконка треугольника с градиентом как у Dala */}
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2L22 20H2L12 2Z" fill="url(#paint0_linear)" />
+                <defs>
+                    <linearGradient id="paint0_linear" x1="12" y1="2" x2="12" y2="20" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#8052ff" />
+                        <stop offset="1" stopColor="#15846e" />
+                    </linearGradient>
+                </defs>
+            </svg>
+            <span className="text-[14px] font-normal tracking-[0.35px] text-[#ffffff]">ProxyPulse</span>
         </div>
-        <div className="hidden md:flex items-center gap-10">
-            <a href="#features" className="text-[12px] tracking-[2px] text-[#9a9a9a] hover:text-white transition-colors uppercase font-semibold">Features</a>
-            <a href="#docs" className="text-[12px] tracking-[2px] text-[#9a9a9a] hover:text-white transition-colors uppercase font-semibold">Documentation</a>
-            <a href="#github" className="text-[12px] tracking-[2px] text-[#9a9a9a] hover:text-white transition-colors uppercase font-semibold">Source</a>
+        <div className="hidden md:flex items-center gap-12">
+            <a href="#manifesto" className="text-[14px] tracking-[0.025em] uppercase text-[#9a9a9a] hover:text-[#ffffff] transition-colors font-semibold">Manifesto</a>
+            <a href="#team" className="text-[14px] tracking-[0.025em] uppercase text-[#9a9a9a] hover:text-[#ffffff] transition-colors font-semibold">Docs</a>
+            <a href="#blog" className="text-[14px] tracking-[0.025em] uppercase text-[#9a9a9a] hover:text-[#ffffff] transition-colors font-semibold">Blog</a>
+            <button className="bg-[#8052ff] text-[#ffffff] px-[16px] py-[14.4px] rounded-[22.5px] text-[14px] tracking-[0.025em] uppercase font-semibold">
+                Request Access
+            </button>
         </div>
-        <button className="bg-white hover:bg-gray-200 text-black px-6 py-2.5 rounded-full text-[13px] tracking-[1px] font-bold uppercase transition-transform hover:scale-105">
-            Deploy Agent
-        </button>
     </nav>
 );
 
-const Hero = () => (
-    <section className="relative min-h-[100vh] flex items-center pt-24 overflow-hidden px-8 border-b border-white/5">
-        {/* Abstract Background Elements */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:4rem_4rem]"></div>
-        <div className="absolute top-1/4 -right-1/4 w-[800px] h-[800px] bg-[#8052ff]/20 rounded-full blur-[120px] pointer-events-none"></div>
-        <div className="absolute bottom-1/4 -left-1/4 w-[600px] h-[600px] bg-[#15846e]/20 rounded-full blur-[120px] pointer-events-none"></div>
-
-        <div className="absolute right-0 top-0 w-1/2 h-full">
-            <AdvancedNetwork />
-        </div>
-
-        <div className="max-w-[1400px] mx-auto w-full relative z-10 grid lg:grid-cols-12 gap-8 items-center">
-            <div className="lg:col-span-7 flex flex-col justify-center">
-                <div className="flex items-center gap-3 mb-8">
-                    <span className="flex h-2 w-2 rounded-full bg-[#15846e] animate-pulse"></span>
-                    <span className="text-[#15846e] text-[12px] font-mono tracking-widest uppercase">System Status: Online</span>
-                </div>
-
-                <h1 className="text-[64px] lg:text-[100px] font-medium leading-[0.9] tracking-[-3px] mb-8 text-white">
-                    Network reality. <br />
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8052ff] to-[#ffb829]">Rendered live.</span>
-                </h1>
-
-                <p className="text-[20px] leading-[1.6] font-light text-[#9a9a9a] mb-12 max-w-[600px]">
-                    ProxyPulse transforms invisible HTTP traffic into an interactive command center. Intercept, analyze, and debug your proxy layer in real-time without parsing a single raw log.
-                </p>
-
-                <div className="flex flex-wrap items-center gap-4">
-                    <button className="bg-[#8052ff] text-white px-8 py-4 rounded-full text-[13px] tracking-[1px] font-bold uppercase flex items-center gap-2 hover:shadow-[0_0_20px_rgba(128,82,255,0.4)] transition-all">
-                        <Terminal size={18} />
-                        Install CLI
-                    </button>
-                    <button className="bg-white/5 border border-white/10 backdrop-blur-md text-white px-8 py-4 rounded-full text-[13px] tracking-[1px] font-bold uppercase hover:bg-white/10 transition-all flex items-center gap-2">
-                        <Play size={18} />
-                        Watch Demo
-                    </button>
-                </div>
-            </div>
-
-            {/* Floating UI Elements to fill the right side void */}
-            <div className="lg:col-span-5 relative h-[600px] hidden lg:block pointer-events-none">
-                <div className="absolute top-[10%] right-[10%] w-[320px] bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-2xl">
-                    <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-3">
-                        <span className="text-white text-sm font-semibold">Live Traffic</span>
-                        <Activity size={16} className="text-[#ffb829]" />
-                    </div>
-                    <div className="space-y-3 font-mono text-xs">
-                        <div className="flex justify-between items-center">
-                            <span className="text-[#8052ff]">POST</span>
-                            <span className="text-gray-400 truncate w-32">/api/v1/auth</span>
-                            <span className="text-[#15846e]">200 OK</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-[#ffb829]">PUT</span>
-                            <span className="text-gray-400 truncate w-32">/users/update</span>
-                            <span className="text-[#ffb829]">429 Err</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-[#8052ff]">GET</span>
-                            <span className="text-gray-400 truncate w-32">/ws/stream</span>
-                            <span className="text-[#15846e]">101 OK</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="absolute bottom-[20%] left-[0%] w-[260px] bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-2xl">
-                    <div className="text-gray-400 text-xs uppercase tracking-widest mb-2">Global Throughput</div>
-                    <div className="text-4xl text-white font-medium mb-1">42.8 <span className="text-lg text-[#8052ff]">k/req</span></div>
-                    <div className="text-[#15846e] text-xs">+12.4% vs last hour</div>
-                </div>
-            </div>
-        </div>
-    </section>
-);
-
-const SectionTwo = () => (
-    <section className="relative py-32 px-8 bg-black border-b border-white/5 overflow-hidden">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:4rem_4rem]"></div>
-
-        <div className="max-w-[1400px] mx-auto grid lg:grid-cols-2 gap-24 relative z-10 items-center">
-            <div className="relative h-[500px] rounded-3xl border border-white/10 bg-black/50 backdrop-blur-sm overflow-hidden flex items-center justify-center p-8">
-                <div className="absolute inset-0 bg-gradient-to-b from-[#8052ff]/10 to-transparent"></div>
-                {/* Fake Terminal / Log Interface */}
-                <div className="w-full h-full bg-[#0a0a0a] rounded-xl border border-white/5 p-6 font-mono text-sm flex flex-col shadow-2xl">
-                    <div className="flex gap-2 mb-6">
-                        <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
-                        <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
-                        <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
-                    </div>
-                    <div className="space-y-2 text-gray-500 flex-1 overflow-hidden">
-                        <p><span className="text-[#15846e]">proxy-agent</span> attached to PID 88392</p>
-                        <p><span className="text-[#15846e]">proxy-agent</span> listening on ws://localhost:4000</p>
-                        <p className="text-white mt-4">Intercepting traffic routing...</p>
-                        <div className="pl-4 border-l-2 border-[#8052ff]/30 mt-2 space-y-1">
-                            <p>➔ Client: 192.168.1.104 (iOS App)</p>
-                            <p>➔ Target: api.internal.svc.cluster.local</p>
-                            <p>➔ Latency: <span className="text-[#ffb829]">142ms</span></p>
-                        </div>
-                        <p className="text-white mt-4">Payload extracted (2.4kb)</p>
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex flex-col justify-center">
-                <h2 className="text-[56px] lg:text-[72px] font-medium leading-[1] tracking-[-2px] mb-8 text-white">
-                    Deep packet inspection. <br />
-                    <span className="text-[#9a9a9a]">Zero configuration.</span>
-                </h2>
-                <p className="text-[18px] leading-[1.6] font-light text-[#9a9a9a] mb-8">
-                    The Go-based agent sits silently alongside your infrastructure. It parses headers, bodies, and timings without adding overhead, streaming pure intelligence straight to your dashboard.
-                </p>
-                <div className="grid grid-cols-2 gap-8 mt-4 border-t border-white/10 pt-8">
-                    <div>
-                        <div className="text-3xl text-white font-medium mb-2">&lt; 2ms</div>
-                        <div className="text-sm text-gray-500 uppercase tracking-widest">Agent Overhead</div>
-                    </div>
-                    <div>
-                        <div className="text-3xl text-white font-medium mb-2">100%</div>
-                        <div className="text-sm text-gray-500 uppercase tracking-widest">Protocol Support</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-);
-
-const Footer = () => (
-    <footer className="py-12 border-t border-white/5 bg-black text-center text-[#9a9a9a] text-[12px] tracking-[2px] uppercase font-semibold">
-        <p>© 2026 ProxyPulse. Engineered for Backend Architects.</p>
-    </footer>
-)
-
 export default function ProxyPulsePage() {
+    // Добавляем глобальные стили для анимации логов
+    useEffect(() => {
+        const style = document.createElement('style');
+        style.innerHTML = `
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+    `;
+        document.head.appendChild(style);
+        return () => { document.head.removeChild(style); }
+    }, []);
+
     return (
-        <main className="min-h-screen bg-black font-sans selection:bg-[#8052ff] selection:text-white">
+        <main className="bg-[#000000] text-[#ffffff] font-sans selection:bg-[#8052ff] selection:text-[#ffffff]">
             <Navbar />
-            <Hero />
-            <SectionTwo />
-            <Footer />
+
+            {/* Hero: Brain */}
+            <section className="relative min-h-[100vh] flex items-center px-[8%] overflow-hidden">
+                <div className="max-w-[1280px] mx-auto w-full flex flex-col md:flex-row items-center relative z-10">
+                    <div className="w-full md:w-1/2 pr-8 z-20">
+                        <h1 className="text-[78px] md:text-[113px] font-normal leading-[1.1] tracking-[-4.52px] mb-8">
+                            Unlock collective wisdom.
+                        </h1>
+                        <div className="text-[#ffb829] text-[14px] tracking-[0.35px] uppercase font-semibold mb-6">
+                            Stop managing logs. Start using them.
+                        </div>
+                        <p className="text-[18px] leading-[1.5] font-[200] text-[#ffffff] max-w-[480px] mb-12">
+                            Plug into your proxy's shared brainpower. Ask ProxyPulse to instantly visualize any HTTP traffic from your backend system. Focus on doing your best work with context, conviction and clarity.
+                        </p>
+                        <button className="bg-[#8052ff] text-[#ffffff] px-[16px] py-[14.4px] rounded-[22.5px] text-[14px] tracking-[0.025em] uppercase font-semibold">
+                            Request Access
+                        </button>
+                    </div>
+                    <div className="w-full md:w-1/2 h-[800px] relative pointer-events-none">
+                        <Visualizer type="brain" />
+                    </div>
+                </div>
+            </section>
+
+            {/* Section 2: Planet */}
+            <section className="relative min-h-[100vh] flex items-center px-[8%] py-[120px] overflow-hidden">
+                <div className="max-w-[1280px] mx-auto w-full flex flex-col md:flex-row items-center relative z-10">
+                    <div className="w-full md:w-1/2 h-[800px] relative pointer-events-none order-2 md:order-1">
+                        <Visualizer type="planet" />
+                    </div>
+                    <div className="w-full md:w-1/2 pl-8 z-20 order-1 md:order-2">
+                        <h2 className="text-[78px] md:text-[113px] font-normal leading-[1.1] tracking-[-4.52px] mb-8">
+                            Build a better world of routing.
+                        </h2>
+                        <p className="text-[18px] leading-[1.5] font-[200] text-[#ffffff] max-w-[480px]">
+                            Our mission is to make proxy monitoring more coherent and delightful—reframing debugging from reading raw lines to seeing global context. Your happiest and most purposeful moments at work are when you're in flow tracking APIs.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            {/* Section 3: Live Network & Logs */}
+            <section className="relative min-h-[100vh] flex items-center px-[8%] py-[120px] overflow-hidden">
+                {/* Фоновая ambient-сеть */}
+                <Visualizer type="network" />
+
+                <div className="max-w-[1280px] mx-auto w-full flex flex-col md:flex-row items-center relative z-10">
+                    <div className="w-full md:w-1/2 pr-8 z-20">
+                        <h2 className="text-[48px] md:text-[78px] font-normal leading-[1.1] tracking-[-3.12px] mb-8">
+                            Beyond the logs.
+                        </h2>
+                        <p className="text-[18px] leading-[1.5] font-[200] text-[#bdbdbd] max-w-[480px]">
+                            Traditional tools force you to grep through text. ProxyPulse captures the life cycle of every request, instantly visualizing endpoints, methods, and latencies as they traverse your network.
+                        </p>
+                    </div>
+                    <div className="w-full md:w-1/2 h-[500px] flex items-center justify-center relative z-20">
+                        {/* Живой обновляющийся терминал */}
+                        <LiveLogs />
+                    </div>
+                </div>
+            </section>
+
+            {/* Simple Footer */}
+            <footer className="py-12 border-t border-[#333333] text-center">
+                <p className="text-[14px] text-[#9a9a9a] font-[200]">© 2026 ProxyPulse. All rights reserved.</p>
+            </footer>
         </main>
     );
 }
