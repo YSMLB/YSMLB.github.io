@@ -31,13 +31,12 @@ const DalaLogo = () => (
 );
 
 // =====================================================================
-// PURE WEBGL THREE.JS ENGINE (THE REAL DEAL)
+// PURE WEBGL THREE.JS ENGINE (VOLUMETRIC & DEEP)
 // =====================================================================
 const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
     const mountRef = useRef<HTMLDivElement>(null);
     const shapeRef = useRef(activeShape);
 
-    // Синхронизируем стейт реакта с рефом для animation loop
     useEffect(() => {
         shapeRef.current = activeShape;
     }, [activeShape]);
@@ -49,14 +48,13 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
         const height = window.innerHeight;
         const isMobile = width < 768;
 
-        // 1. НАСТРОЙКА СЦЕНЫ
         const scene = new THREE.Scene();
-        // Тот самый эффект "глубины" - частицы вдалеке растворяются во тьме
-        scene.fog = new THREE.FogExp2(0x000000, 0.0015);
+        // Густой туман для создания глубокого фона
+        scene.fog = new THREE.FogExp2(0x000000, 0.0012);
 
-        const camera = new THREE.PerspectiveCamera(45, width / height, 1, 2500);
-        camera.position.z = 850;
-        camera.position.x = isMobile ? 0 : -200; // Сдвигаем камеру влево, чтобы объект был справа
+        const camera = new THREE.PerspectiveCamera(45, width / height, 1, 3000);
+        camera.position.z = 900;
+        camera.position.x = isMobile ? 0 : -250;
         camera.position.y = 0;
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -64,162 +62,237 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         mountRef.current.appendChild(renderer.domElement);
 
-        // 2. ГЕОМЕТРИЯ (Реальные треугольники)
-        const PARTICLE_COUNT = isMobile ? 4000 : 12000;
+        const PARTICLE_COUNT = isMobile ? 5000 : 15000;
+        const AMBIENT_COUNT = isMobile ? 500 : 2000; // Для глубины
 
-        // CircleGeometry с 3 сегментами дает ровный треугольник
-        const geometry = new THREE.CircleGeometry(1.4, 3);
+        const geometry = new THREE.CircleGeometry(1.6, 3);
         const material = new THREE.MeshBasicMaterial({
             color: 0xffffff,
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 0.8,
-            blending: THREE.AdditiveBlending // Заставляет их светиться при наложении
+            opacity: 0.85,
+            blending: THREE.AdditiveBlending
         });
 
-        // InstancedMesh позволяет видеокарте рендерить 12к объектов за один вызов
+        // Основная сетка для форм
         const instancedMesh = new THREE.InstancedMesh(geometry, material, PARTICLE_COUNT);
+        // Фоновая сетка для глубины
+        const ambientMesh = new THREE.InstancedMesh(geometry, material, AMBIENT_COUNT);
+
         scene.add(instancedMesh);
+        scene.add(ambientMesh);
 
-        // 3. МАТЕМАТИКА ФОРМ
-        const dummy = new THREE.Object3D();
-        const colors = new Float32Array(PARTICLE_COUNT * 3);
+        // Массивы целей для трансформации
+        const targets = {
+            brain: { pos: [] as THREE.Vector3[], scale: [] as number[] },
+            globe: { pos: [] as THREE.Vector3[], scale: [] as number[] },
+            network: { pos: [] as THREE.Vector3[], scale: [] as number[] }
+        };
 
-        const brainPositions: THREE.Vector3[] = [];
-        const globePositions: THREE.Vector3[] = [];
         const currentPositions: THREE.Vector3[] = [];
+        const currentScales: number[] = [];
         const rotations: number[] = [];
         const spinSpeeds: number[] = [];
-
+        const colors = new Float32Array(PARTICLE_COUNT * 3);
         const colorObj = new THREE.Color();
+        const dummy = new THREE.Object3D();
 
-        // Цветовые зоны (Золотой справа, Фиолетовый слева, Изумрудный снизу)
         const applyZonalColor = (x: number, y: number, z: number, index: number) => {
-            if (x > 50 && y < 50) colorObj.setHex(0xffb829); // saffron
-            else if (x < -50 && y < 50) colorObj.setHex(0x8052ff); // electric
-            else if (y > 80) colorObj.setHex(0x15846e); // verdant
-            else if (z > 100) colorObj.setHex(0xe845f2); // magenta
-            else if (Math.random() > 0.8) colorObj.setHex(0xffffff); // bone white
+            if (x > 50 && y < 50) colorObj.setHex(0xffb829);
+            else if (x < -50 && y < 50) colorObj.setHex(0x8052ff);
+            else if (y > 80) colorObj.setHex(0x15846e);
+            else if (z > 100) colorObj.setHex(0xe845f2);
+            else if (Math.random() > 0.8) colorObj.setHex(0xffffff);
             else colorObj.setHex(0x45bcf2);
 
             colorObj.toArray(colors, index * 3);
             instancedMesh.setColorAt(index, colorObj);
         };
 
-        for (let i = 0; i < PARTICLE_COUNT; i++) {
-            // ФИБОНАЧЧИ ДЛЯ РАВНОМЕРНОГО ПОКРЫТИЯ СФЕРЫ
-            const phi = Math.acos(-1 + (2 * i) / PARTICLE_COUNT);
-            const theta = Math.sqrt(PARTICLE_COUNT * Math.PI) * phi;
+        // ГЕНЕРАЦИЯ УЗЛОВ ДЛЯ СЕТИ (Spider-Verse)
+        const networkNodes: THREE.Vector3[] = [];
+        for (let j = 0; j < 15; j++) {
+            networkNodes.push(new THREE.Vector3(
+                (Math.random() - 0.5) * 600,
+                (Math.random() - 0.5) * 600,
+                (Math.random() - 0.5) * 600
+            ));
+        }
 
-            // --- ФОРМА: ПЛАНЕТА ---
-            const rGlobe = 280;
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            const u = Math.random();
+            const v = Math.random();
+            const theta = u * 2.0 * Math.PI;
+            const phi = Math.acos(2.0 * v - 1.0);
+
+            // --- 1. МОЗГ (ЗАПОЛНЕННЫЙ ОБЪЕМ) ---
+            // Кубический корень дает равномерное распределение ВНУТРИ сферы
+            const rVolume = Math.cbrt(Math.random()) * 260;
+
+            let bx = rVolume * Math.cos(theta) * Math.sin(phi);
+            let by = rVolume * Math.cos(phi);
+            let bz = rVolume * Math.sin(theta) * Math.sin(phi);
+
+            const isLeft = bx < 0;
+            const sign = isLeft ? -1 : 1;
+
+            bx = (bx * 0.75) + (sign * 70); // Щель между полушариями
+            by = by * 0.85; // Сплющиваем
+            bz = bz * 1.15; // Вытягиваем
+
+            // Ствол мозга - ИДЕТ ВНИЗ
+            if (i < PARTICLE_COUNT * 0.08) {
+                const stemH = Math.random() * 160;
+                const stemR = 25 - (stemH * 0.1);
+                bx = Math.cos(theta) * stemR;
+                by = -140 - stemH; // Минус Y = ствол направлен вниз
+                bz = Math.sin(theta) * stemR;
+            }
+
+            targets.brain.pos.push(new THREE.Vector3(bx, by, bz));
+            targets.brain.scale.push(1.0);
+
+            // --- 2. ПЛАНЕТА (С КОНТИНЕНТАМИ И ВОДОЙ-ТОЧКАМИ) ---
+            const rGlobe = 300;
             let gx = rGlobe * Math.cos(theta) * Math.sin(phi);
             let gy = rGlobe * Math.cos(phi);
             let gz = rGlobe * Math.sin(theta) * Math.sin(phi);
 
-            // Шум для материков
             const noise = Math.sin(gx * 0.015) * Math.cos(gy * 0.015) + Math.sin(gz * 0.02);
-            if (noise < -0.1 && Math.random() > 0.2) {
-                gx *= 0.2; gy *= 0.2; gz *= 0.2; // Океанские впадины
+            let gScale = 1.0;
+
+            if (noise < -0.15) {
+                // Вода: треугольник схлопывается в крошечную точку
+                gScale = 0.15;
             } else {
-                gx *= 1.05; gy *= 1.05; gz *= 1.05; // Материки
-            }
-            globePositions.push(new THREE.Vector3(gx, gy, gz));
-
-            // --- ФОРМА: МОЗГ ---
-            const rBrain = 260;
-            let bx = rBrain * Math.cos(theta) * Math.sin(phi);
-            let by = rBrain * Math.cos(phi);
-            let bz = rBrain * Math.sin(theta) * Math.sin(phi);
-
-            // Искажаем сферу в мозг
-            const isLeft = bx < 0;
-            const sign = isLeft ? -1 : 1;
-
-            bx = (bx * 0.7) + (sign * 60); // Полушария и продольная щель
-            by = by * 0.8 - 30; // Приплюснуть сверху и снизу
-            bz = bz * 1.1; // Вытянуть лоб и затылок
-
-            // Извилины
-            const brainNoise = Math.sin(bx * 0.03) * Math.cos(by * 0.03) * Math.sin(bz * 0.03) * 20;
-            bx += brainNoise; by += brainNoise; bz += brainNoise;
-
-            // Добавляем ствол мозга
-            if (i < PARTICLE_COUNT * 0.05) {
-                const stemH = Math.random() * 150;
-                bx = Math.cos(theta) * 25;
-                by = stemH + 100;
-                bz = Math.sin(theta) * 25;
+                // Материк: треугольник обычного размера
+                gScale = 1.0 + (Math.random() * 0.5);
+                gx *= 1.02; gy *= 1.02; gz *= 1.02; // Слегка выпуклые
             }
 
-            brainPositions.push(new THREE.Vector3(bx, by, bz));
+            targets.globe.pos.push(new THREE.Vector3(gx, gy, gz));
+            targets.globe.scale.push(gScale);
 
-            // Начальная позиция - взрыв из центра
+            // --- 3. SPIDER-VERSE (СЕТЬ) ---
+            const targetNode = networkNodes[Math.floor(Math.random() * networkNodes.length)];
+            const distFromNode = Math.random(); // 0 = в центре узла, 1 = на краю нити
+
+            let nx = targetNode.x + (Math.random() - 0.5) * 200 * distFromNode;
+            let ny = targetNode.y + (Math.random() - 0.5) * 200 * distFromNode;
+            let nz = targetNode.z + (Math.random() - 0.5) * 200 * distFromNode;
+
+            targets.network.pos.push(new THREE.Vector3(nx, ny, nz));
+            targets.network.scale.push(distFromNode < 0.2 ? 2.0 : 0.6); // Узлы крупнее, нити мельче
+
+            // --- ИНИЦИАЛИЗАЦИЯ ---
             currentPositions.push(new THREE.Vector3(
-                (Math.random() - 0.5) * 2000,
-                (Math.random() - 0.5) * 2000,
-                (Math.random() - 0.5) * 2000
+                (Math.random() - 0.5) * 2500,
+                (Math.random() - 0.5) * 2500,
+                (Math.random() - 0.5) * 2500
             ));
-
+            currentScales.push(0.0);
             rotations.push(Math.random() * Math.PI * 2);
-            spinSpeeds.push((Math.random() - 0.5) * 0.05);
+            spinSpeeds.push((Math.random() - 0.5) * 0.04);
 
-            // Красим по целевой позиции мозга (основная форма)
             applyZonalColor(bx, by, bz, i);
         }
 
         if (instancedMesh.instanceColor) instancedMesh.instanceColor.needsUpdate = true;
 
-        // 4. АНИМАЦИОННЫЙ ЦИКЛ
+        // ГЕНЕРАЦИЯ ЭМБИЕНТА (ГЛУБИНА)
+        const ambientSpeeds: THREE.Vector3[] = [];
+        for (let i = 0; i < AMBIENT_COUNT; i++) {
+            dummy.position.set(
+                (Math.random() - 0.5) * 3000,
+                (Math.random() - 0.5) * 3000,
+                (Math.random() - 0.5) * 3000
+            );
+            dummy.rotation.z = Math.random() * Math.PI;
+            dummy.scale.setScalar(Math.random() * 0.8 + 0.2);
+            dummy.updateMatrix();
+            ambientMesh.setMatrixAt(i, dummy.matrix);
+
+            // Цвета для фона (более тусклые)
+            colorObj.setHex(Math.random() > 0.5 ? 0x8052ff : 0x15846e);
+            ambientMesh.setColorAt(i, colorObj);
+
+            ambientSpeeds.push(new THREE.Vector3(
+                (Math.random() - 0.5) * 0.5,
+                (Math.random() - 0.5) * 0.5,
+                (Math.random() - 0.5) * 0.5
+            ));
+        }
+        if (ambientMesh.instanceColor) ambientMesh.instanceColor.needsUpdate = true;
+
         let time = 0;
         let animationFrameId: number;
 
         const animate = () => {
             time += 0.002;
 
-            // Медленное вращение всей конструкции
+            // Вращение сцены
             instancedMesh.rotation.y = time;
-            instancedMesh.rotation.x = Math.sin(time * 0.5) * 0.1;
+            instancedMesh.rotation.x = Math.sin(time * 0.5) * 0.15;
 
-            const targets = shapeRef.current === 'globe' ? globePositions : brainPositions;
+            ambientMesh.rotation.y = time * 0.5;
 
+            const activeTargets = shapeRef.current === 'globe' ? targets.globe :
+                shapeRef.current === 'network' ? targets.network : targets.brain;
+
+            // Анимация основных частиц
             for (let i = 0; i < PARTICLE_COUNT; i++) {
                 const current = currentPositions[i];
-                const target = targets[i];
+                const tPos = activeTargets.pos[i];
+                const tScale = activeTargets.scale[i];
 
-                // Плавное перетекание (Lerp) к целевой форме
-                current.x += (target.x - current.x) * 0.04;
-                current.y += (target.y - current.y) * 0.04;
-                current.z += (target.z - current.z) * 0.04;
+                current.x += (tPos.x - current.x) * 0.04;
+                current.y += (tPos.y - current.y) * 0.04;
+                current.z += (tPos.z - current.z) * 0.04;
 
+                currentScales[i] += (tScale - currentScales[i]) * 0.05;
                 rotations[i] += spinSpeeds[i];
 
                 dummy.position.copy(current);
                 dummy.rotation.z = rotations[i];
-                // Микро-колебания (дыхание)
-                const breathe = Math.sin(time * 10 + i) * 1.5;
+                dummy.scale.setScalar(Math.max(0.01, currentScales[i]));
+
+                const breathe = Math.sin(time * 15 + i) * 1.2;
                 dummy.position.x += breathe;
-                dummy.position.y += breathe;
 
                 dummy.updateMatrix();
                 instancedMesh.setMatrixAt(i, dummy.matrix);
             }
-
             instancedMesh.instanceMatrix.needsUpdate = true;
+
+            // Анимация глубины (Эмбиент)
+            for (let i = 0; i < AMBIENT_COUNT; i++) {
+                ambientMesh.getMatrixAt(i, dummy.matrix);
+                dummy.position.setFromMatrixPosition(dummy.matrix);
+
+                dummy.position.add(ambientSpeeds[i]);
+                if (dummy.position.x > 1500) dummy.position.x = -1500;
+                if (dummy.position.y > 1500) dummy.position.y = -1500;
+                if (dummy.position.z > 1500) dummy.position.z = -1500;
+
+                dummy.rotation.z += 0.01;
+                dummy.updateMatrix();
+                ambientMesh.setMatrixAt(i, dummy.matrix);
+            }
+            ambientMesh.instanceMatrix.needsUpdate = true;
+
             renderer.render(scene, camera);
             animationFrameId = requestAnimationFrame(animate);
         };
 
         animate();
 
-        // 5. РЕСАЙЗ
         const handleResize = () => {
             const w = window.innerWidth;
             const h = window.innerHeight;
             camera.aspect = w / h;
             camera.updateProjectionMatrix();
             renderer.setSize(w, h);
-            camera.position.x = w < 768 ? 0 : -200;
+            camera.position.x = w < 768 ? 0 : -250;
         };
 
         window.addEventListener('resize', handleResize);
@@ -235,15 +308,12 @@ const WebGLConstellation = ({ activeShape }: { activeShape: string }) => {
     }, []);
 
     return (
-        <div
-            ref={mountRef}
-            className="fixed inset-0 z-0 pointer-events-none bg-[#000000]"
-        />
+        <div ref={mountRef} className="fixed inset-0 z-0 pointer-events-none bg-[#000000]" />
     );
 };
 
 // =====================================================================
-// LIVE REQUEST TERMINAL (Grid based)
+// LIVE TERMINAL
 // =====================================================================
 const backendLogs = [
     { method: "GET", path: "/api/v1/go/metrics", status: 200, time: "12ms" },
@@ -343,6 +413,7 @@ export default function ProxyPulse() {
 
             <main className="relative z-10 max-w-[1280px] mx-auto px-[24px] md:px-[60px]">
 
+                {/* 1. МОЗГ */}
                 <section data-shape="brain" className="shape-trigger flex flex-col justify-center min-h-screen pt-[120px] pb-[120px] pointer-events-none">
                     <div className="w-full max-w-[540px] pointer-events-auto mix-blend-difference">
                         <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829] mb-[24px] block">
@@ -363,6 +434,7 @@ export default function ProxyPulse() {
                     </div>
                 </section>
 
+                {/* 2. ПЛАНЕТА */}
                 <section data-shape="globe" className="shape-trigger flex flex-col justify-center min-h-screen py-[120px] pointer-events-none">
                     <div className="w-full max-w-[500px] pointer-events-auto">
                         <h2 className="text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
@@ -381,7 +453,56 @@ export default function ProxyPulse() {
                     </div>
                 </section>
 
+                {/* 3. СЕТЬ (SPIDER-VERSE) */}
+                <section data-shape="network" className="shape-trigger flex flex-col lg:flex-row items-center gap-[60px] lg:gap-[120px] min-h-screen py-[120px] pointer-events-none">
+                    <div className="flex-1 w-full pointer-events-auto">
+                        <h2 className="text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
+                            Connect every microservice.
+                        </h2>
+                        <p className="text-[18px] font-[200] leading-[1.5] text-[#bdbdbd] max-w-[520px]">
+                            Whether you are writing distributed services in Go or enterprise backends in C#. ProxyPulse maps dependencies dynamically, revealing the hidden neural network of your architecture.
+                        </p>
+                    </div>
+
+                    <div className="flex-1 w-full flex flex-col gap-[48px] pointer-events-auto">
+                        <div className="flex flex-col gap-[6px]">
+                            <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829]">Backend & Frontend</span>
+                            <p className="text-[27px] font-[400] leading-[1.0] text-[#ffffff]">Debug APIs instantly.</p>
+                        </div>
+                        <div className="flex flex-col gap-[6px]">
+                            <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#8052ff]">DevOps / Infra</span>
+                            <p className="text-[27px] font-[400] leading-[1.0] text-[#bdbdbd]">Monitor proxy layer health.</p>
+                        </div>
+                    </div>
+                </section>
+
             </main>
+
+            {/* ВЕРНУЛ ПОДВАЛ */}
+            <footer className="relative z-10 w-full max-w-[1280px] mx-auto px-[24px] md:px-[60px] py-[60px] flex flex-col md:flex-row justify-between items-start md:items-center gap-[36px] border-t border-[#1a1a1a]">
+                <div className="flex flex-col gap-[16px]">
+                    <div className="flex items-center gap-[12px]">
+                        <DalaLogo />
+                        <span className="text-[24px] font-[400] tracking-[-0.5px] text-[#ffffff]">ProxyPulse</span>
+                    </div>
+                    <p className="text-[14px] font-[400] text-[#9a9a9a] max-w-[300px]">
+                        The observability platform built for high-performance engineering teams.
+                    </p>
+                </div>
+
+                <div className="flex flex-wrap gap-[48px] text-[14px] font-[600] text-[#9a9a9a] uppercase tracking-[0.35px]">
+                    <div className="flex flex-col gap-[16px]">
+                        <Link href="#" className="hover:text-[#ffffff] transition-colors">Manifesto</Link>
+                        <Link href="#" className="hover:text-[#ffffff] transition-colors">Documentation</Link>
+                        <Link href="#" className="hover:text-[#ffffff] transition-colors">Agent GitHub</Link>
+                    </div>
+                    <div className="flex flex-col gap-[16px]">
+                        <Link href="#" className="hover:text-[#ffffff] transition-colors">Twitter (X)</Link>
+                        <Link href="#" className="hover:text-[#ffffff] transition-colors">LinkedIn</Link>
+                        <Link href="#" className="hover:text-[#ffffff] transition-colors">Contact</Link>
+                    </div>
+                </div>
+            </footer>
         </div>
     );
 }
