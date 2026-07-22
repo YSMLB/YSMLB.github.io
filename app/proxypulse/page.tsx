@@ -5,78 +5,94 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { ScrollControls, Scroll, useScroll } from '@react-three/drei';
 import * as THREE from 'three';
 
-// Компонент с 3D частицами и логикой морфинга
 const MorphingParticles = () => {
     const pointsRef = useRef<THREE.Points>(null);
     const materialRef = useRef<THREE.ShaderMaterial>(null);
     const scroll = useScroll();
 
-    // Генерация геометрии: Мозг -> Планета
+    // Генерация геометрии: Полый Мозг -> Планета Земля
     const { positions, targetPositions, colors } = useMemo(() => {
-        const maxParticles = 50000; // Оптимальное количество для плотности и FPS
+        const maxParticles = 20000; // Уменьшили плотность для "воздушности" и пустоты внутри
         const posArray: number[] = [];
         const targetArray: number[] = [];
         const colorArray: number[] = [];
 
-        // Палитра как на референсе
         const colorPalette = [
             new THREE.Color('#ffb142'), // Золотой
             new THREE.Color('#ffd700'), // Ярко-желтый
-            new THREE.Color('#ffb142'), // Снова золотой (доминанта)
+            new THREE.Color('#ffb142'), // Снова золотой
             new THREE.Color('#8c7ae6'), // Фиолетовый
             new THREE.Color('#4cd137'), // Зеленый
             new THREE.Color('#f5f6fa'), // Белый
         ];
 
-        let attempts = 0;
+        // --- 1. ГЕНЕРАЦИЯ ПОЛОГО МОЗГА ---
+        let pCount = 0;
+        while (pCount < maxParticles) {
+            let x, y, z;
+            const isCerebrum = Math.random() > 0.15; // 85% точек на главное полушарие, 15% на мозжечок
 
-        // 1. ГЕНЕРАЦИЯ МОЗГА (Rejection Sampling)
-        while (posArray.length < maxParticles * 3 && attempts < 2000000) {
-            attempts++;
+            let theta = Math.random() * 2 * Math.PI;
+            let phi = Math.acos(2 * Math.random() - 1);
 
-            const x = (Math.random() - 0.5) * 9;
-            const y = (Math.random() - 0.5) * 7;
-            const z = (Math.random() - 0.5) * 10;
+            if (isCerebrum) {
+                // Базовая сфера, вытянутая в эллипсоид
+                x = Math.sin(phi) * Math.cos(theta) * 3.6;
+                y = Math.sin(phi) * Math.sin(theta) * 2.8;
+                z = Math.cos(phi) * 4.2;
 
-            // Базовые формы (Эллипсоиды)
-            const cerebrum = (x * x) / (3.2 * 3.2) + (y * y) / (2.6 * 2.6) + (z * z) / (4.2 * 4.2);
-            const cerebellum = (x * x) / (2.2 * 2.2) + Math.pow(y + 2.0, 2) / (1.2 * 1.2) + Math.pow(z + 2.2, 2) / (1.8 * 1.8);
-            const stem = (x * x) / (0.8 * 0.8) + Math.pow(y + 3.0, 2) / (2.0 * 2.0) + Math.pow(z + 0.5, 2) / (1.0 * 1.0);
+                // Разделение полушарий (продольная щель)
+                if (Math.abs(x) < 0.25 + (y + 2.8) * 0.05 && z > -2.0) continue;
 
-            if (cerebrum <= 1 || cerebellum <= 1 || stem <= 1) {
-                // Разделение полушарий
-                const gapWidth = 0.15 + Math.max(0, y * 0.08);
-                if (cerebrum <= 1 && Math.abs(x) < gapWidth && y > -1.5 && z > -3.5) continue;
-
-                // Извилины (Шум)
-                const foldNoise = Math.sin(x * 5.0) * Math.cos(y * 5.0) * Math.sin(z * 5.0);
-                const distToSurface = Math.max(0, 1 - cerebrum);
-                if (cerebrum <= 1 && distToSurface < 0.35) {
-                    if (foldNoise > 0.2 + distToSurface) continue;
+                // Создание извилин (вдавливаем поверхность внутрь с помощью 3D синусоид)
+                const foldNoise = Math.sin(x * 2.5) * Math.cos(y * 2.5) * Math.sin(z * 2.5);
+                if (foldNoise > 0.1) {
+                    // Вдавливаем точку ближе к центру
+                    const indent = 1.0 - (foldNoise * 0.4);
+                    x *= indent;
+                    y *= indent;
+                    z *= indent;
                 }
-
-                posArray.push(x, y, z);
+            } else {
+                // Мозжечок (Cerebellum) - сзади снизу
+                x = Math.sin(phi) * Math.cos(theta) * 1.5;
+                y = Math.sin(phi) * Math.sin(theta) * 1.0 - 2.2;
+                z = Math.cos(phi) * 1.5 - 2.5;
             }
+
+            posArray.push(x, y, z);
+            pCount++;
         }
 
-        // 2. ГЕНЕРАЦИЯ ПЛАНЕТЫ (Сфера)
-        const radius = 4.5;
-        for (let i = 0; i < maxParticles; i++) {
-            // Равномерное распределение точек по поверхности сферы
-            const u = Math.random();
-            const v = Math.random();
-            const theta = 2 * Math.PI * u;
-            const phi = Math.acos(2 * v - 1);
+        // --- 2. ГЕНЕРАЦИЯ ПЛАНЕТЫ (С материками и океанами) ---
+        let tCount = 0;
+        const planetRadius = 4.5;
 
-            const xP = radius * Math.sin(phi) * Math.cos(theta);
-            const yP = radius * Math.sin(phi) * Math.sin(theta);
-            const zP = radius * Math.cos(phi);
+        while (tCount < maxParticles) {
+            let theta = Math.random() * 2 * Math.PI;
+            let phi = Math.acos(2 * Math.random() - 1);
 
-            targetArray.push(xP, yP, zP);
+            let nx = Math.sin(phi) * Math.cos(theta);
+            let ny = Math.sin(phi) * Math.sin(theta);
+            let nz = Math.cos(phi);
 
-            // 3. ЦВЕТА
-            const color = colorPalette[Math.floor(Math.random() * colorPalette.length)];
-            colorArray.push(color.r, color.g, color.b);
+            // Простая имитация 3D шума Перлина для формирования континентов
+            let continentNoise = Math.sin(nx * 3.0) + Math.sin(ny * 4.0) + Math.sin(nz * 3.0);
+            continentNoise += Math.sin(nx * 7.0) * 0.5 + Math.sin(ny * 7.0) * 0.5;
+
+            // Если noise высокий -> это суша (плотно). Если низкий -> океан (очень редко)
+            const isLand = continentNoise > 0.3;
+            const isOceanGrid = Math.random() < 0.04; // 4% точек оставляем в океане для легкой сетки
+
+            if (isLand || isOceanGrid) {
+                targetArray.push(nx * planetRadius, ny * planetRadius, nz * planetRadius);
+                tCount++;
+
+                // --- 3. ЦВЕТА ---
+                // Равномерно раздаем цвета из палитры
+                const color = colorPalette[Math.floor(Math.random() * colorPalette.length)];
+                colorArray.push(color.r, color.g, color.b);
+            }
         }
 
         return {
@@ -91,10 +107,8 @@ const MorphingParticles = () => {
         uTime: { value: 0 }
     }), []);
 
-    // Анимация вращения и синхронизация морфинга со скроллом
     useFrame((state) => {
         if (materialRef.current) {
-            // Плавное изменение uProgress на основе скролла
             materialRef.current.uniforms.uProgress.value = THREE.MathUtils.lerp(
                 materialRef.current.uniforms.uProgress.value,
                 scroll.offset,
@@ -103,13 +117,12 @@ const MorphingParticles = () => {
             materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime();
         }
         if (pointsRef.current) {
-            // Медленное постоянное вращение всей модели
+            // Медленное вращение
             pointsRef.current.rotation.y = state.clock.getElapsedTime() * 0.05;
         }
     });
 
     return (
-        // Сдвигаем модель вправо, чтобы слева был текст (как на дизайне)
         <group position={[2.5, 0, 0]}>
             <points ref={pointsRef}>
                 <bufferGeometry>
@@ -133,7 +146,6 @@ const MorphingParticles = () => {
             
             varying vec3 vColor;
 
-            // Функция для создания шума при переходе
             vec3 curlNoise(vec3 p) {
               return vec3(
                 sin(p.y * 2.0 + uTime) * cos(p.z * 2.0),
@@ -145,16 +157,14 @@ const MorphingParticles = () => {
             void main() {
               vColor = color;
               
-              // Добавляем турбулентность во время морфинга (когда uProgress между 0 и 1)
+              // Турбулентность при морфинге
               float turbulence = sin(uProgress * 3.14159); 
               vec3 noise = curlNoise(position) * turbulence;
               
-              // Плавный переход от мозга к планете
               vec3 pos = mix(position, targetPosition, uProgress) + noise;
-              
               vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
               
-              // Имитируем треугольники/звездочки размером, зависящим от глубины
+              // Размер зависит от глубины
               gl_PointSize = 16.0 * (1.0 / -mvPosition.z); 
               gl_Position = projectionMatrix * mvPosition;
             }
@@ -162,18 +172,18 @@ const MorphingParticles = () => {
                     fragmentShader={`
             varying vec3 vColor;
             void main() {
-              // Создаем треугольную форму для частиц, как на референсе
+              // Треугольная форма
               vec2 st = gl_PointCoord * 2.0 - 1.0;
-              float a = atan(st.x, st.y) + 3.14159;
+              // Поворачиваем треугольник, чтобы он смотрел вверх
+              float a = atan(st.x, -st.y) + 3.14159; 
               float r = 3.14159 * 2.0 / 3.0;
               float d = cos(floor(0.5 + a / r) * r - a) * length(st);
               
-              // Делаем края мягкими (bloom эффект)
-              float alpha = 1.0 - smoothstep(0.3, 0.7, d);
+              float alpha = 1.0 - smoothstep(0.3, 0.6, d);
               
               if (alpha < 0.05) discard;
               
-              gl_FragColor = vec4(vColor, alpha * 0.85);
+              gl_FragColor = vec4(vColor, alpha * 0.9);
             }
           `}
                 />
@@ -185,10 +195,9 @@ const MorphingParticles = () => {
 export default function Page() {
     return (
         <main className="w-full h-screen bg-[#070709] overflow-hidden relative">
-            <Canvas camera={{ position: [0, 0, 10], fov: 60 }}>
+            <Canvas camera={{ position: [0, 0, 11], fov: 60 }}>
                 <color attach="background" args={['#070709']} />
 
-                {/* pages={2} означает 2 экрана скролла (Мозг -> Планета) */}
                 <ScrollControls pages={2} damping={0.3}>
                     <MorphingParticles />
 
@@ -198,7 +207,6 @@ export default function Page() {
                             {/* НАВИГАЦИЯ */}
                             <nav className="fixed top-0 left-0 w-full flex justify-between items-center px-8 md:px-16 lg:px-24 py-8 pointer-events-auto z-50">
                                 <div className="text-xl font-bold text-white tracking-widest flex items-center gap-2">
-                                    {/* Имитация логотипа */}
                                     <div className="w-5 h-5 flex flex-wrap gap-[1px]">
                                         <div className="w-[9px] h-[9px] bg-[#6c5ce7] rounded-tl-sm"></div>
                                         <div className="w-[9px] h-[9px] bg-[#4cd137] rounded-tr-sm"></div>
@@ -217,7 +225,7 @@ export default function Page() {
                                 </div>
                             </nav>
 
-                            {/* ЭКРАН 1: МОЗГ */}
+                            {/* ЭКРАН 1 */}
                             <div className="absolute top-0 left-0 w-full h-screen flex flex-col justify-center px-8 md:px-16 lg:px-24 pointer-events-none">
                                 <div className="max-w-2xl mt-12 pointer-events-auto relative z-10">
                                     <h1 className="text-6xl lg:text-8xl font-medium text-white mb-6 leading-[0.95] tracking-tight">
@@ -240,7 +248,7 @@ export default function Page() {
                                 </div>
                             </div>
 
-                            {/* ЭКРАН 2: ПЛАНЕТА */}
+                            {/* ЭКРАН 2 */}
                             <div className="absolute top-[100vh] left-0 w-full h-screen flex flex-col justify-center px-8 md:px-16 lg:px-24 pointer-events-none">
                                 <div className="max-w-xl pointer-events-auto relative z-10">
                                     <h2 className="text-5xl lg:text-6xl font-medium text-white mb-8 leading-tight tracking-tight">
