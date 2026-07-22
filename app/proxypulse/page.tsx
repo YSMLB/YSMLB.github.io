@@ -116,10 +116,11 @@ const MorphingParticles = () => {
     const materialRef = useRef<THREE.ShaderMaterial>(null);
     const scroll = useScroll();
 
-    const { posWaifu, posGlobe, posNetwork, colors, hollows, alphas } = useMemo(() => {
+    const { positions, posGlobe, posNetwork, colors, hollows, alphas } = useMemo(() => {
         const numPoints = 22000;
 
-        const posWaifu = new Float32Array(numPoints * 3);
+        // positions = Waifu (Дефолтный атрибут для Three.js, иначе модель пропадет)
+        const positions = new Float32Array(numPoints * 3);
         const posGlobe = new Float32Array(numPoints * 3);
         const posNetwork = new Float32Array(numPoints * 3);
 
@@ -153,7 +154,7 @@ const MorphingParticles = () => {
             const ny = Math.cos(phi);
             const nz = Math.sin(phi) * Math.sin(theta);
 
-            // --- 1. WAIFU ---
+            // --- 1. WAIFU (positions) ---
             let bx, by, bz;
             const part = i / numPoints;
 
@@ -185,7 +186,7 @@ const MorphingParticles = () => {
                 const angle = Math.random() * Math.PI * 2;
                 bx = side * 0.5 + Math.cos(angle) * radius; by = -5.5 + t * 4.0; bz = Math.sin(angle) * radius;
             }
-            posWaifu[i3] = bx + 2.0; posWaifu[i3 + 1] = by - 0.5; posWaifu[i3 + 2] = bz;
+            positions[i3] = bx + 2.0; positions[i3 + 1] = by - 0.5; positions[i3 + 2] = bz;
 
             // --- 2. GLOBE ---
             const planetRadius = 6.5;
@@ -216,7 +217,7 @@ const MorphingParticles = () => {
             hollows[i] = Math.random() > 0.5 ? 1.0 : 0.0;
         }
 
-        return { posWaifu, posGlobe, posNetwork, colors, hollows, alphas };
+        return { positions, posGlobe, posNetwork, colors, hollows, alphas };
     }, []);
 
     const uniforms = useMemo(() => ({
@@ -240,9 +241,11 @@ const MorphingParticles = () => {
 
     return (
         <group position={[1.5, 0, 0]}>
-            <points ref={pointsRef}>
+            {/* frustumCulled={false} ОБЯЗАТЕЛЬНО, чтобы WebGL не вырезал модель */}
+            <points ref={pointsRef} frustumCulled={false}>
                 <bufferGeometry>
-                    <bufferAttribute attach="attributes-posWaifu" count={posWaifu.length / 3} array={posWaifu} itemSize={3} />
+                    {/* Вернул дефолтный attributes-position */}
+                    <bufferAttribute attach="attributes-position" count={positions.length / 3} array={positions} itemSize={3} />
                     <bufferAttribute attach="attributes-posGlobe" count={posGlobe.length / 3} array={posGlobe} itemSize={3} />
                     <bufferAttribute attach="attributes-posNetwork" count={posNetwork.length / 3} array={posNetwork} itemSize={3} />
                     <bufferAttribute attach="attributes-color" count={colors.length / 3} array={colors} itemSize={3} />
@@ -259,7 +262,7 @@ const MorphingParticles = () => {
             uniform float uProgress;
             uniform float uTime;
             
-            attribute vec3 posWaifu;
+            // position передается по дефолту
             attribute vec3 posGlobe;
             attribute vec3 posNetwork;
             attribute vec3 color;
@@ -288,7 +291,7 @@ const MorphingParticles = () => {
               
               if (uProgress < 0.5) {
                 float t = uProgress * 2.0; 
-                finalPos = mix(posWaifu, posGlobe, t);
+                finalPos = mix(position, posGlobe, t);
                 currentAlpha = mix(1.0, targetAlpha, t);
                 turbulence = sin(t * 3.14159);
               } else {
@@ -406,7 +409,6 @@ export default function Page() {
                                             Traditional tools force you to search through massive text files. ProxyPulse turns your traffic into an interactive global map. See where your requests bottleneck geographically.
                                         </p>
 
-                                        {/* ВЕРНУЛ БЛОК С ЛОГАМИ */}
                                         <div className="bg-[#070709]/60 backdrop-blur-md border border-[#1a1a1a] rounded-[24px] p-[24px] w-full max-w-[460px]">
                                             <span className="text-[12px] font-[600] text-[#587561] uppercase tracking-[0.35px] mb-[16px] block border-b border-[#1a1a1a] pb-3">
                                                 Agent Proxy Activity
@@ -438,7 +440,6 @@ export default function Page() {
                                         </div>
                                     </div>
 
-                                    {/* ВЕРНУЛ ФУТЕР ВНИЗ СТРАНИЦЫ */}
                                     <footer className="absolute bottom-10 left-0 w-full px-8 md:px-16 lg:px-24 flex flex-col md:flex-row justify-between items-start md:items-end pointer-events-auto border-t border-[#1a1a1a] pt-8">
                                         <div className="flex flex-col gap-[12px] mb-8 md:mb-0">
                                             <div className="flex items-center gap-[12px]">
