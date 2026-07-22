@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import Link from 'next/link';
 
 // =====================================================================
-// DESIGN TOKENS (DALA STYLE + BRIGHT COLORS)
+// DESIGN TOKENS
 // =====================================================================
 const tokens = {
     void: "#000000",
@@ -89,7 +89,7 @@ const LiveTerminal = () => {
 };
 
 // =====================================================================
-// 3D ENGINE (SHADER MORPHING: PYRAMID -> GLOBE -> NETWORK)
+// 3D ENGINE (SHADER MORPHING)
 // =====================================================================
 const EARTH_MAP = [
     "                                                                ",
@@ -135,13 +135,12 @@ const MorphingParticles = () => {
         const hollows = new Float32Array(numPoints);
         const alphas = new Float32Array(numPoints);
 
-        // Палитра Dala (яркая)
         const palette = [
             new THREE.Color(tokens.boneWhite),
             new THREE.Color(tokens.electricIris),
             new THREE.Color(tokens.saffronSpark),
             new THREE.Color(tokens.deepVerdant),
-            new THREE.Color(tokens.stemBlue),
+            new THREE.Color(tokens.ashGray),
         ];
 
         const networkNodes: THREE.Vector3[] = [];
@@ -161,7 +160,7 @@ const MorphingParticles = () => {
             const ny = Math.cos(phi);
             const nz = Math.sin(phi) * Math.sin(theta);
 
-            // --- 1. ПИРАМИДА (Строгая геометрия, наша созданная) ---
+            // --- 1. ПИРАМИДА (Строго по центру координат) ---
             let bx, by, bz;
             const isBase = Math.random() < 0.2;
 
@@ -182,17 +181,16 @@ const MorphingParticles = () => {
                 by = y;
             }
 
-            positions[i3] = bx + 2.5;
+            // Убрали +2.5
+            positions[i3] = bx;
             positions[i3 + 1] = by;
             positions[i3 + 2] = bz;
 
             // --- 2. ПЛАНЕТА ---
             const planetRadius = 6.0;
-            const offsetY = -4.0;
-            const offsetX = 2.5;
-
-            posGlobe[i3] = nx * planetRadius + offsetX;
-            posGlobe[i3 + 1] = ny * planetRadius + offsetY;
+            // Убрали offsetX
+            posGlobe[i3] = nx * planetRadius;
+            posGlobe[i3 + 1] = ny * planetRadius;
             posGlobe[i3 + 2] = nz * planetRadius;
 
             const u = 0.5 + Math.atan2(nz, nx) / (2 * Math.PI);
@@ -205,11 +203,12 @@ const MorphingParticles = () => {
             // --- 3. СЕТЬ (Spider-Verse) ---
             const targetNode = networkNodes[Math.floor(Math.random() * networkNodes.length)];
             const netDist = Math.random();
-            posNetwork[i3] = targetNode.x + (Math.random() - 0.5) * 6 * netDist + offsetX;
+            // Убрали offsetX
+            posNetwork[i3] = targetNode.x + (Math.random() - 0.5) * 6 * netDist;
             posNetwork[i3 + 1] = targetNode.y + (Math.random() - 0.5) * 6 * netDist;
             posNetwork[i3 + 2] = targetNode.z + (Math.random() - 0.5) * 6 * netDist;
 
-            // --- COLORS (ЯРКИЕ) ---
+            // --- COLORS ---
             const color = palette[Math.floor(Math.random() * palette.length)];
             colors[i3] = color.r; colors[i3 + 1] = color.g; colors[i3 + 2] = color.b;
             hollows[i] = Math.random() > 0.5 ? 1.0 : 0.0;
@@ -238,8 +237,8 @@ const MorphingParticles = () => {
     });
 
     return (
-        <group position={[1.5, 0, 0]}>
-            {/* frustumCulled={false} обязательно, чтобы движок не скрывал модель */}
+        // Вот здесь жестко фиксируем модель справа!
+        <group position={[4.5, -0.5, 0]}>
             <points ref={pointsRef} frustumCulled={false}>
                 <bufferGeometry>
                     <bufferAttribute attach="attributes-position" count={positions.length / 3} array={positions} itemSize={3} />
@@ -253,7 +252,7 @@ const MorphingParticles = () => {
                     ref={materialRef}
                     transparent
                     depthWrite={false}
-                    blending={THREE.AdditiveBlending} // Делает частицы яркими и неоновыми
+                    blending={THREE.NormalBlending}
                     uniforms={uniforms}
                     vertexShader={`
             uniform float uProgress;
@@ -301,7 +300,7 @@ const MorphingParticles = () => {
               vec3 noise = curlNoise(finalPos) * turbulence * 1.5;
               vec4 mvPosition = modelViewMatrix * vec4(finalPos + noise, 1.0);
               
-              gl_PointSize = 45.0 * (1.0 / -mvPosition.z); // Увеличил размер частиц
+              gl_PointSize = 35.0 * (1.0 / -mvPosition.z); 
               gl_Position = projectionMatrix * mvPosition;
             }
           `}
@@ -325,8 +324,7 @@ const MorphingParticles = () => {
               if (vHollow > 0.5) alpha -= 1.0 - step(0.25, d);
               if (alpha < 0.1) discard;
               
-              // Множитель 1.2 для экстра яркости с AdditiveBlending
-              gl_FragColor = vec4(vColor * 1.2, alpha * vAlpha); 
+              gl_FragColor = vec4(vColor, alpha * vAlpha * 0.4); 
             }
           `}
                 />
@@ -336,16 +334,12 @@ const MorphingParticles = () => {
 };
 
 // =====================================================================
-// MAIN LAYOUT (DALA DESIGN + R3F ENGINE)
+// MAIN LAYOUT 
 // =====================================================================
 export default function Page() {
     return (
         <main className="w-full h-screen bg-[#000000] overflow-hidden relative selection:bg-[#8052ff] selection:text-white">
 
-            {/* 
-        НОРМАЛЬНАЯ НАВИГАЦИЯ 
-        Вынес за пределы Canvas и Scroll, чтобы она была 100% Fixed и не дергалась
-      */}
             <nav className="fixed top-0 left-0 w-full z-50 py-[24px] px-[24px] md:px-[60px] flex justify-between items-center mix-blend-difference pointer-events-auto">
                 <div className="flex items-center gap-[12px]">
                     <DalaLogo />
@@ -363,18 +357,15 @@ export default function Page() {
                 </div>
             </nav>
 
-            {/* 3D CANVAS */}
             <div className="absolute inset-0 z-0">
                 <Canvas camera={{ position: [0, 0, 10], fov: 60 }}>
                     <color attach="background" args={['#000000']} />
                     <ScrollControls pages={3} damping={0.25}>
                         <MorphingParticles />
 
-                        {/* HTML OVERLAY (Dala Typography) */}
                         <Scroll html style={{ width: '100%', height: '100%' }}>
                             <div className="relative w-full h-[300vh] text-[#ffffff] font-sans pointer-events-none">
 
-                                {/* ЭКРАН 1: ПИРАМИДА */}
                                 <div className="absolute top-0 left-0 w-full h-screen flex flex-col justify-center px-[24px] md:px-[60px]">
                                     <div className="max-w-[540px] mt-[120px] pointer-events-auto mix-blend-difference">
                                         <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829] mb-[24px] block">
@@ -392,7 +383,6 @@ export default function Page() {
                                     </div>
                                 </div>
 
-                                {/* ЭКРАН 2: ПЛАНЕТА С ТЕРМИНАЛОМ */}
                                 <div className="absolute top-[100vh] left-0 w-full h-screen flex flex-col justify-center px-[24px] md:px-[60px]">
                                     <div className="max-w-[500px] pointer-events-auto">
                                         <h2 className="text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
@@ -411,7 +401,6 @@ export default function Page() {
                                     </div>
                                 </div>
 
-                                {/* ЭКРАН 3: СЕТЬ И ФУТЕР */}
                                 <div className="absolute top-[200vh] left-0 w-full h-screen flex flex-col justify-center px-[24px] md:px-[60px]">
                                     <div className="w-full flex flex-col lg:flex-row items-center gap-[60px] lg:gap-[120px] pointer-events-auto">
                                         <div className="flex-1 w-full max-w-[520px]">
@@ -435,7 +424,6 @@ export default function Page() {
                                         </div>
                                     </div>
 
-                                    {/* ФУТЕР */}
                                     <footer className="absolute bottom-0 left-0 w-full px-[24px] md:px-[60px] py-[60px] flex flex-col md:flex-row justify-between items-start md:items-center gap-[36px] border-t border-[#1a1a1a] bg-[#000000] pointer-events-auto">
                                         <div className="flex flex-col gap-[16px]">
                                             <div className="flex items-center gap-[12px]">
