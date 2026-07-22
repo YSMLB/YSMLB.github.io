@@ -8,16 +8,18 @@ import * as THREE from 'three';
 import Link from 'next/link';
 
 // =====================================================================
-// DESIGN TOKENS (ТУСКЛАЯ ПАЛИТРА)
+// DESIGN TOKENS (СТРОГАЯ, ТУСКЛАЯ ПАЛИТРА)
 // =====================================================================
 const tokens = {
-    void: "#070709",
-    boneWhite: "#d4d4d4",
-    ashGray: "#7a7a7a",
-    electricIris: "#6c648c",
-    saffronSpark: "#8a7f66",
-    deepVerdant: "#587561",
-    errorMuted: "#8c5a65"
+    bg: "#050506",
+    border: "#1a1a1a",
+    textMuted: "#7a7a7a",
+    textBase: "#a1a1aa",
+    textHighlight: "#d4d4d4",
+    accentPurple: "#6c648c",
+    accentGreen: "#587561",
+    accentGold: "#8a7f66",
+    error: "#8c5a65"
 };
 
 // =====================================================================
@@ -42,32 +44,32 @@ const LiveTerminal = () => {
             setRequests(prev => {
                 const newReq = backendLogs[index % backendLogs.length];
                 index++;
-                return [newReq, ...prev].slice(0, 6);
+                return [newReq, ...prev].slice(0, 7);
             });
         }, 800);
         return () => clearInterval(interval);
     }, []);
 
     return (
-        <div className="w-full font-mono text-[13px] leading-[1.5] text-[#9a9a9a] relative z-10 flex flex-col h-[200px] overflow-hidden">
+        <div className="w-full font-mono text-[12px] leading-[1.6] text-zinc-500 relative z-10 flex flex-col h-[220px] overflow-hidden">
             <AnimatePresence mode="popLayout">
                 {requests.map((req, i) => (
                     <motion.div
                         key={`${req.path}-${i}-${Date.now()}`}
                         initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1 - i * 0.15, x: 0 }}
+                        animate={{ opacity: 1 - i * 0.12, x: 0 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="grid grid-cols-[45px_1fr_40px_50px] gap-4 items-center h-8"
+                        className="grid grid-cols-[45px_1fr_40px_40px] gap-4 items-center py-1.5 border-b border-[#1a1a1a]/50"
                     >
-                        <span className={`font-[600] text-left ${req.method === 'GET' ? 'text-[#6c648c]' :
+                        <span className={`font-medium ${req.method === 'GET' ? 'text-[#6c648c]' :
                                 req.method === 'POST' ? 'text-[#587561]' :
                                     req.method === 'DEL' ? 'text-[#8a7f66]' : 'text-[#8a7f66]'
                             }`}>
                             {req.method}
                         </span>
-                        <span className="text-[#d4d4d4] truncate">{req.path}</span>
-                        <span className={`font-[600] text-right ${req.status >= 500 ? 'text-[#8c5a65]' :
+                        <span className="text-[#a1a1aa] truncate">{req.path}</span>
+                        <span className={`text-right ${req.status >= 500 ? 'text-[#8c5a65]' :
                                 req.status >= 400 ? 'text-[#8a7f66]' : 'text-[#587561]'
                             }`}>
                             {req.status}
@@ -81,7 +83,7 @@ const LiveTerminal = () => {
 };
 
 // =====================================================================
-// 3D ENGINE (WAIFU -> GLOBE -> NETWORK)
+// 3D ENGINE (PYRAMID -> GLOBE -> NETWORK)
 // =====================================================================
 const EARTH_MAP = [
     "                                                                ",
@@ -119,7 +121,6 @@ const MorphingParticles = () => {
     const { positions, posGlobe, posNetwork, colors, hollows, alphas } = useMemo(() => {
         const numPoints = 22000;
 
-        // positions = Waifu (Дефолтный атрибут для Three.js, иначе модель пропадет)
         const positions = new Float32Array(numPoints * 3);
         const posGlobe = new Float32Array(numPoints * 3);
         const posNetwork = new Float32Array(numPoints * 3);
@@ -129,12 +130,11 @@ const MorphingParticles = () => {
         const alphas = new Float32Array(numPoints);
 
         const palette = [
-            new THREE.Color(tokens.saffronSpark),
-            new THREE.Color(tokens.ashGray),
-            new THREE.Color(tokens.saffronSpark),
-            new THREE.Color(tokens.electricIris),
-            new THREE.Color(tokens.deepVerdant),
-            new THREE.Color('#4a4a4a'),
+            new THREE.Color(tokens.accentGold),
+            new THREE.Color(tokens.textMuted),
+            new THREE.Color(tokens.accentPurple),
+            new THREE.Color(tokens.accentGreen),
+            new THREE.Color('#333333'),
         ];
 
         const networkNodes: THREE.Vector3[] = [];
@@ -154,44 +154,35 @@ const MorphingParticles = () => {
             const ny = Math.cos(phi);
             const nz = Math.sin(phi) * Math.sin(theta);
 
-            // --- 1. WAIFU (positions) ---
+            // --- 1. ПИРАМИДА (Строгая геометрия) ---
             let bx, by, bz;
-            const part = i / numPoints;
+            const isBase = Math.random() < 0.2; // 20% точек формируют ровное дно
 
-            if (part < 0.12) {
-                bx = nx * 0.9; by = ny * 0.9 + 3.8; bz = nz * 0.9;
-            } else if (part < 0.35) {
-                const isLeft = part < 0.235;
-                const side = isLeft ? 1 : -1;
-                const t = isLeft ? (part - 0.12) / 0.115 : (part - 0.235) / 0.115;
-                bx = side * (0.9 + t * 2.0) + (Math.random() - 0.5) * 0.4;
-                by = 3.8 - t * 4.5 + (Math.random() - 0.5) * 0.4;
-                bz = -0.5 + Math.sin(t * Math.PI) * 1.5 + (Math.random() - 0.5) * 0.4;
-            } else if (part < 0.6) {
-                const t = (part - 0.35) / 0.25;
-                const radius = 0.55 - Math.sin(t * Math.PI) * 0.15;
-                const angle = Math.random() * Math.PI * 2;
-                bx = Math.cos(angle) * radius; by = 1.0 + t * 2.0; bz = Math.sin(angle) * radius * 0.7;
-            } else if (part < 0.85) {
-                const t = (part - 0.6) / 0.25;
-                const radius = 0.8 + (1.0 - t) * 2.0;
-                const angle = Math.random() * Math.PI * 2;
-                const ruffle = Math.sin(angle * 10) * 0.25;
-                bx = Math.cos(angle) * (radius + ruffle); by = -1.5 + t * 2.5; bz = Math.sin(angle) * (radius + ruffle);
+            if (isBase) {
+                bx = (Math.random() - 0.5) * 5.6;
+                bz = (Math.random() - 0.5) * 5.6;
+                by = -2.0;
             } else {
-                const isLeft = part < 0.925;
-                const side = isLeft ? 1 : -1;
-                const t = isLeft ? (part - 0.85) / 0.075 : (part - 0.925) / 0.075;
-                const radius = 0.35 - t * 0.15;
-                const angle = Math.random() * Math.PI * 2;
-                bx = side * 0.5 + Math.cos(angle) * radius; by = -5.5 + t * 4.0; bz = Math.sin(angle) * radius;
+                const y = Math.random() * 4.0 - 2.0; // Высота от -2 до 2
+                const w = (2.0 - y) * 0.7; // Сужение к вершине
+                const side = Math.floor(Math.random() * 4);
+                const t = (Math.random() - 0.5) * w * 2;
+
+                if (side === 0) { bx = -w; bz = t; }
+                else if (side === 1) { bx = w; bz = t; }
+                else if (side === 2) { bx = t; bz = -w; }
+                else { bx = t; bz = w; }
+                by = y;
             }
-            positions[i3] = bx + 2.0; positions[i3 + 1] = by - 0.5; positions[i3 + 2] = bz;
+
+            positions[i3] = bx + 2.5;
+            positions[i3 + 1] = by;
+            positions[i3 + 2] = bz;
 
             // --- 2. GLOBE ---
-            const planetRadius = 6.5;
+            const planetRadius = 6.0;
             const offsetY = -4.0;
-            const offsetX = 2.0;
+            const offsetX = 2.5;
 
             posGlobe[i3] = nx * planetRadius + offsetX;
             posGlobe[i3 + 1] = ny * planetRadius + offsetY;
@@ -202,7 +193,7 @@ const MorphingParticles = () => {
             const mapX = Math.floor(u * 64) % 64;
             const mapY = Math.floor(v * EARTH_MAP.length);
             const safeY = Math.max(0, Math.min(EARTH_MAP.length - 1, mapY));
-            alphas[i] = EARTH_MAP[safeY][mapX] === 'X' ? 1.0 : (Math.random() > 0.9 ? 0.4 : 0.0);
+            alphas[i] = EARTH_MAP[safeY][mapX] === 'X' ? 1.0 : (Math.random() > 0.9 ? 0.3 : 0.0);
 
             // --- 3. NETWORK ---
             const targetNode = networkNodes[Math.floor(Math.random() * networkNodes.length)];
@@ -241,10 +232,8 @@ const MorphingParticles = () => {
 
     return (
         <group position={[1.5, 0, 0]}>
-            {/* frustumCulled={false} ОБЯЗАТЕЛЬНО, чтобы WebGL не вырезал модель */}
             <points ref={pointsRef} frustumCulled={false}>
                 <bufferGeometry>
-                    {/* Вернул дефолтный attributes-position */}
                     <bufferAttribute attach="attributes-position" count={positions.length / 3} array={positions} itemSize={3} />
                     <bufferAttribute attach="attributes-posGlobe" count={posGlobe.length / 3} array={posGlobe} itemSize={3} />
                     <bufferAttribute attach="attributes-posNetwork" count={posNetwork.length / 3} array={posNetwork} itemSize={3} />
@@ -262,7 +251,6 @@ const MorphingParticles = () => {
             uniform float uProgress;
             uniform float uTime;
             
-            // position передается по дефолту
             attribute vec3 posGlobe;
             attribute vec3 posNetwork;
             attribute vec3 color;
@@ -329,7 +317,7 @@ const MorphingParticles = () => {
               if (vHollow > 0.5) alpha -= 1.0 - step(0.25, d);
               if (alpha < 0.1) discard;
               
-              gl_FragColor = vec4(vColor, alpha * vAlpha * 0.5);
+              gl_FragColor = vec4(vColor, alpha * vAlpha * 0.4); // Тусклый режим
             }
           `}
                 />
@@ -339,16 +327,16 @@ const MorphingParticles = () => {
 };
 
 // =====================================================================
-// MAIN LAYOUT
+// MAIN LAYOUT (СТРОГИЙ IT-ДИЗАЙН)
 // =====================================================================
 export default function Page() {
     return (
-        <main className="w-full h-screen bg-[#070709] overflow-hidden relative selection:bg-[#6c648c] selection:text-white">
+        <main className="w-full h-screen bg-[#050506] overflow-hidden relative selection:bg-[#6c648c] selection:text-white">
 
-            {/* 3D CANVAS - Строго на фоне */}
+            {/* 3D CANVAS */}
             <div className="absolute inset-0 z-0">
                 <Canvas camera={{ position: [0, 0, 10], fov: 60 }}>
-                    <color attach="background" args={['#070709']} />
+                    <color attach="background" args={['#050506']} />
                     <ScrollControls pages={3} damping={0.25}>
                         <MorphingParticles />
 
@@ -356,44 +344,44 @@ export default function Page() {
                         <Scroll html style={{ width: '100%', height: '100%' }}>
                             <div className="relative w-full h-[300vh] text-zinc-300 font-sans pointer-events-none">
 
-                                {/* НАВИГАЦИЯ */}
-                                <nav className="fixed top-0 left-0 w-full flex justify-between items-center px-8 md:px-16 lg:px-24 py-8 pointer-events-auto z-50">
-                                    <div className="text-xl font-bold text-white tracking-widest flex items-center gap-2">
-                                        <div className="w-5 h-5 flex flex-wrap gap-[1px]">
-                                            <div className="w-[9px] h-[9px] bg-[#6c648c] rounded-tl-sm"></div>
-                                            <div className="w-[9px] h-[9px] bg-[#587561] rounded-tr-sm"></div>
-                                            <div className="w-[9px] h-[9px] bg-[#8a7f66] rounded-bl-sm"></div>
-                                            <div className="w-[9px] h-[9px] bg-[#d4d4d4] rounded-br-sm"></div>
-                                        </div>
+                                {/* СТРОГАЯ НАВИГАЦИЯ */}
+                                <nav className="fixed top-0 left-0 w-full flex justify-between items-center px-8 py-6 border-b border-[#1a1a1a] bg-[#050506]/80 backdrop-blur-md pointer-events-auto z-50">
+                                    <div className="text-[14px] font-medium tracking-widest text-zinc-300 flex items-center gap-3">
+                                        <div className="w-2 h-2 bg-[#6c648c] rounded-full animate-pulse"></div>
                                         PROXYPULSE
                                     </div>
-                                    <div className="hidden md:flex gap-8 text-[11px] font-bold tracking-widest items-center text-zinc-400">
-                                        <Link href="#manifesto" className="hover:text-white transition">MANIFESTO</Link>
-                                        <Link href="#docs" className="hover:text-white transition">DOCS</Link>
-                                        <Link href="#github" className="hover:text-white transition">GITHUB</Link>
-                                        <button className="bg-[#6c648c] text-[#d4d4d4] px-6 py-2.5 rounded-full hover:bg-[#5a5375] transition">
-                                            DEPLOY AGENT
-                                        </button>
+                                    <div className="hidden md:flex gap-8 text-[12px] font-medium tracking-wide text-zinc-500">
+                                        <Link href="#dashboard" className="hover:text-zinc-300 transition">Dashboard</Link>
+                                        <Link href="#api" className="hover:text-zinc-300 transition">API Reference</Link>
+                                        <Link href="#docs" className="hover:text-zinc-300 transition">Documentation</Link>
                                     </div>
+                                    <button className="text-[12px] font-medium border border-[#1a1a1a] bg-[#0a0a0c] text-zinc-400 px-5 py-2 hover:border-[#6c648c] hover:text-white transition">
+                                        Deploy Agent
+                                    </button>
                                 </nav>
 
-                                {/* ЭКРАН 1: ВАЙФУ */}
+                                {/* ЭКРАН 1: ПИРАМИДА (Strict tech intro) */}
                                 <div className="absolute top-0 left-0 w-full h-screen flex flex-col justify-center px-8 md:px-16 lg:px-24">
-                                    <div className="max-w-2xl mt-12 pointer-events-auto relative z-10">
-                                        <span className="text-[10px] text-[#8a7f66] font-bold tracking-widest mb-4 uppercase block">
-                                            Network Observability
-                                        </span>
-                                        <h1 className="text-6xl lg:text-8xl font-medium text-[#d4d4d4] mb-6 leading-[0.95] tracking-tight">
-                                            See your <br />
-                                            network. <br />
-                                            Live.
+                                    <div className="max-w-xl mt-16 pointer-events-auto relative z-10">
+                                        <div className="inline-flex items-center gap-2 border border-[#1a1a1a] bg-[#0a0a0c] px-3 py-1 mb-6">
+                                            <span className="w-1.5 h-1.5 bg-[#587561]"></span>
+                                            <span className="text-[11px] text-zinc-500 font-mono uppercase tracking-wider">v2.0.4 Online</span>
+                                        </div>
+
+                                        <h1 className="text-5xl lg:text-6xl font-medium text-zinc-200 mb-6 tracking-tight leading-[1.1]">
+                                            Network <br /> Observability <br /> Platform.
                                         </h1>
-                                        <div className="mt-8">
-                                            <p className="max-w-[400px] text-zinc-400 text-sm leading-relaxed mb-8 font-light">
-                                                Stop reading dead logs. ProxyPulse visualizes every HTTP request in real-time. Connect the lightweight agent and watch your backend traffic breathe, flow, and break—instantly.
-                                            </p>
-                                            <button className="bg-[#6c648c] text-[#d4d4d4] px-7 py-3 rounded-full text-xs font-bold tracking-wider hover:bg-[#5a5375] transition">
-                                                REQUEST ACCESS
+
+                                        <p className="max-w-[420px] text-zinc-500 text-[14px] leading-relaxed mb-10">
+                                            Monitor, debug, and trace your API requests in real-time. Built for distributed systems running Go and C#. No more dead logs, just pure network visibility.
+                                        </p>
+
+                                        <div className="flex gap-4">
+                                            <button className="bg-[#6c648c] text-white px-6 py-2.5 text-[13px] font-medium hover:bg-[#5a5375] transition">
+                                                Initialize Setup
+                                            </button>
+                                            <button className="border border-[#1a1a1a] text-zinc-400 px-6 py-2.5 text-[13px] font-medium hover:bg-[#1a1a1a] transition">
+                                                View GitHub
                                             </button>
                                         </div>
                                     </div>
@@ -402,17 +390,25 @@ export default function Page() {
                                 {/* ЭКРАН 2: ПЛАНЕТА С ТЕРМИНАЛОМ */}
                                 <div className="absolute top-[100vh] left-0 w-full h-screen flex flex-col justify-center px-8 md:px-16 lg:px-24">
                                     <div className="max-w-xl pointer-events-auto relative z-10">
-                                        <h2 className="text-5xl lg:text-6xl font-medium text-[#d4d4d4] mb-6 leading-tight tracking-tight">
-                                            Global traffic <br /> layer.
+                                        <h2 className="text-4xl lg:text-5xl font-medium text-zinc-200 mb-6 tracking-tight">
+                                            Global Traffic Map.
                                         </h2>
-                                        <p className="max-w-[400px] text-zinc-400 text-sm leading-relaxed mb-8 font-light">
-                                            Traditional tools force you to search through massive text files. ProxyPulse turns your traffic into an interactive global map. See where your requests bottleneck geographically.
+                                        <p className="max-w-[400px] text-zinc-500 text-[14px] leading-relaxed mb-10">
+                                            Analyze latency and request bottlenecks across regions. ProxyPulse agent intercepts HTTP/gRPC traffic with near-zero overhead.
                                         </p>
 
-                                        <div className="bg-[#070709]/60 backdrop-blur-md border border-[#1a1a1a] rounded-[24px] p-[24px] w-full max-w-[460px]">
-                                            <span className="text-[12px] font-[600] text-[#587561] uppercase tracking-[0.35px] mb-[16px] block border-b border-[#1a1a1a] pb-3">
-                                                Agent Proxy Activity
-                                            </span>
+                                        {/* СТРОГИЙ ТЕРМИНАЛ */}
+                                        <div className="bg-[#0a0a0c]/80 backdrop-blur-md border border-[#1a1a1a] p-5 w-full max-w-[460px] shadow-2xl">
+                                            <div className="flex justify-between items-center border-b border-[#1a1a1a] pb-3 mb-3">
+                                                <span className="text-[11px] font-mono text-zinc-600 uppercase tracking-widest">
+                                                    Live Proxy Feed
+                                                </span>
+                                                <div className="flex gap-1.5">
+                                                    <div className="w-2 h-2 bg-[#8c5a65]"></div>
+                                                    <div className="w-2 h-2 bg-[#8a7f66]"></div>
+                                                    <div className="w-2 h-2 bg-[#587561]"></div>
+                                                </div>
+                                            </div>
                                             <LiveTerminal />
                                         </div>
                                     </div>
@@ -421,44 +417,34 @@ export default function Page() {
                                 {/* ЭКРАН 3: СЕТЬ И ФУТЕР */}
                                 <div className="absolute top-[200vh] left-0 w-full h-screen flex flex-col justify-center px-8 md:px-16 lg:px-24">
                                     <div className="max-w-xl pointer-events-auto relative z-10 mb-20">
-                                        <h2 className="text-5xl lg:text-6xl font-medium text-[#d4d4d4] mb-8 leading-tight tracking-tight">
-                                            Connect every <br /> microservice.
+                                        <h2 className="text-4xl lg:text-5xl font-medium text-zinc-200 mb-6 tracking-tight">
+                                            Microservice <br /> Topology.
                                         </h2>
-                                        <p className="max-w-[440px] text-zinc-400 text-sm leading-relaxed mb-10 font-light">
-                                            Whether you are writing distributed services in <span className="text-[#6c648c] font-medium">Go</span> or enterprise backends in <span className="text-[#8a7f66] font-medium">C#</span>. ProxyPulse maps dependencies dynamically, revealing the hidden neural network of your architecture.
+                                        <p className="max-w-[440px] text-zinc-500 text-[14px] leading-relaxed mb-10">
+                                            Automatically map dependencies between your backend services. Detect failing nodes, analyze bandwidth consumption, and optimize your architecture dynamically.
                                         </p>
 
-                                        <div className="flex gap-12">
+                                        <div className="grid grid-cols-2 gap-8 border-t border-[#1a1a1a] pt-8 max-w-[400px]">
                                             <div>
-                                                <p className="text-[10px] text-[#8a7f66] font-bold tracking-widest mb-2 uppercase">Backend & Frontend</p>
-                                                <p className="text-xl text-[#d4d4d4] font-medium">Debug APIs</p>
+                                                <p className="text-[11px] text-zinc-600 font-mono mb-2 uppercase">Core Protocol</p>
+                                                <p className="text-[15px] text-zinc-300">HTTP/1.1, HTTP/2, WebSocket</p>
                                             </div>
                                             <div>
-                                                <p className="text-[10px] text-[#587561] font-bold tracking-widest mb-2 uppercase">DevOps / Infra</p>
-                                                <p className="text-xl text-[#d4d4d4] font-medium">Monitor proxies</p>
+                                                <p className="text-[11px] text-zinc-600 font-mono mb-2 uppercase">Agent Perf</p>
+                                                <p className="text-[15px] text-zinc-300">&lt; 2MB RAM / Node</p>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <footer className="absolute bottom-10 left-0 w-full px-8 md:px-16 lg:px-24 flex flex-col md:flex-row justify-between items-start md:items-end pointer-events-auto border-t border-[#1a1a1a] pt-8">
-                                        <div className="flex flex-col gap-[12px] mb-8 md:mb-0">
-                                            <div className="flex items-center gap-[12px]">
-                                                <span className="text-[20px] font-[500] tracking-widest text-[#d4d4d4]">PROXYPULSE</span>
-                                            </div>
-                                            <p className="text-[12px] font-[400] text-zinc-500 max-w-[280px]">
-                                                The observability platform built for high-performance engineering teams.
-                                            </p>
+                                    {/* СТРОГИЙ ФУТЕР */}
+                                    <footer className="absolute bottom-0 left-0 w-full px-8 py-6 border-t border-[#1a1a1a] bg-[#050506]/90 backdrop-blur flex flex-col md:flex-row justify-between items-center pointer-events-auto">
+                                        <div className="text-[12px] text-zinc-600 font-mono">
+                                            © 2026 ProxyPulse / Triple G
                                         </div>
-
-                                        <div className="flex gap-[48px] text-[11px] font-[600] text-zinc-500 uppercase tracking-widest">
-                                            <div className="flex flex-col gap-[12px]">
-                                                <Link href="#" className="hover:text-[#d4d4d4] transition-colors">Manifesto</Link>
-                                                <Link href="#" className="hover:text-[#d4d4d4] transition-colors">Documentation</Link>
-                                            </div>
-                                            <div className="flex flex-col gap-[12px]">
-                                                <Link href="#" className="hover:text-[#d4d4d4] transition-colors">Agent GitHub</Link>
-                                                <Link href="#" className="hover:text-[#d4d4d4] transition-colors">Twitter (X)</Link>
-                                            </div>
+                                        <div className="flex gap-6 text-[12px] font-medium text-zinc-500 mt-4 md:mt-0">
+                                            <Link href="#" className="hover:text-zinc-300 transition">Terms</Link>
+                                            <Link href="#" className="hover:text-zinc-300 transition">Privacy</Link>
+                                            <Link href="#" className="hover:text-zinc-300 transition">System Status</Link>
                                         </div>
                                     </footer>
                                 </div>
