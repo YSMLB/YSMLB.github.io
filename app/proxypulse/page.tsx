@@ -5,8 +5,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { ScrollControls, Scroll, useScroll } from '@react-three/drei';
 import * as THREE from 'three';
 
-/* STREAMING_CHUNK:Defining the Earth ASCII map for continent projection... */
-// 64x25 ASCII карта Земли. 'X' - материки (плотные точки), пробелы - океаны (редкие точки).
+// 64x25 ASCII карта Земли
 const EARTH_MAP = [
     "                                                                ",
     "                                                                ",
@@ -35,53 +34,117 @@ const EARTH_MAP = [
     "                                                                "
 ];
 
-/* STREAMING_CHUNK:Initializing the main morphing component and arrays... */
 const MorphingParticles = () => {
     const pointsRef = useRef<THREE.Points>(null);
     const materialRef = useRef<THREE.ShaderMaterial>(null);
     const scroll = useScroll();
 
-    const { positions, targetPositions, colors, hollows, alphas } = useMemo(() => {
-        const numPoints = 22000; // Оптимальное количество для читаемой текстуры
+    const { posWaifu, posGlobe, posNetwork, colors, hollows, alphas } = useMemo(() => {
+        const numPoints = 22000;
 
-        const positions = new Float32Array(numPoints * 3);
-        const targetPositions = new Float32Array(numPoints * 3);
+        const posWaifu = new Float32Array(numPoints * 3);
+        const posGlobe = new Float32Array(numPoints * 3);
+        const posNetwork = new Float32Array(numPoints * 3);
+
         const colors = new Float32Array(numPoints * 3);
         const hollows = new Float32Array(numPoints);
         const alphas = new Float32Array(numPoints);
 
+        // Тусклая, приглушенная палитра
         const palette = [
-            new THREE.Color('#ffb142'), // Золотой
-            new THREE.Color('#ffd700'), // Желтый
-            new THREE.Color('#ffb142'), // Золотой (повышаем шанс)
-            new THREE.Color('#8c7ae6'), // Фиолетовый
-            new THREE.Color('#4cd137'), // Зеленый
-            new THREE.Color('#ffffff'), // Белый
+            new THREE.Color('#8a7f66'), // Тусклый золотистый
+            new THREE.Color('#949494'), // Серый/пепельный
+            new THREE.Color('#8a7f66'),
+            new THREE.Color('#6c648c'), // Тусклый фиолетовый
+            new THREE.Color('#587561'), // Глубокий зеленый
+            new THREE.Color('#7a7a7a'), // Темно-серый
         ];
 
-        /* STREAMING_CHUNK:Calculating math for Brain and Planet morphologies... */
+        // Узлы для 3-й модели (Network)
+        const networkNodes: THREE.Vector3[] = [];
+        for (let j = 0; j < 25; j++) {
+            networkNodes.push(new THREE.Vector3(
+                (Math.random() - 0.5) * 16,
+                (Math.random() - 0.5) * 10,
+                (Math.random() - 0.5) * 10
+            ));
+        }
+
         for (let i = 0; i < numPoints; i++) {
             const i3 = i * 3;
 
-            // ГЕНЕРАЦИЯ БАЗОВОЙ СФЕРЫ (Сфера Фибоначчи для равномерного распределения)
+            // ГЕНЕРАЦИЯ БАЗОВОЙ СФЕРЫ (Сфера Фибоначчи)
             const phi = Math.acos(1 - 2 * (i + 0.5) / numPoints);
             const theta = Math.PI * (1 + Math.sqrt(5)) * i;
 
-            // Нормализованные координаты на сфере
             const nx = Math.sin(phi) * Math.cos(theta);
             const ny = Math.cos(phi);
             const nz = Math.sin(phi) * Math.sin(theta);
 
-            // --- 1. ПЛАНЕТА ЗЕМЛЯ (Target) ---
+            // ==========================================
+            // 1. ФОРМА АНИМЕ-ВАЙФУ (State 0)
+            // ==========================================
+            let bx, by, bz;
+            const part = i / numPoints;
+
+            if (part < 0.12) {
+                // Голова
+                bx = nx * 0.9; by = ny * 0.9 + 3.8; bz = nz * 0.9;
+            } else if (part < 0.35) {
+                // Хвостики
+                const isLeft = part < 0.235;
+                const side = isLeft ? 1 : -1;
+                const t = isLeft ? (part - 0.12) / 0.115 : (part - 0.235) / 0.115;
+                bx = side * (0.9 + t * 2.0) + (Math.random() - 0.5) * 0.4;
+                by = 3.8 - t * 4.5 + (Math.random() - 0.5) * 0.4;
+                bz = -0.5 + Math.sin(t * Math.PI) * 1.5 + (Math.random() - 0.5) * 0.4;
+            } else if (part < 0.6) {
+                // Торс
+                const t = (part - 0.35) / 0.25;
+                const yPos = 1.0 + t * 2.0;
+                const radius = 0.55 - Math.sin(t * Math.PI) * 0.15;
+                const angle = Math.random() * Math.PI * 2;
+                bx = Math.cos(angle) * radius;
+                by = yPos;
+                bz = Math.sin(angle) * radius * 0.7;
+            } else if (part < 0.85) {
+                // Юбка
+                const t = (part - 0.6) / 0.25;
+                const yPos = -1.5 + t * 2.5;
+                const radius = 0.8 + (1.0 - t) * 2.0;
+                const angle = Math.random() * Math.PI * 2;
+                const ruffle = Math.sin(angle * 10) * 0.25;
+                bx = Math.cos(angle) * (radius + ruffle);
+                by = yPos;
+                bz = Math.sin(angle) * (radius + ruffle);
+            } else {
+                // Ноги
+                const isLeft = part < 0.925;
+                const side = isLeft ? 1 : -1;
+                const t = isLeft ? (part - 0.85) / 0.075 : (part - 0.925) / 0.075;
+                const yPos = -5.5 + t * 4.0;
+                const radius = 0.35 - t * 0.15;
+                const angle = Math.random() * Math.PI * 2;
+                bx = side * 0.5 + Math.cos(angle) * radius;
+                by = yPos;
+                bz = Math.sin(angle) * radius;
+            }
+
+            posWaifu[i3] = bx + 1.0;     // Сдвиг вправо
+            posWaifu[i3 + 1] = by - 1.0; // Сдвиг вниз
+            posWaifu[i3 + 2] = bz;
+
+            // ==========================================
+            // 2. ПЛАНЕТА ЗЕМЛЯ (State 1)
+            // ==========================================
             const planetRadius = 6.5;
-            const offsetY = -4.0; // Сдвигаем планету сильно вниз, как на референсе
-            const offsetX = 1.0;  // Немного вправо
+            const offsetY = -4.0;
+            const offsetX = 1.0;
 
-            targetPositions[i3] = nx * planetRadius + offsetX;
-            targetPositions[i3 + 1] = ny * planetRadius + offsetY;
-            targetPositions[i3 + 2] = nz * planetRadius;
+            posGlobe[i3] = nx * planetRadius + offsetX;
+            posGlobe[i3 + 1] = ny * planetRadius + offsetY;
+            posGlobe[i3 + 2] = nz * planetRadius;
 
-            // Проекция координат на карту материков
             const u = 0.5 + Math.atan2(nz, nx) / (2 * Math.PI);
             const v = 0.5 - Math.asin(ny) / Math.PI;
             const mapX = Math.floor(u * 64) % 64;
@@ -89,73 +152,31 @@ const MorphingParticles = () => {
             const safeY = Math.max(0, Math.min(EARTH_MAP.length - 1, mapY));
 
             const isLand = EARTH_MAP[safeY][mapX] === 'X';
+            alphas[i] = isLand ? 1.0 : (Math.random() > 0.9 ? 0.4 : 0.0);
 
-            // Логика Океана: оставляем только 10% точек в воде, остальные делаем прозрачными (alpha = 0)
-            if (isLand) {
-                alphas[i] = 1.0;
-            } else {
-                alphas[i] = Math.random() > 0.9 ? 0.4 : 0.0; // Редкая тусклая сетка в океане
-            }
+            // ==========================================
+            // 3. СЕТЬ / SPIDER-VERSE (State 2)
+            // ==========================================
+            const targetNode = networkNodes[Math.floor(Math.random() * networkNodes.length)];
+            const netDist = Math.random();
+            posNetwork[i3] = targetNode.x + (Math.random() - 0.5) * 6 * netDist + offsetX;
+            posNetwork[i3 + 1] = targetNode.y + (Math.random() - 0.5) * 6 * netDist;
+            posNetwork[i3 + 2] = targetNode.z + (Math.random() - 0.5) * 6 * netDist;
 
-            // --- 2. ФОРМА МОЗГА (Source) ---
-            let bx = nx;
-            let by = ny;
-            let bz = nz;
-
-            const part = i / numPoints; // Распределяем точки по частям мозга
-
-            if (part < 0.82) {
-                // ОСНОВНЫЕ ПОЛУШАРИЯ (Cerebrum)
-                bx *= 2.8;
-                by *= 2.2;
-                bz *= 3.6;
-
-                // Разделение полушарий (продольная щель)
-                const ax = Math.abs(bx);
-                if (ax < 0.35 && by > -1.0) {
-                    bx += Math.sign(bx) * (0.35 - ax); // Расталкиваем от центра
-                }
-
-                // Извилины (глубокий высокочастотный шум)
-                const noise = Math.sin(bx * 3.5) * Math.sin(by * 3.5) * Math.sin(bz * 3.5);
-                bx -= bx * noise * 0.15;
-                by -= by * noise * 0.15;
-                bz -= bz * noise * 0.15;
-
-            } else if (part < 0.95) {
-                // МОЗЖЕЧОК (Cerebellum) - сзади снизу
-                bx = nx * 1.5;
-                by = ny * 0.8 - 1.8;
-                bz = nz * 1.5 + 1.8; // Сдвиг назад (+z)
-
-                const cNoise = Math.sin(bx * 8) * Math.sin(by * 8) * Math.sin(bz * 8);
-                bx -= bx * cNoise * 0.08;
-            } else {
-                // СТВОЛ МОЗГА (Brain stem) - снизу по центру
-                bx = nx * 0.5;
-                by = ny * 1.5 - 2.8; // Вытянут вниз
-                bz = nz * 0.5 + 0.2;
-            }
-
-            // Общий наклон мозга для красивого ракурса
-            positions[i3] = bx;
-            positions[i3 + 1] = by * 0.95 - bz * 0.1; // Легкий наклон
-            positions[i3 + 2] = bz * 0.95 + by * 0.1;
-
-            // --- 3. ЦВЕТА И СТИЛИ ТРЕУГОЛЬНИКОВ ---
+            // ==========================================
+            // ЦВЕТА И СТИЛИ
+            // ==========================================
             const color = palette[Math.floor(Math.random() * palette.length)];
             colors[i3] = color.r;
             colors[i3 + 1] = color.g;
             colors[i3 + 2] = color.b;
 
-            // Половина треугольников "полые" внутри
             hollows[i] = Math.random() > 0.5 ? 1.0 : 0.0;
         }
 
-        return { positions, targetPositions, colors, hollows, alphas };
+        return { posWaifu, posGlobe, posNetwork, colors, hollows, alphas };
     }, []);
 
-    /* STREAMING_CHUNK:Setting up uniforms and animation frame... */
     const uniforms = useMemo(() => ({
         uProgress: { value: 0 },
         uTime: { value: 0 }
@@ -163,7 +184,6 @@ const MorphingParticles = () => {
 
     useFrame((state) => {
         if (materialRef.current) {
-            // Синхронизация прогресса морфинга со скроллом
             materialRef.current.uniforms.uProgress.value = THREE.MathUtils.lerp(
                 materialRef.current.uniforms.uProgress.value,
                 scroll.offset,
@@ -172,18 +192,17 @@ const MorphingParticles = () => {
             materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime();
         }
         if (pointsRef.current) {
-            // Медленное вращение модели
-            pointsRef.current.rotation.y = state.clock.getElapsedTime() * 0.04;
+            pointsRef.current.rotation.y = state.clock.getElapsedTime() * 0.05;
         }
     });
 
-    /* STREAMING_CHUNK:Rendering shaders and component tree... */
     return (
         <group position={[2.5, 0, 0]}>
             <points ref={pointsRef}>
                 <bufferGeometry>
-                    <bufferAttribute attach="attributes-position" count={positions.length / 3} array={positions} itemSize={3} />
-                    <bufferAttribute attach="attributes-targetPosition" count={targetPositions.length / 3} array={targetPositions} itemSize={3} />
+                    <bufferAttribute attach="attributes-posWaifu" count={posWaifu.length / 3} array={posWaifu} itemSize={3} />
+                    <bufferAttribute attach="attributes-posGlobe" count={posGlobe.length / 3} array={posGlobe} itemSize={3} />
+                    <bufferAttribute attach="attributes-posNetwork" count={posNetwork.length / 3} array={posNetwork} itemSize={3} />
                     <bufferAttribute attach="attributes-color" count={colors.length / 3} array={colors} itemSize={3} />
                     <bufferAttribute attach="attributes-hollow" count={hollows.length} array={hollows} itemSize={1} />
                     <bufferAttribute attach="attributes-targetAlpha" count={alphas.length} array={alphas} itemSize={1} />
@@ -193,13 +212,16 @@ const MorphingParticles = () => {
                     ref={materialRef}
                     transparent
                     depthWrite={false}
-                    blending={THREE.AdditiveBlending}
+                    blending={THREE.NormalBlending} // Тусклый режим наложения
                     uniforms={uniforms}
                     vertexShader={`
             uniform float uProgress;
             uniform float uTime;
             
-            attribute vec3 targetPosition;
+            attribute vec3 posWaifu;
+            attribute vec3 posGlobe;
+            attribute vec3 posNetwork;
+            
             attribute vec3 color;
             attribute float hollow;
             attribute float targetAlpha;
@@ -208,7 +230,6 @@ const MorphingParticles = () => {
             varying float vHollow;
             varying float vAlpha;
 
-            // Функция шума для создания "роя" при морфинге
             vec3 curlNoise(vec3 p) {
               return vec3(
                 sin(p.y * 2.0 + uTime) * cos(p.z * 2.0),
@@ -221,17 +242,31 @@ const MorphingParticles = () => {
               vColor = color;
               vHollow = hollow;
               
-              // Плавное исчезновение "лишних" точек в океане
-              vAlpha = mix(1.0, targetAlpha, uProgress);
+              vec3 finalPos;
+              float currentAlpha = 1.0;
+              float turbulence = 0.0;
               
-              // Турбулентность активна только во время перехода (скролла)
-              float turbulence = sin(uProgress * 3.14159); 
-              vec3 noise = curlNoise(position) * turbulence;
+              // Логика перехода между 3 моделями
+              if (uProgress < 0.5) {
+                // От Вайфу к Планете
+                float t = uProgress * 2.0; 
+                finalPos = mix(posWaifu, posGlobe, t);
+                currentAlpha = mix(1.0, targetAlpha, t);
+                turbulence = sin(t * 3.14159);
+              } else {
+                // От Планеты к Сети
+                float t = (uProgress - 0.5) * 2.0;
+                finalPos = mix(posGlobe, posNetwork, t);
+                currentAlpha = mix(targetAlpha, 1.0, t);
+                turbulence = sin(t * 3.14159);
+              }
               
-              vec3 pos = mix(position, targetPosition, uProgress) + noise;
+              vAlpha = currentAlpha;
+              
+              vec3 noise = curlNoise(finalPos) * turbulence * 1.5;
+              vec3 pos = finalPos + noise;
+              
               vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
-              
-              // Крупные, читаемые треугольники
               gl_PointSize = 35.0 * (1.0 / -mvPosition.z); 
               gl_Position = projectionMatrix * mvPosition;
             }
@@ -246,27 +281,24 @@ const MorphingParticles = () => {
 
               vec2 uv = gl_PointCoord.xy * 2.0 - 1.0;
               
-              // Поворачиваем треугольник
               float angle = 0.5; 
               float s = sin(angle), c = cos(angle);
               uv = vec2(uv.x * c - uv.y * s, uv.x * s + uv.y * c);
               
-              // Математика равностороннего треугольника
               float a = atan(uv.x, uv.y) + 3.14159;
               float r = 3.14159 * 2.0 / 3.0;
               float d = cos(floor(0.5 + a / r) * r - a) * length(uv);
               
-              // Идеально острые края
               float alpha = 1.0 - step(0.45, d); 
               
-              // Вырезаем центр для полых треугольников
               if (vHollow > 0.5) {
                 alpha -= 1.0 - step(0.25, d);
               }
               
               if (alpha < 0.1) discard;
               
-              gl_FragColor = vec4(vColor, alpha * vAlpha * 0.9);
+              // Тусклый вайб (коэффициент прозрачности 0.5)
+              gl_FragColor = vec4(vColor, alpha * vAlpha * 0.5);
             }
           `}
                 />
@@ -275,75 +307,95 @@ const MorphingParticles = () => {
     );
 };
 
-/* STREAMING_CHUNK:Main page component with HTML overlay... */
 export default function Page() {
     return (
-        <main className="w-full h-screen bg-[#070709] overflow-hidden relative">
+        <main className="w-full h-screen bg-[#070709] overflow-hidden relative selection:bg-[#6c648c] selection:text-white">
             <Canvas camera={{ position: [0, 0, 10], fov: 60 }}>
                 <color attach="background" args={['#070709']} />
 
-                <ScrollControls pages={2} damping={0.25}>
+                {/* pages={3} - ТРИ ЭКРАНА */}
+                <ScrollControls pages={3} damping={0.25}>
                     <MorphingParticles />
 
                     <Scroll html style={{ width: '100%' }}>
-                        <div className="relative w-full h-[200vh] text-zinc-300 font-sans">
+                        <div className="relative w-full h-[300vh] text-zinc-300 font-sans">
 
                             {/* НАВИГАЦИЯ */}
-                            <nav className="fixed top-0 left-0 w-full flex justify-between items-center px-8 md:px-16 lg:px-24 py-8 pointer-events-auto z-50">
+                            <nav className="fixed top-0 left-0 w-full flex justify-between items-center px-8 md:px-16 lg:px-24 py-8 pointer-events-auto z-50 mix-blend-difference">
                                 <div className="text-xl font-bold text-white tracking-widest flex items-center gap-2">
                                     <div className="w-5 h-5 flex flex-wrap gap-[1px]">
-                                        <div className="w-[9px] h-[9px] bg-[#6c5ce7] rounded-tl-sm"></div>
-                                        <div className="w-[9px] h-[9px] bg-[#4cd137] rounded-tr-sm"></div>
-                                        <div className="w-[9px] h-[9px] bg-[#ffb142] rounded-bl-sm"></div>
+                                        <div className="w-[9px] h-[9px] bg-[#6c648c] rounded-tl-sm"></div>
+                                        <div className="w-[9px] h-[9px] bg-[#587561] rounded-tr-sm"></div>
+                                        <div className="w-[9px] h-[9px] bg-[#8a7f66] rounded-bl-sm"></div>
                                         <div className="w-[9px] h-[9px] bg-white rounded-br-sm"></div>
                                     </div>
-                                    Dala
+                                    PROXYPULSE
                                 </div>
                                 <div className="hidden md:flex gap-8 text-[11px] font-bold tracking-widest items-center text-zinc-400">
                                     <a href="#" className="hover:text-white transition">MANIFESTO</a>
-                                    <a href="#" className="hover:text-white transition">TEAM</a>
-                                    <a href="#" className="hover:text-white transition">BLOG</a>
-                                    <button className="bg-[#8c7ae6] text-white px-6 py-2.5 rounded-full hover:bg-[#7b6ad5] transition">
-                                        REQUEST ACCESS
+                                    <a href="#" className="hover:text-white transition">DOCS</a>
+                                    <a href="#" className="hover:text-white transition">GITHUB</a>
+                                    <button className="bg-[#6c648c] text-white px-6 py-2.5 rounded-full hover:bg-[#5a5375] transition">
+                                        DEPLOY AGENT
                                     </button>
                                 </div>
                             </nav>
 
-                            {/* ЭКРАН 1: МОЗГ */}
+                            {/* ЭКРАН 1: ВАЙФУ (Network Observability) */}
                             <div className="absolute top-0 left-0 w-full h-screen flex flex-col justify-center px-8 md:px-16 lg:px-24 pointer-events-none">
-                                <div className="max-w-2xl mt-12 pointer-events-auto relative z-10">
+                                <div className="max-w-2xl mt-12 pointer-events-auto relative z-10 mix-blend-difference">
+                                    <span className="text-[10px] text-[#8a7f66] font-bold tracking-widest mb-4 uppercase block">
+                                        Network Observability
+                                    </span>
                                     <h1 className="text-6xl lg:text-8xl font-medium text-white mb-6 leading-[0.95] tracking-tight">
-                                        Unlock <br />
-                                        collective <br />
-                                        wisdom.
+                                        See your <br />
+                                        network. <br />
+                                        Live.
                                     </h1>
 
-                                    <div className="mt-12">
-                                        <p className="text-[10px] text-[#ffb142] font-bold tracking-widest mb-4 uppercase">
-                                            Stop managing knowledge. Start using it.
+                                    <div className="mt-8">
+                                        <p className="max-w-[400px] text-zinc-300 text-sm leading-relaxed mb-8 font-light">
+                                            Stop reading dead logs. ProxyPulse visualizes every HTTP request in real-time. Connect the lightweight agent and watch your backend traffic breathe, flow, and break—instantly.
                                         </p>
-                                        <p className="max-w-[400px] text-zinc-400 text-sm leading-relaxed mb-8 font-light">
-                                            Plug into your team's shared brainpower. Ask Dala to instantly find anything or anyone from any workplace system. Focus on doing your best work with context, conviction and clarity.
-                                        </p>
-                                        <button className="bg-[#8c7ae6] text-white px-7 py-3 rounded-full text-xs font-bold tracking-wider hover:bg-[#7b6ad5] transition">
+                                        <button className="bg-[#6c648c] text-white px-7 py-3 rounded-full text-xs font-bold tracking-wider hover:bg-[#5a5375] transition">
                                             REQUEST ACCESS
                                         </button>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* ЭКРАН 2: ПЛАНЕТА */}
+                            {/* ЭКРАН 2: ПЛАНЕТА (Global Traffic) */}
                             <div className="absolute top-[100vh] left-0 w-full h-screen flex flex-col justify-center px-8 md:px-16 lg:px-24 pointer-events-none">
-                                <div className="max-w-xl pointer-events-auto relative z-10">
+                                <div className="max-w-xl pointer-events-auto relative z-10 mix-blend-difference">
                                     <h2 className="text-5xl lg:text-6xl font-medium text-white mb-8 leading-tight tracking-tight">
-                                        Build a better world <br /> of work
+                                        Global traffic <br /> layer.
                                     </h2>
-                                    <p className="max-w-[400px] text-zinc-400 text-sm leading-relaxed mb-6 font-light">
-                                        Our mission is to make work more coherent and delightful—reframing productivity from <span className="text-zinc-200 italic font-medium">doing more</span> to <span className="text-[#ffb142] italic font-medium">being better</span>.
+                                    <p className="max-w-[400px] text-zinc-300 text-sm leading-relaxed mb-6 font-light">
+                                        Traditional tools force you to search through massive text files. ProxyPulse turns your traffic into an interactive global map. See where your requests bottleneck geographically.
                                     </p>
-                                    <p className="max-w-[400px] text-zinc-400 text-sm leading-relaxed mb-6 font-light">
-                                        Your happiest and most purposeful moments at work are when you're in flow, intellectually alive and deeply connected to your team.
+                                </div>
+                            </div>
+
+                            {/* ЭКРАН 3: СЕТЬ (Microservices) */}
+                            <div className="absolute top-[200vh] left-0 w-full h-screen flex flex-col justify-center px-8 md:px-16 lg:px-24 pointer-events-none">
+                                <div className="max-w-xl pointer-events-auto relative z-10 mix-blend-difference">
+                                    <h2 className="text-5xl lg:text-6xl font-medium text-white mb-8 leading-tight tracking-tight">
+                                        Connect every <br /> microservice.
+                                    </h2>
+                                    <p className="max-w-[440px] text-zinc-300 text-sm leading-relaxed mb-10 font-light">
+                                        Whether you are writing distributed services in <span className="text-[#6c648c] font-medium">Go</span> or enterprise backends in <span className="text-[#8a7f66] font-medium">C#</span>. ProxyPulse maps dependencies dynamically, revealing the hidden neural network of your architecture.
                                     </p>
+
+                                    <div className="flex gap-12">
+                                        <div>
+                                            <p className="text-[10px] text-[#8a7f66] font-bold tracking-widest mb-2 uppercase">Backend & Frontend</p>
+                                            <p className="text-xl text-white font-medium">Debug APIs</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-[#587561] font-bold tracking-widest mb-2 uppercase">DevOps / Infra</p>
+                                            <p className="text-xl text-white font-medium">Monitor proxies</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
