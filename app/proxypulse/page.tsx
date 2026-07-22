@@ -5,131 +5,157 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { ScrollControls, Scroll, useScroll } from '@react-three/drei';
 import * as THREE from 'three';
 
-// 64x20 ASCII карта Земли. 'X' - материки, пробелы - океан.
+/* STREAMING_CHUNK:Defining the Earth ASCII map for continent projection... */
+// 64x25 ASCII карта Земли. 'X' - материки (плотные точки), пробелы - океаны (редкие точки).
 const EARTH_MAP = [
     "                                                                ",
-    "        XXXXXXX                  XXXXXXXXXXXXX                  ",
-    "      XXXXXXXXXXXX             XXXXXXXXXXXXXXXXX                ",
-    "     XXXXXXXXXXXXXX           XXXXXXXXXXXXXXXXXXX               ",
-    "    XXXXXXXXXXXXXXXX          XXXXXXXXXXXXXXXXXXXX              ",
-    "     XXXXXXXXXXXXXXX          XXXXXXXXXXXXXXXXXXXX              ",
-    "       XXXXXXXXXXXXX         XXXXXXXXXXXXXXXXXXXXX              ",
-    "          XXXXXXXXX          XXXXXXXXXXXXXXXXXXXXX              ",
-    "            XXXXXX           XXXXXXXXXXXXXXXXXXXX               ",
-    "             XXXXX            XXXXXXXXXXXXXXXXXXX               ",
-    "              XXXX            XXXXXXXXXXXXXXXXXX     XX         ",
-    "              XXXX             XXXXXXXXXXXXXXX      XXXX        ",
-    "               XXX             XXXXXXXXXXXXXX       XXXXX       ",
-    "               XXX             XXXXXXXXXXXX         XXXXX       ",
-    "                XX              XXXXXXXX             XXXX       ",
-    "                XX               XXXXXX               XXX       ",
-    "                 X                XXXX                          ",
-    "                                   XX                           ",
     "                                                                ",
+    "                                                                ",
+    "                               XXXXXX                           ",
+    "         XXXXX               XXXXXXXXXX                         ",
+    "       XXXXXXXXX            XXXXXXXXXXXX     XX                 ",
+    "      XXXXXXXXXXX           XXXXXXXXXXXXX   XXXX                ",
+    "      XXXXXXXXXXXX          XXXXXXXXXXXXXX XXXXXX               ",
+    "       XXXXXXXXXX           XXXXXXXXXXXXXXXXXXXX                ",
+    "        XXXXXXXXX            XXXXXXXXXXXXXXXXXX                 ",
+    "          XXXXX              XXXXXXXXXXXXXXXXX                  ",
+    "           XXXX              XXXXXXXXXXXXXXXX                   ",
+    "            XXX               XXXXXXXXXXXXXXX                   ",
+    "            XXX                XXXXXXXXXXXXX                    ",
+    "             XX                XXXXXXXXXXXX                     ",
+    "             XX                 XXXXXXXX                        ",
+    "                                 XXXXXX                         ",
+    "                                  XXXX                          ",
+    "                                                                ",
+    "                                                                ",
+    "                                               XXXX             ",
+    "                 XXXX                        XXXXXXXX           ",
+    "               XXXXXXXX                     XXXXXXXXXX          ",
+    "                 XXXX                        XXXXXXXX           ",
     "                                                                "
 ];
 
+/* STREAMING_CHUNK:Initializing the main morphing component and arrays... */
 const MorphingParticles = () => {
     const pointsRef = useRef<THREE.Points>(null);
     const materialRef = useRef<THREE.ShaderMaterial>(null);
     const scroll = useScroll();
 
     const { positions, targetPositions, colors, hollows, alphas } = useMemo(() => {
-        const numPoints = 25000; // Оптимально для четкой текстуры
+        const numPoints = 22000; // Оптимальное количество для читаемой текстуры
 
         const positions = new Float32Array(numPoints * 3);
         const targetPositions = new Float32Array(numPoints * 3);
         const colors = new Float32Array(numPoints * 3);
         const hollows = new Float32Array(numPoints);
-        const alphas = new Float32Array(numPoints); // Прозрачность для планеты (океаны скрываем)
+        const alphas = new Float32Array(numPoints);
 
         const palette = [
             new THREE.Color('#ffb142'), // Золотой
             new THREE.Color('#ffd700'), // Желтый
-            new THREE.Color('#ffb142'), // Золотой
+            new THREE.Color('#ffb142'), // Золотой (повышаем шанс)
             new THREE.Color('#8c7ae6'), // Фиолетовый
             new THREE.Color('#4cd137'), // Зеленый
             new THREE.Color('#ffffff'), // Белый
         ];
 
+        /* STREAMING_CHUNK:Calculating math for Brain and Planet morphologies... */
         for (let i = 0; i < numPoints; i++) {
             const i3 = i * 3;
 
-            // 1. БАЗОВАЯ РАССТАНОВКА (Сфера Фибоначчи - дает идеальную равномерную сетку)
+            // ГЕНЕРАЦИЯ БАЗОВОЙ СФЕРЫ (Сфера Фибоначчи для равномерного распределения)
             const phi = Math.acos(1 - 2 * (i + 0.5) / numPoints);
-            const theta = Math.PI * (1 + Math.sqrt(5)) * (i + 0.5);
+            const theta = Math.PI * (1 + Math.sqrt(5)) * i;
 
-            const r = 4.2; // Базовый радиус
-            let x = r * Math.sin(phi) * Math.cos(theta);
-            let y = r * Math.cos(phi);
-            let z = r * Math.sin(phi) * Math.sin(theta);
+            // Нормализованные координаты на сфере
+            const nx = Math.sin(phi) * Math.cos(theta);
+            const ny = Math.cos(phi);
+            const nz = Math.sin(phi) * Math.sin(theta);
 
-            // --- ГЕНЕРАЦИЯ ЗЕМЛИ (TARGET) ---
-            targetPositions[i3] = x;
-            targetPositions[i3 + 1] = y;
-            targetPositions[i3 + 2] = z;
+            // --- 1. ПЛАНЕТА ЗЕМЛЯ (Target) ---
+            const planetRadius = 6.5;
+            const offsetY = -4.0; // Сдвигаем планету сильно вниз, как на референсе
+            const offsetX = 1.0;  // Немного вправо
 
-            // Вычисляем UV координаты для проекции карты материков
-            const u = 0.5 + Math.atan2(z, x) / (2 * Math.PI);
-            const v = 0.5 - Math.asin(y / r) / Math.PI;
+            targetPositions[i3] = nx * planetRadius + offsetX;
+            targetPositions[i3 + 1] = ny * planetRadius + offsetY;
+            targetPositions[i3 + 2] = nz * planetRadius;
 
-            const mapX = Math.floor(u * 64);
-            const mapY = Math.floor(v * 20);
-            const safeX = Math.max(0, Math.min(63, mapX));
-            const safeY = Math.max(0, Math.min(19, mapY));
+            // Проекция координат на карту материков
+            const u = 0.5 + Math.atan2(nz, nx) / (2 * Math.PI);
+            const v = 0.5 - Math.asin(ny) / Math.PI;
+            const mapX = Math.floor(u * 64) % 64;
+            const mapY = Math.floor(v * EARTH_MAP.length);
+            const safeY = Math.max(0, Math.min(EARTH_MAP.length - 1, mapY));
 
-            // Если точка попала на букву 'X' - это суша, оставляем видимой. 
-            const isLand = EARTH_MAP[safeY][safeX] === 'X';
-            alphas[i] = isLand ? 1.0 : 0.0; // В форме Земли океан будет полностью прозрачным
+            const isLand = EARTH_MAP[safeY][mapX] === 'X';
 
-            // --- ГЕНЕРАЦИЯ МОЗГА (START) ---
-            let bx = x;
-            let by = y;
-            let bz = z;
-
-            // Сплющиваем сферу в форму мозга
-            bx *= 0.75;
-            by *= 0.85;
-            bz *= 1.15;
-
-            // Разделение полушарий (продольная щель)
-            const distFromCenter = Math.abs(bx);
-            if (distFromCenter < 0.6 && by > -1.5) {
-                // Расталкиваем точки от центра
-                bx += (bx > 0 ? 1 : -1) * (0.6 - distFromCenter);
+            // Логика Океана: оставляем только 10% точек в воде, остальные делаем прозрачными (alpha = 0)
+            if (isLand) {
+                alphas[i] = 1.0;
+            } else {
+                alphas[i] = Math.random() > 0.9 ? 0.4 : 0.0; // Редкая тусклая сетка в океане
             }
 
-            // Математические извилины (Gyri) - вдавливаем сетку
-            const noise = Math.sin(bx * 4.5) * Math.cos(by * 4.5) * Math.sin(bz * 4.5);
-            const indent = 1.0 - Math.max(0, noise * 0.18);
-            bx *= indent;
-            by *= indent;
-            bz *= indent;
+            // --- 2. ФОРМА МОЗГА (Source) ---
+            let bx = nx;
+            let by = ny;
+            let bz = nz;
 
-            // Сужаем к низу и к передней части
-            if (by < 0) bx *= (1.0 + by * 0.15);
-            if (bz > 0) {
-                bx *= (1.0 - bz * 0.1);
-                by *= (1.0 - bz * 0.1);
+            const part = i / numPoints; // Распределяем точки по частям мозга
+
+            if (part < 0.82) {
+                // ОСНОВНЫЕ ПОЛУШАРИЯ (Cerebrum)
+                bx *= 2.8;
+                by *= 2.2;
+                bz *= 3.6;
+
+                // Разделение полушарий (продольная щель)
+                const ax = Math.abs(bx);
+                if (ax < 0.35 && by > -1.0) {
+                    bx += Math.sign(bx) * (0.35 - ax); // Расталкиваем от центра
+                }
+
+                // Извилины (глубокий высокочастотный шум)
+                const noise = Math.sin(bx * 3.5) * Math.sin(by * 3.5) * Math.sin(bz * 3.5);
+                bx -= bx * noise * 0.15;
+                by -= by * noise * 0.15;
+                bz -= bz * noise * 0.15;
+
+            } else if (part < 0.95) {
+                // МОЗЖЕЧОК (Cerebellum) - сзади снизу
+                bx = nx * 1.5;
+                by = ny * 0.8 - 1.8;
+                bz = nz * 1.5 + 1.8; // Сдвиг назад (+z)
+
+                const cNoise = Math.sin(bx * 8) * Math.sin(by * 8) * Math.sin(bz * 8);
+                bx -= bx * cNoise * 0.08;
+            } else {
+                // СТВОЛ МОЗГА (Brain stem) - снизу по центру
+                bx = nx * 0.5;
+                by = ny * 1.5 - 2.8; // Вытянут вниз
+                bz = nz * 0.5 + 0.2;
             }
 
+            // Общий наклон мозга для красивого ракурса
             positions[i3] = bx;
-            positions[i3 + 1] = by;
-            positions[i3 + 2] = bz;
+            positions[i3 + 1] = by * 0.95 - bz * 0.1; // Легкий наклон
+            positions[i3 + 2] = bz * 0.95 + by * 0.1;
 
-            // --- ЦВЕТА И ТЕКСТУРА ---
+            // --- 3. ЦВЕТА И СТИЛИ ТРЕУГОЛЬНИКОВ ---
             const color = palette[Math.floor(Math.random() * palette.length)];
             colors[i3] = color.r;
             colors[i3 + 1] = color.g;
             colors[i3 + 2] = color.b;
 
-            // Половина треугольников будут "пустыми" внутри (как на макете)
+            // Половина треугольников "полые" внутри
             hollows[i] = Math.random() > 0.5 ? 1.0 : 0.0;
         }
 
         return { positions, targetPositions, colors, hollows, alphas };
     }, []);
 
+    /* STREAMING_CHUNK:Setting up uniforms and animation frame... */
     const uniforms = useMemo(() => ({
         uProgress: { value: 0 },
         uTime: { value: 0 }
@@ -137,6 +163,7 @@ const MorphingParticles = () => {
 
     useFrame((state) => {
         if (materialRef.current) {
+            // Синхронизация прогресса морфинга со скроллом
             materialRef.current.uniforms.uProgress.value = THREE.MathUtils.lerp(
                 materialRef.current.uniforms.uProgress.value,
                 scroll.offset,
@@ -145,10 +172,12 @@ const MorphingParticles = () => {
             materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime();
         }
         if (pointsRef.current) {
-            pointsRef.current.rotation.y = state.clock.getElapsedTime() * 0.05;
+            // Медленное вращение модели
+            pointsRef.current.rotation.y = state.clock.getElapsedTime() * 0.04;
         }
     });
 
+    /* STREAMING_CHUNK:Rendering shaders and component tree... */
     return (
         <group position={[2.5, 0, 0]}>
             <points ref={pointsRef}>
@@ -179,30 +208,31 @@ const MorphingParticles = () => {
             varying float vHollow;
             varying float vAlpha;
 
+            // Функция шума для создания "роя" при морфинге
             vec3 curlNoise(vec3 p) {
               return vec3(
                 sin(p.y * 2.0 + uTime) * cos(p.z * 2.0),
                 sin(p.z * 2.0 + uTime) * cos(p.x * 2.0),
                 sin(p.x * 2.0 + uTime) * cos(p.y * 2.0)
-              ) * 0.5;
+              ) * 0.8;
             }
 
             void main() {
               vColor = color;
               vHollow = hollow;
               
-              // Для мозга прозрачность 1.0 (виден весь), для Земли берем targetAlpha (океаны исчезают)
+              // Плавное исчезновение "лишних" точек в океане
               vAlpha = mix(1.0, targetAlpha, uProgress);
               
-              // Вихревое движение частиц во время скролла
+              // Турбулентность активна только во время перехода (скролла)
               float turbulence = sin(uProgress * 3.14159); 
               vec3 noise = curlNoise(position) * turbulence;
               
-              // Плавный переход формы
               vec3 pos = mix(position, targetPosition, uProgress) + noise;
               vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
               
-              gl_PointSize = 12.0 * (1.0 / -mvPosition.z); 
+              // Крупные, читаемые треугольники
+              gl_PointSize = 35.0 * (1.0 / -mvPosition.z); 
               gl_Position = projectionMatrix * mvPosition;
             }
           `}
@@ -212,33 +242,31 @@ const MorphingParticles = () => {
             varying float vAlpha;
 
             void main() {
-              if (vAlpha < 0.05) discard; // Прячем точки океана
+              if (vAlpha < 0.05) discard; 
 
-              // Четкая математика треугольника
               vec2 uv = gl_PointCoord.xy * 2.0 - 1.0;
               
-              // Легкий поворот треугольников
+              // Поворачиваем треугольник
               float angle = 0.5; 
               float s = sin(angle), c = cos(angle);
               uv = vec2(uv.x * c - uv.y * s, uv.x * s + uv.y * c);
               
+              // Математика равностороннего треугольника
               float a = atan(uv.x, uv.y) + 3.14159;
               float r = 3.14159 * 2.0 / 3.0;
               float d = cos(floor(0.5 + a / r) * r - a) * length(uv);
               
-              // Острые, пиксельно-четкие края (никакого мыла)
-              float alpha = step(d, 0.45); 
+              // Идеально острые края
+              float alpha = 1.0 - step(0.45, d); 
               
-              // Вырезаем серединку, если это контурный треугольник
+              // Вырезаем центр для полых треугольников
               if (vHollow > 0.5) {
-                float inner = step(d, 0.25);
-                alpha -= inner;
+                alpha -= 1.0 - step(0.25, d);
               }
               
               if (alpha < 0.1) discard;
               
-              // Итоговый цвет с учетом прозрачности при морфинге
-              gl_FragColor = vec4(vColor, alpha * vAlpha);
+              gl_FragColor = vec4(vColor, alpha * vAlpha * 0.9);
             }
           `}
                 />
@@ -247,13 +275,14 @@ const MorphingParticles = () => {
     );
 };
 
+/* STREAMING_CHUNK:Main page component with HTML overlay... */
 export default function Page() {
     return (
         <main className="w-full h-screen bg-[#070709] overflow-hidden relative">
             <Canvas camera={{ position: [0, 0, 10], fov: 60 }}>
                 <color attach="background" args={['#070709']} />
 
-                <ScrollControls pages={2} damping={0.3}>
+                <ScrollControls pages={2} damping={0.25}>
                     <MorphingParticles />
 
                     <Scroll html style={{ width: '100%' }}>
