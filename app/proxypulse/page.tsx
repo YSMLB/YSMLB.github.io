@@ -1,15 +1,12 @@
 'use client';
 
 import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { ScrollControls, Scroll, useScroll } from '@react-three/drei';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as THREE from 'three';
 import Link from 'next/link';
 
-// =====================================================================
-// DESIGN TOKENS (DALA EXACT PALETTE)
-// =====================================================================
 const tokens = {
     void: "#000000",
     boneWhite: "#ffffff",
@@ -31,9 +28,6 @@ const DalaLogo = () => (
     </svg>
 );
 
-// =====================================================================
-// LIVE TERMINAL COMPONENT
-// =====================================================================
 const backendLogs = [
     { method: "GET", path: "/api/v1/go/metrics", status: 200, time: "12ms" },
     { method: "POST", path: "/auth/csharp/login", status: 201, time: "45ms" },
@@ -45,7 +39,7 @@ const backendLogs = [
 ];
 
 const LiveTerminal = () => {
-    const [requests, setRequests] = useState<typeof backendLogs>([]);
+    const [requests, setRequests] = useState([]);
 
     useEffect(() => {
         let index = 0;
@@ -86,9 +80,6 @@ const LiveTerminal = () => {
     );
 };
 
-// =====================================================================
-// 3D ENGINE (SHADER MORPHING + DALA COLORS)
-// =====================================================================
 const EARTH_MAP = [
     "                                                                ",
     "                                                                ",
@@ -118,9 +109,12 @@ const EARTH_MAP = [
 ];
 
 const MorphingParticles = () => {
-    const pointsRef = useRef<THREE.Points>(null);
-    const materialRef = useRef<THREE.ShaderMaterial>(null);
+    const pointsRef = useRef(null);
+    const materialRef = useRef(null);
     const scroll = useScroll();
+    const { size } = useThree();
+
+    const isMobile = size.width < 768;
 
     const { positions, posGlobe, posNetwork, colors, hollows, alphas } = useMemo(() => {
         const numPoints = 22000;
@@ -133,7 +127,6 @@ const MorphingParticles = () => {
         const hollows = new Float32Array(numPoints);
         const alphas = new Float32Array(numPoints);
 
-        // Точная сочная палитра с референса: белый, золото, фиолетовый, синий, изумруд
         const palette = [
             new THREE.Color(tokens.boneWhite),
             new THREE.Color(tokens.saffronSpark),
@@ -142,7 +135,7 @@ const MorphingParticles = () => {
             new THREE.Color(tokens.deepVerdant),
         ];
 
-        const networkNodes: THREE.Vector3[] = [];
+        const networkNodes = [];
         for (let j = 0; j < 25; j++) {
             networkNodes.push(new THREE.Vector3(
                 (Math.random() - 0.5) * 16,
@@ -159,7 +152,6 @@ const MorphingParticles = () => {
             const ny = Math.cos(phi);
             const nz = Math.sin(phi) * Math.sin(theta);
 
-            // --- 1. ПИРАМИДА ---
             let bx, by, bz;
             const isBase = Math.random() < 0.2;
 
@@ -184,7 +176,6 @@ const MorphingParticles = () => {
             positions[i3 + 1] = by;
             positions[i3 + 2] = bz;
 
-            // --- 2. ПЛАНЕТА ---
             const planetRadius = 6.0;
             posGlobe[i3] = nx * planetRadius;
             posGlobe[i3 + 1] = ny * planetRadius;
@@ -197,14 +188,12 @@ const MorphingParticles = () => {
             const safeY = Math.max(0, Math.min(EARTH_MAP.length - 1, mapY));
             alphas[i] = EARTH_MAP[safeY][mapX] === 'X' ? 1.0 : (Math.random() > 0.9 ? 0.3 : 0.0);
 
-            // --- 3. СЕТЬ ---
             const targetNode = networkNodes[Math.floor(Math.random() * networkNodes.length)];
             const netDist = Math.random();
             posNetwork[i3] = targetNode.x + (Math.random() - 0.5) * 6 * netDist;
             posNetwork[i3 + 1] = targetNode.y + (Math.random() - 0.5) * 6 * netDist;
             posNetwork[i3 + 2] = targetNode.z + (Math.random() - 0.5) * 6 * netDist;
 
-            // Цвета (больше белых и золотых акцентов на пике, как на референсе)
             const color = (by > 1.2 || Math.random() > 0.7) ? palette[0] : palette[Math.floor(Math.random() * palette.length)];
             colors[i3] = color.r; colors[i3 + 1] = color.g; colors[i3 + 2] = color.b;
             hollows[i] = Math.random() > 0.5 ? 1.0 : 0.0;
@@ -233,7 +222,7 @@ const MorphingParticles = () => {
     });
 
     return (
-        <group position={[4.5, -0.5, 0]}>
+        <group position={isMobile ? [0, -2.5, 0] : [4.5, -0.5, 0]} scale={isMobile ? 0.65 : 1}>
             <points ref={pointsRef} frustumCulled={false}>
                 <bufferGeometry>
                     <bufferAttribute attach="attributes-position" count={positions.length / 3} array={positions} itemSize={3} />
@@ -247,7 +236,7 @@ const MorphingParticles = () => {
                     ref={materialRef}
                     transparent
                     depthWrite={false}
-                    blending={THREE.AdditiveBlending} // Неоновое свечение частиц как на референсе
+                    blending={THREE.AdditiveBlending}
                     uniforms={uniforms}
                     vertexShader={`
             uniform float uProgress;
@@ -328,13 +317,39 @@ const MorphingParticles = () => {
     );
 };
 
-// =====================================================================
-// MAIN LAYOUT
-// =====================================================================
+const PageNav = () => {
+    const scroll = useScroll();
+    const [active, setActive] = useState(0);
+
+    useFrame(() => {
+        const offset = scroll.offset;
+        let index = 0;
+        if (offset > 0.25 && offset < 0.75) index = 1;
+        else if (offset >= 0.75) index = 2;
+        if (active !== index) setActive(index);
+    });
+
+    return (
+        <Scroll html>
+            <div className="fixed right-[16px] md:right-[32px] top-1/2 -translate-y-1/2 flex flex-col gap-[12px] z-[100] pointer-events-auto">
+                {[0, 1, 2].map((i) => (
+                    <button
+                        key={i}
+                        onClick={() => {
+                            scroll.el.scrollTo({ top: scroll.el.clientHeight * i, behavior: 'smooth' });
+                        }}
+                        className={`w-[8px] h-[8px] rounded-full transition-all duration-300 ${active === i ? 'bg-[#8052ff] scale-150' : 'bg-[#ffffff]/30 hover:bg-[#ffffff]/60'}`}
+                        aria-label={`Go to section ${i + 1}`}
+                    />
+                ))}
+            </div>
+        </Scroll>
+    );
+};
+
 export default function Page() {
     return (
         <main className="w-full h-screen bg-[#000000] overflow-hidden relative selection:bg-[#8052ff] selection:text-white">
-
             <nav className="fixed top-0 left-0 w-full z-50 py-[24px] px-[24px] md:px-[60px] flex justify-between items-center mix-blend-difference pointer-events-auto">
                 <div className="flex items-center gap-[12px]">
                     <DalaLogo />
@@ -357,19 +372,20 @@ export default function Page() {
                     <color attach="background" args={['#000000']} />
                     <ScrollControls pages={3} damping={0.25}>
                         <MorphingParticles />
+                        <PageNav />
 
                         <Scroll html style={{ width: '100%', height: '100%' }}>
                             <div className="relative w-full h-[300vh] text-[#ffffff] font-sans pointer-events-none">
 
-                                <div className="absolute top-0 left-0 w-full h-screen flex flex-col justify-center px-[24px] md:px-[60px]">
-                                    <div className="max-w-[540px] mt-[120px] pointer-events-auto mix-blend-difference">
+                                <div className="absolute top-0 left-0 w-full h-screen flex flex-col justify-start pt-[140px] md:pt-0 md:justify-center px-[24px] md:px-[60px]">
+                                    <div className="max-w-[540px] pointer-events-auto mix-blend-difference">
                                         <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829] mb-[24px] block">
                                             Network Observability
                                         </span>
-                                        <h1 className="text-[78px] lg:text-[113px] font-[400] leading-[1.0] tracking-[-3.12px] lg:tracking-[-4.52px] text-[#ffffff] mb-[30px]">
+                                        <h1 className="text-[56px] md:text-[78px] lg:text-[113px] font-[400] leading-[1.0] tracking-[-2.2px] md:tracking-[-3.12px] lg:tracking-[-4.52px] text-[#ffffff] mb-[30px]">
                                             See your network. Live.
                                         </h1>
-                                        <p className="text-[18px] font-[200] leading-[1.5] text-[#ffffff] max-w-[480px] mb-[48px]">
+                                        <p className="text-[16px] md:text-[18px] font-[200] leading-[1.5] text-[#ffffff] max-w-[480px] mb-[48px]">
                                             Stop reading dead logs. ProxyPulse visualizes every HTTP request in real-time. Connect the lightweight agent and watch your backend traffic breathe, flow, and break—instantly.
                                         </p>
                                         <button className="bg-[#8052ff] text-[#ffffff] text-[14px] font-[600] uppercase tracking-[0.35px] rounded-[24px] px-[24px] py-[16px] hover:bg-[#6c40e6] transition-colors">
@@ -378,12 +394,12 @@ export default function Page() {
                                     </div>
                                 </div>
 
-                                <div className="absolute top-[100vh] left-0 w-full h-screen flex flex-col justify-center px-[24px] md:px-[60px]">
+                                <div className="absolute top-[100vh] left-0 w-full h-screen flex flex-col justify-start pt-[120px] md:pt-0 md:justify-center px-[24px] md:px-[60px]">
                                     <div className="max-w-[500px] pointer-events-auto">
-                                        <h2 className="text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
+                                        <h2 className="text-[36px] md:text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
                                             Global traffic layer.
                                         </h2>
-                                        <p className="text-[18px] font-[200] leading-[1.5] text-[#bdbdbd] mb-[48px]">
+                                        <p className="text-[16px] md:text-[18px] font-[200] leading-[1.5] text-[#bdbdbd] mb-[48px]">
                                             Traditional tools force you to search through massive text files. ProxyPulse turns your traffic into an interactive global map. See where your requests bottleneck geographically.
                                         </p>
 
@@ -396,41 +412,41 @@ export default function Page() {
                                     </div>
                                 </div>
 
-                                <div className="absolute top-[200vh] left-0 w-full h-screen flex flex-col justify-center px-[24px] md:px-[60px]">
-                                    <div className="w-full flex flex-col lg:flex-row items-center gap-[60px] lg:gap-[120px] pointer-events-auto">
+                                <div className="absolute top-[200vh] left-0 w-full h-screen flex flex-col justify-start pt-[120px] md:pt-0 md:justify-center px-[24px] md:px-[60px]">
+                                    <div className="w-full flex flex-col lg:flex-row items-start md:items-center gap-[40px] md:gap-[60px] lg:gap-[120px] pointer-events-auto">
                                         <div className="flex-1 w-full max-w-[520px]">
-                                            <h2 className="text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
+                                            <h2 className="text-[36px] md:text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
                                                 Connect every microservice.
                                             </h2>
-                                            <p className="text-[18px] font-[200] leading-[1.5] text-[#bdbdbd]">
+                                            <p className="text-[16px] md:text-[18px] font-[200] leading-[1.5] text-[#bdbdbd]">
                                                 Whether you are writing distributed services in Go or enterprise backends in C#. ProxyPulse maps dependencies dynamically, revealing the hidden neural network of your architecture.
                                             </p>
                                         </div>
 
-                                        <div className="flex-1 w-full flex flex-col gap-[48px]">
+                                        <div className="flex-1 w-full flex flex-col gap-[36px] md:gap-[48px]">
                                             <div className="flex flex-col gap-[6px]">
                                                 <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829]">Backend & Frontend</span>
-                                                <p className="text-[27px] font-[400] leading-[1.0] text-[#ffffff]">Debug APIs instantly.</p>
+                                                <p className="text-[24px] md:text-[27px] font-[400] leading-[1.0] text-[#ffffff]">Debug APIs instantly.</p>
                                             </div>
                                             <div className="flex flex-col gap-[6px]">
                                                 <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#8052ff]">DevOps / Infra</span>
-                                                <p className="text-[27px] font-[400] leading-[1.0] text-[#bdbdbd]">Monitor proxy layer health.</p>
+                                                <p className="text-[24px] md:text-[27px] font-[400] leading-[1.0] text-[#bdbdbd]">Monitor proxy layer health.</p>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <footer className="absolute bottom-0 left-0 w-full px-[24px] md:px-[60px] py-[60px] flex flex-col md:flex-row justify-between items-start md:items-center gap-[36px] border-t border-[#1a1a1a] bg-[#000000] pointer-events-auto">
+                                    <footer className="absolute bottom-0 left-0 w-full px-[24px] md:px-[60px] py-[40px] md:py-[60px] flex flex-col md:flex-row justify-between items-start md:items-center gap-[36px] border-t border-[#1a1a1a] bg-[#000000] pointer-events-auto">
                                         <div className="flex flex-col gap-[16px]">
                                             <div className="flex items-center gap-[12px]">
                                                 <DalaLogo />
-                                                <span className="text-[24px] font-[400] tracking-[-0.5px] text-[#ffffff]">ProxyPulse</span>
+                                                <span className="text-[20px] md:text-[24px] font-[400] tracking-[-0.5px] text-[#ffffff]">ProxyPulse</span>
                                             </div>
                                             <p className="text-[14px] font-[400] text-[#9a9a9a] max-w-[300px]">
                                                 The observability platform built for high-performance engineering teams.
                                             </p>
                                         </div>
 
-                                        <div className="flex flex-wrap gap-[48px] text-[14px] font-[600] text-[#9a9a9a] uppercase tracking-[0.35px]">
+                                        <div className="flex flex-wrap gap-[36px] md:gap-[48px] text-[12px] md:text-[14px] font-[600] text-[#9a9a9a] uppercase tracking-[0.35px]">
                                             <div className="flex flex-col gap-[16px]">
                                                 <Link href="#" className="hover:text-[#ffffff] transition-colors">Manifesto</Link>
                                                 <Link href="#" className="hover:text-[#ffffff] transition-colors">Documentation</Link>
@@ -444,7 +460,6 @@ export default function Page() {
                                         </div>
                                     </footer>
                                 </div>
-
                             </div>
                         </Scroll>
                     </ScrollControls>
