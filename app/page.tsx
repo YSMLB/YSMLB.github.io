@@ -14,7 +14,7 @@ const sharedRotation = new THREE.Euler();
 let forceResetRotation = false;
 
 // 1. Идеальная монолитная буква Y (ОПТИМИЗИРОВАННЫЙ МАТЕРИАЛ)
-function SolidGlassY() {
+function SolidGlassY({ color }) {
   const group = useRef<THREE.Group>(null);
   const { viewport } = useThree();
 
@@ -34,7 +34,7 @@ function SolidGlassY() {
     return new THREE.ExtrudeGeometry(shape, {
       depth: 0.8,
       bevelEnabled: true,
-      bevelSegments: 3, // Снижено количество сегментов фаски для оптимизации
+      bevelSegments: 3,
       steps: 1,
       bevelSize: 0.05,
       bevelThickness: 0.05,
@@ -49,14 +49,13 @@ function SolidGlassY() {
         group.current.rotation.z = THREE.MathUtils.lerp(group.current.rotation.z, 0, 0.1);
         if (Math.abs(group.current.rotation.x) < 0.01) forceResetRotation = false;
       } else {
-        group.current.rotation.y += delta * 2.8;
-        group.current.rotation.x += delta * 1.5;
-
         const isMobile = viewport.width < 5;
-        const targetX = (state.pointer.y * Math.PI) / (isMobile ? 6 : 3);
-        const targetZ = -(state.pointer.x * Math.PI) / (isMobile ? 6 : 3);
-        group.current.rotation.x = THREE.MathUtils.lerp(group.current.rotation.x, group.current.rotation.x + targetX, 0.05);
-        group.current.rotation.z = THREE.MathUtils.lerp(group.current.rotation.z, targetZ, 0.05);
+        const targetX = (state.pointer.y * Math.PI) / (isMobile ? 6 : 4);
+        const targetY = (state.pointer.x * Math.PI) / (isMobile ? 6 : 4);
+
+        group.current.rotation.x = THREE.MathUtils.lerp(group.current.rotation.x, targetX, 0.08);
+        group.current.rotation.y = THREE.MathUtils.lerp(group.current.rotation.y, targetY, 0.08);
+        group.current.rotation.z = THREE.MathUtils.lerp(group.current.rotation.z, 0, 0.08);
       }
       sharedRotation.copy(group.current.rotation);
     }
@@ -66,10 +65,11 @@ function SolidGlassY() {
   const scale = isMobile ? viewport.width / 3.5 : Math.min(viewport.width / 8, 1.5);
 
   return (
-    <Float speed={2} rotationIntensity={0.1} floatIntensity={0.2}>
+    <Float speed={2} rotationIntensity={0.05} floatIntensity={0.1}>
       <group ref={group} scale={scale}>
         <mesh geometry={geometry}>
           <MeshTransmissionMaterial
+            color={new THREE.Color(color)}
             background={new THREE.Color("#000000")}
             thickness={6.0}
             roughness={0.0}
@@ -78,8 +78,8 @@ function SolidGlassY() {
             chromaticAberration={1.5}
             anisotropy={0.8}
             clearcoat={1}
-            resolution={128} // ОПТИМИЗАЦИЯ: Низкое разрешение для просчета преломлений
-            samples={3}      // ОПТИМИЗАЦИЯ: Меньше выборок (сильно экономит GPU)
+            resolution={128}
+            samples={3}
           />
         </mesh>
       </group>
@@ -87,7 +87,7 @@ function SolidGlassY() {
   );
 }
 
-// 2. ФОН: LED Билборды
+// 2. ФОН: LED Билборды с точным позиционированием
 const LedBillboardWall = () => {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
 
@@ -96,23 +96,29 @@ const LedBillboardWall = () => {
       materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
       materialRef.current.uniforms.uMouse.value.lerp(
         new THREE.Vector2(state.pointer.x, state.pointer.y),
-        0.05
+        0.15
       );
+      materialRef.current.uniforms.uResolution.value.set(state.size.width, state.size.height);
     }
   });
 
   const vertexShader = `
     varying vec2 vUv;
+    varying vec2 vScreenPos;
     void main() {
       vUv = uv;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      vec4 clipPos = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      vScreenPos = clipPos.xy / clipPos.w;
+      gl_Position = clipPos;
     }
   `;
 
   const fragmentShader = `
     varying vec2 vUv;
+    varying vec2 vScreenPos;
     uniform float uTime;
     uniform vec2 uMouse;
+    uniform vec2 uResolution;
     
     void main() {
       vec2 gridScale = vec2(80.0, 40.0); 
@@ -125,21 +131,22 @@ const LedBillboardWall = () => {
 
       vec3 color = vec3(0.02, 0.02, 0.03);
 
-      vec2 mouseMapped = vec2(uMouse.x * 0.5 + 0.5, (uMouse.y) * 0.5 + 0.5);
-      float distToMouse = distance(vUv, mouseMapped);
+      vec2 screen = vScreenPos;
+      screen.x *= uResolution.x / uResolution.y;
+      vec2 mouse = uMouse;
+      mouse.x *= uResolution.x / uResolution.y;
+
+      float distToMouse = distance(screen, mouse);
 
       float ripple = sin(distToMouse * 15.0 - uTime * 3.0) * 0.5 + 0.5;
-      float glowIntensity = smoothstep(0.4, 0.0, distToMouse) * ripple;
+      float glowIntensity = smoothstep(0.6, 0.0, distToMouse) * ripple;
 
       float rand = fract(sin(dot(panelId, vec2(12.9898, 78.233))) * 43758.5453);
       vec3 neonColor = mix(vec3(0.5, 0.0, 0.8), vec3(0.0, 0.8, 0.4), step(0.5, rand));
       neonColor = mix(neonColor, vec3(0.0, 0.4, 1.0), step(0.8, rand)); 
 
-      color += neonColor * glowIntensity * 0.4;
+      color += neonColor * glowIntensity * 0.8;
       color *= border; 
-
-      float distFromCenter = distance(vUv, vec2(0.5));
-      color *= smoothstep(0.8, 0.2, distFromCenter);
 
       gl_FragColor = vec4(color, 1.0);
     }
@@ -154,7 +161,8 @@ const LedBillboardWall = () => {
         fragmentShader={fragmentShader}
         uniforms={{
           uTime: { value: 0 },
-          uMouse: { value: new THREE.Vector2(0, 0) }
+          uMouse: { value: new THREE.Vector2(0, 0) },
+          uResolution: { value: new THREE.Vector2(1, 1) }
         }}
         side={THREE.BackSide}
       />
@@ -228,12 +236,10 @@ function TrackingAxes() {
   );
 }
 
-// ОПТИМИЗАЦИЯ: Умные пост-эффекты (Отключаются на мобилках)
 function PostEffects() {
   const { viewport } = useThree();
   const isMobile = viewport.width < 5;
 
-  // Если это мобилка, вообще не рендерим эти тяжелые эффекты
   if (isMobile) return null;
 
   return (
@@ -251,6 +257,9 @@ export default function Portfolio() {
   const [activeSection, setActiveSection] = useState<'hero' | 'bio' | 'projects'>('hero');
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isCursorHovered, setIsCursorHovered] = useState(false);
+
+  const [glassColor, setGlassColor] = useState("#ffffff");
+  const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
 
   const [maskPos, setMaskPos] = useState({ x: 0, y: 0 });
   const [isPhotoHovered, setIsPhotoHovered] = useState(false);
@@ -297,7 +306,6 @@ export default function Portfolio() {
       });
   }, []);
 
-  // ОПТИМИЗАЦИЯ: Ускоренный прелоадер (2.5 сек вместо 10 сек)
   useEffect(() => {
     const duration = 2500;
     const startTime = Date.now();
@@ -384,7 +392,7 @@ export default function Portfolio() {
         )}
       </AnimatePresence>
 
-      {/* 3D СЦЕНА (ОПТИМИЗИРОВАННАЯ: dpr ограничено для телефонов и ноутов) */}
+      {/* 3D СЦЕНА */}
       <div className="fixed inset-0 z-10 pointer-events-none">
         <Canvas camera={{ position: [0, 0, 15], fov: 40 }} dpr={[1, 1.5]} performance={{ min: 0.5 }}>
           <LedBillboardWall />
@@ -392,8 +400,10 @@ export default function Portfolio() {
           <directionalLight position={[10, 10, 10]} intensity={4} color="#ffffff" />
           <directionalLight position={[-10, -10, -10]} intensity={2} color="#ffffff" />
           <Environment preset="studio" environmentIntensity={1.0} />
-          <BackgroundText />
-          <SolidGlassY />
+
+          {/* <BackgroundText /> */}
+
+          <SolidGlassY color={glassColor} />
           <PostEffects />
           <Hud>
             <OrthographicCamera makeDefault position={[0, 0, 10]} zoom={50} />
@@ -449,17 +459,47 @@ export default function Portfolio() {
         {/* ОСНОВНОЙ КОНТЕНТ */}
         <main className="flex-1 relative w-full overflow-hidden">
 
-          {/* НИЖНЯЯ ПАНЕЛЬ С GITHUB */}
+          {/* НИЖНЯЯ ПАНЕЛЬ С GITHUB И НАСТРОЙКАМИ */}
           <AnimatePresence>
             {activeSection === 'hero' && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute bottom-0 left-0 w-full p-6 md:p-8 flex justify-between items-end pointer-events-none">
-                <div className="hidden md:flex flex-col gap-1 text-[9px] uppercase tracking-[0.2em] text-gray-500">
+                <div className="hidden md:flex flex-col gap-1 text-[9px] uppercase tracking-[0.2em] text-gray-500 pointer-events-auto">
                   <span className="text-gray-300">System Core</span>
                   <div className="flex items-center gap-2 mt-4">
                     <div className="w-16 h-[1px] bg-gray-800 relative overflow-hidden">
                       <motion.div className="absolute top-0 left-0 h-full bg-white" animate={{ width: ["0%", "100%", "0%"] }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} />
                     </div>
                     <span>STATUS_ OK // IP_ {userData.ip}</span>
+                  </div>
+
+                  <div className="mt-6 relative" onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)}>
+                    <button
+                      onClick={() => setIsColorPickerOpen(!isColorPickerOpen)}
+                      className="flex items-center gap-2 border border-gray-800 bg-black/50 px-3 py-2 rounded-sm hover:bg-white/10 transition-colors w-max cursor-auto md:cursor-none"
+                    >
+                      <div className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: glassColor }} />
+                      <span className="text-[9px] uppercase tracking-widest text-gray-400">Model Color</span>
+                    </button>
+
+                    <AnimatePresence>
+                      {isColorPickerOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="absolute bottom-full left-0 mb-3 p-3 bg-[#0a0a0a] border border-gray-800 rounded-lg flex gap-3 shadow-xl backdrop-blur-md"
+                        >
+                          {["#ffffff", "#00ffcc", "#ff0044", "#aa00ff", "#ffcc00"].map((c) => (
+                            <button
+                              key={c}
+                              onClick={() => { setGlassColor(c); setIsColorPickerOpen(false); }}
+                              className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 cursor-auto md:cursor-none ${glassColor === c ? 'border-white' : 'border-gray-700'}`}
+                              style={{ backgroundColor: c }}
+                            />
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
 
