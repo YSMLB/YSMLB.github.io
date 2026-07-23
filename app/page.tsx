@@ -10,11 +10,18 @@ import { BlendFunction } from "postprocessing";
 import * as THREE from "three";
 import { portfolioProjects } from "../data/projects";
 
+// Глобальное состояние для синхронизации осей и фигуры
 const sharedRotation = new THREE.Euler();
+const sharedState = {
+  manualX: 0,
+  manualY: 0,
+  autoRotY: 0,
+  isDragging: false,
+};
 let forceResetRotation = false;
 
-// 1. Идеальная монолитная буква Y (ОПТИМИЗИРОВАННЫЙ МАТЕРИАЛ)
-function SolidGlassY({ color }) {
+// 1. Идеальная монолитная буква Y 
+function SolidGlassY({ color, scaleMult, speed }) {
   const group = useRef<THREE.Group>(null);
   const { viewport } = useThree();
 
@@ -44,29 +51,37 @@ function SolidGlassY({ color }) {
   useFrame((state, delta) => {
     if (group.current) {
       if (forceResetRotation) {
-        group.current.rotation.x = THREE.MathUtils.lerp(group.current.rotation.x, 0, 0.1);
-        group.current.rotation.y = THREE.MathUtils.lerp(group.current.rotation.y, 0, 0.1);
-        group.current.rotation.z = THREE.MathUtils.lerp(group.current.rotation.z, 0, 0.1);
-        if (Math.abs(group.current.rotation.x) < 0.01) forceResetRotation = false;
-      } else {
-        const isMobile = viewport.width < 5;
-        const targetX = (state.pointer.y * Math.PI) / (isMobile ? 6 : 4);
-        const targetY = (state.pointer.x * Math.PI) / (isMobile ? 6 : 4);
-
-        group.current.rotation.x = THREE.MathUtils.lerp(group.current.rotation.x, targetX, 0.08);
-        group.current.rotation.y = THREE.MathUtils.lerp(group.current.rotation.y, targetY, 0.08);
-        group.current.rotation.z = THREE.MathUtils.lerp(group.current.rotation.z, 0, 0.08);
+        sharedState.manualX = THREE.MathUtils.lerp(sharedState.manualX, 0, 0.1);
+        sharedState.manualY = THREE.MathUtils.lerp(sharedState.manualY, 0, 0.1);
+        sharedState.autoRotY = 0;
+        if (Math.abs(sharedState.manualX) < 0.01 && Math.abs(sharedState.manualY) < 0.01) {
+          forceResetRotation = false;
+        }
+      } else if (!sharedState.isDragging) {
+        sharedState.autoRotY += delta * speed;
       }
+
+      const isMobile = viewport.width < 5;
+      const ptrX = (state.pointer.y * Math.PI) / (isMobile ? 6 : 4);
+      const ptrY = (state.pointer.x * Math.PI) / (isMobile ? 6 : 4);
+
+      const targetX = ptrX + sharedState.manualX;
+      const targetY = ptrY + sharedState.manualY + sharedState.autoRotY;
+
+      group.current.rotation.x = THREE.MathUtils.lerp(group.current.rotation.x, targetX, 0.08);
+      group.current.rotation.y = THREE.MathUtils.lerp(group.current.rotation.y, targetY, 0.08);
+      group.current.rotation.z = THREE.MathUtils.lerp(group.current.rotation.z, 0, 0.08);
+
       sharedRotation.copy(group.current.rotation);
     }
   });
 
   const isMobile = viewport.width < 5;
-  const scale = isMobile ? viewport.width / 3.5 : Math.min(viewport.width / 8, 1.5);
+  const baseScale = isMobile ? viewport.width / 3.5 : Math.min(viewport.width / 8, 1.5);
 
   return (
     <Float speed={2} rotationIntensity={0.05} floatIntensity={0.1}>
-      <group ref={group} scale={scale}>
+      <group ref={group} scale={baseScale * scaleMult}>
         <mesh geometry={geometry}>
           <MeshTransmissionMaterial
             color={new THREE.Color(color)}
@@ -87,18 +102,25 @@ function SolidGlassY({ color }) {
   );
 }
 
-// 2. ФОН: LED Билборды с точным позиционированием
+// 2. ФОН: LED Билборды
 const LedBillboardWall = () => {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
+  const mouseInit = useRef(false);
 
   useFrame((state) => {
     if (materialRef.current) {
       materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
-      materialRef.current.uniforms.uMouse.value.lerp(
-        new THREE.Vector2(state.pointer.x, state.pointer.y),
-        0.15
-      );
       materialRef.current.uniforms.uResolution.value.set(state.size.width, state.size.height);
+
+      if (state.pointer.x === 0 && state.pointer.y === 0 && !mouseInit.current) {
+        materialRef.current.uniforms.uMouse.value.set(-999, -999);
+      } else {
+        mouseInit.current = true;
+        materialRef.current.uniforms.uMouse.value.lerp(
+          new THREE.Vector2(state.pointer.x, state.pointer.y),
+          0.15
+        );
+      }
     }
   });
 
@@ -161,7 +183,7 @@ const LedBillboardWall = () => {
         fragmentShader={fragmentShader}
         uniforms={{
           uTime: { value: 0 },
-          uMouse: { value: new THREE.Vector2(0, 0) },
+          uMouse: { value: new THREE.Vector2(-999, -999) },
           uResolution: { value: new THREE.Vector2(1, 1) }
         }}
         side={THREE.BackSide}
@@ -170,34 +192,15 @@ const LedBillboardWall = () => {
   );
 };
 
-function BackgroundText() {
-  const { viewport } = useThree();
-  const isMobile = viewport.width < 5;
-  return (
-    <Text
-      position={[0, 0, -8]}
-      fontSize={isMobile ? viewport.width / 1.5 : viewport.width / 2.2}
-      color="#ffffff"
-      font="https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuGKYMZhrib2Bg-4.ttf"
-      fontWeight={900}
-      letterSpacing={-0.08}
-      anchorX="center"
-      anchorY="middle"
-      fillOpacity={0.8}
-    >
-      YSM
-    </Text>
-  );
-}
-
+// 3. Интерактивные оси
 function TrackingAxes() {
   const { size } = useThree();
   const axesRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
+  const [dragData, setDragData] = useState({ isDragging: false, lastX: 0, lastY: 0 });
 
   if (size.width < 768) return null;
 
-  const zoom = 50;
   useFrame(() => {
     if (axesRef.current && !forceResetRotation) {
       axesRef.current.rotation.copy(sharedRotation);
@@ -206,32 +209,75 @@ function TrackingAxes() {
     }
   });
 
+  const zoom = 50;
   const xPos = (size.width / 2) / zoom - 3.5;
   const yPos = (size.height / 2) / zoom - 2.5;
+
+  const handlePointerDown = (e) => {
+    e.stopPropagation();
+    e.target.setPointerCapture(e.pointerId);
+    sharedState.isDragging = true;
+    setDragData({ isDragging: true, lastX: e.clientX, lastY: e.clientY });
+  };
+
+  const handlePointerMove = (e) => {
+    if (dragData.isDragging) {
+      const deltaX = e.clientX - dragData.lastX;
+      const deltaY = e.clientY - dragData.lastY;
+      sharedState.manualX += deltaY * 0.01;
+      sharedState.manualY += deltaX * 0.01;
+      setDragData({ isDragging: true, lastX: e.clientX, lastY: e.clientY });
+    }
+  };
+
+  const handlePointerUp = (e) => {
+    e.stopPropagation();
+    e.target.releasePointerCapture(e.pointerId);
+    sharedState.isDragging = false;
+    setDragData((prev) => ({ ...prev, isDragging: false }));
+  };
 
   return (
     <group
       position={[xPos, yPos, 0]}
-      onClick={() => { forceResetRotation = true; }}
       onPointerOver={() => setHovered(true)}
       onPointerOut={() => setHovered(false)}
-      scale={hovered ? 1.1 : 0.8}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      scale={hovered || dragData.isDragging ? 1.1 : 0.8}
     >
       <group ref={axesRef}>
-        <mesh position={[0.5, 0, 0]}><cylinderGeometry args={[0.02, 0.02, 1]} /><meshBasicMaterial color={hovered ? "#ffffff" : "#ff2222"} /></mesh>
-        <Text position={[1.2, 0, 0]} fontSize={0.3} color={hovered ? "#ffffff" : "#ff2222"}>X</Text>
-        <mesh position={[0, 0.5, 0]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.02, 0.02, 1]} /><meshBasicMaterial color={hovered ? "#ffffff" : "#22ff22"} /></mesh>
-        <Text position={[0, 1.2, 0]} fontSize={0.3} color={hovered ? "#ffffff" : "#22ff22"}>Y</Text>
-        <mesh position={[0, 0, 0.5]} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.02, 0.02, 1]} /><meshBasicMaterial color={hovered ? "#ffffff" : "#2222ff"} /></mesh>
-        <Text position={[0, 0, 1.2]} fontSize={0.3} color={hovered ? "#ffffff" : "#2222ff"}>Z</Text>
+        <mesh position={[0.5, 0, 0]}><cylinderGeometry args={[0.02, 0.02, 1]} /><meshBasicMaterial color={hovered || dragData.isDragging ? "#ffffff" : "#ff2222"} /></mesh>
+        <Text position={[1.2, 0, 0]} fontSize={0.3} color={hovered || dragData.isDragging ? "#ffffff" : "#ff2222"}>X</Text>
+        <mesh position={[0, 0.5, 0]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.02, 0.02, 1]} /><meshBasicMaterial color={hovered || dragData.isDragging ? "#ffffff" : "#22ff22"} /></mesh>
+        <Text position={[0, 1.2, 0]} fontSize={0.3} color={hovered || dragData.isDragging ? "#ffffff" : "#22ff22"}>Y</Text>
+        <mesh position={[0, 0, 0.5]} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.02, 0.02, 1]} /><meshBasicMaterial color={hovered || dragData.isDragging ? "#ffffff" : "#2222ff"} /></mesh>
+        <Text position={[0, 0, 1.2]} fontSize={0.3} color={hovered || dragData.isDragging ? "#ffffff" : "#2222ff"}>Z</Text>
         <mesh><sphereGeometry args={[0.08]} /><meshBasicMaterial color="#ffffff" /></mesh>
       </group>
-      <mesh visible={false}>
-        <boxGeometry args={[3, 3, 3]} />
+
+      <mesh visible={false} scale={3.5}>
+        <sphereGeometry args={[1, 16, 16]} />
+        <meshBasicMaterial transparent opacity={0.0} />
       </mesh>
-      <Text position={[0, -1.5, 0]} fontSize={0.15} color={hovered ? "#ffffff" : "#888888"} letterSpacing={0.1}>
+
+      <Text
+        position={[0, -1.8, 0]}
+        fontSize={0.15}
+        color={hovered || dragData.isDragging ? "#ffffff" : "#888888"}
+        letterSpacing={0.1}
+        onClick={(e) => { e.stopPropagation(); forceResetRotation = true; }}
+        onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; }}
+        onPointerOut={(e) => { e.stopPropagation(); document.body.style.cursor = 'auto'; }}
+      >
         CLICK TO RESET
       </Text>
+      {dragData.isDragging && (
+        <Text position={[0, -2.1, 0]} fontSize={0.12} color="#00ffcc" letterSpacing={0.1}>
+          DRAGGING...
+        </Text>
+      )}
     </group>
   );
 }
@@ -258,8 +304,13 @@ export default function Portfolio() {
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isCursorHovered, setIsCursorHovered] = useState(false);
 
-  const [glassColor, setGlassColor] = useState("#ffffff");
-  const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
+  // Настройки модели
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [modelSettings, setModelSettings] = useState({
+    color: "#ffffff",
+    scale: 1,
+    speed: 0.5,
+  });
 
   const [maskPos, setMaskPos] = useState({ x: 0, y: 0 });
   const [isPhotoHovered, setIsPhotoHovered] = useState(false);
@@ -344,6 +395,40 @@ export default function Portfolio() {
 
   return (
     <div className="bg-[#050505] text-[#f5f5f5] min-h-screen h-screen overflow-hidden font-sans selection:bg-[#ffffff] selection:text-black cursor-auto md:cursor-none flex flex-col">
+      <style>{`
+        input[type=range] {
+          -webkit-appearance: none;
+          width: 100%;
+          background: rgba(255, 255, 255, 0.1);
+          height: 4px;
+          border-radius: 2px;
+          outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: #00ffcc;
+          cursor: pointer;
+        }
+        input[type="color"] {
+          -webkit-appearance: none;
+          border: none;
+          width: 100%;
+          height: 32px;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper {
+          padding: 0;
+        }
+        input[type="color"]::-webkit-color-swatch {
+          border: none;
+          border-radius: 4px;
+        }
+      `}</style>
 
       {/* КАСТОМНЫЙ КУРСОР */}
       <motion.div
@@ -401,9 +486,9 @@ export default function Portfolio() {
           <directionalLight position={[-10, -10, -10]} intensity={2} color="#ffffff" />
           <Environment preset="studio" environmentIntensity={1.0} />
 
-          {/* <BackgroundText /> */}
+          {/* <BackgroundText /> Раскомментируй эту строку, чтобы вернуть текст YSM на фон */}
 
-          <SolidGlassY color={glassColor} />
+          <SolidGlassY color={modelSettings.color} scaleMult={modelSettings.scale} speed={modelSettings.speed} />
           <PostEffects />
           <Hud>
             <OrthographicCamera makeDefault position={[0, 0, 10]} zoom={50} />
@@ -474,29 +559,61 @@ export default function Portfolio() {
 
                   <div className="mt-6 relative" onMouseEnter={() => setIsCursorHovered(true)} onMouseLeave={() => setIsCursorHovered(false)}>
                     <button
-                      onClick={() => setIsColorPickerOpen(!isColorPickerOpen)}
-                      className="flex items-center gap-2 border border-gray-800 bg-black/50 px-3 py-2 rounded-sm hover:bg-white/10 transition-colors w-max cursor-auto md:cursor-none"
+                      onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                      className={`flex items-center gap-2 border px-3 py-2 rounded-sm transition-colors w-max cursor-auto md:cursor-none ${isSettingsOpen ? 'bg-white/10 border-white/40' : 'bg-black/50 border-gray-800 hover:bg-white/5'}`}
                     >
-                      <div className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: glassColor }} />
-                      <span className="text-[9px] uppercase tracking-widest text-gray-400">Model Color</span>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                      <span className="text-[9px] uppercase tracking-widest text-gray-300">Model Setup</span>
                     </button>
 
                     <AnimatePresence>
-                      {isColorPickerOpen && (
+                      {isSettingsOpen && (
                         <motion.div
-                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className="absolute bottom-full left-0 mb-3 p-3 bg-[#0a0a0a] border border-gray-800 rounded-lg flex gap-3 shadow-xl backdrop-blur-md"
+                          initial={{ opacity: 0, x: -20, scale: 0.95 }}
+                          animate={{ opacity: 1, x: 0, scale: 1 }}
+                          exit={{ opacity: 0, x: -20, scale: 0.95 }}
+                          className="absolute bottom-full left-0 mb-4 p-5 bg-[#050505]/95 border border-gray-800 rounded-xl w-64 shadow-2xl backdrop-blur-xl"
                         >
-                          {["#ffffff", "#00ffcc", "#ff0044", "#aa00ff", "#ffcc00"].map((c) => (
-                            <button
-                              key={c}
-                              onClick={() => { setGlassColor(c); setIsColorPickerOpen(false); }}
-                              className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 cursor-auto md:cursor-none ${glassColor === c ? 'border-white' : 'border-gray-700'}`}
-                              style={{ backgroundColor: c }}
+                          <h3 className="font-mono text-[10px] uppercase tracking-widest text-gray-400 mb-4 border-b border-gray-800 pb-2">Configuration</h3>
+
+                          <div className="mb-5">
+                            <label className="text-[9px] uppercase text-gray-500 block mb-2 tracking-widest">Glass Color</label>
+                            <input
+                              type="color"
+                              value={modelSettings.color}
+                              onChange={(e) => setModelSettings(s => ({ ...s, color: e.target.value }))}
+                              onMouseEnter={() => setIsCursorHovered(true)}
+                              onMouseLeave={() => setIsCursorHovered(false)}
                             />
-                          ))}
+                          </div>
+
+                          <div className="mb-5">
+                            <label className="text-[9px] uppercase text-gray-500 flex justify-between mb-2 tracking-widest">
+                              <span>Scale Size</span>
+                              <span className="text-[#00ffcc]">{modelSettings.scale.toFixed(1)}x</span>
+                            </label>
+                            <input
+                              type="range" min="0.5" max="2" step="0.1"
+                              value={modelSettings.scale}
+                              onChange={(e) => setModelSettings(s => ({ ...s, scale: parseFloat(e.target.value) }))}
+                              onMouseEnter={() => setIsCursorHovered(true)}
+                              onMouseLeave={() => setIsCursorHovered(false)}
+                            />
+                          </div>
+
+                          <div className="mb-2">
+                            <label className="text-[9px] uppercase text-gray-500 flex justify-between mb-2 tracking-widest">
+                              <span>Auto Rotation Speed</span>
+                              <span className="text-[#00ffcc]">{modelSettings.speed.toFixed(1)}x</span>
+                            </label>
+                            <input
+                              type="range" min="0" max="3" step="0.1"
+                              value={modelSettings.speed}
+                              onChange={(e) => setModelSettings(s => ({ ...s, speed: parseFloat(e.target.value) }))}
+                              onMouseEnter={() => setIsCursorHovered(true)}
+                              onMouseLeave={() => setIsCursorHovered(false)}
+                            />
+                          </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
