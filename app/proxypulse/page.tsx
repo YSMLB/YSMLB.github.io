@@ -54,7 +54,7 @@ const LiveTerminal = () => {
     }, []);
 
     return (
-        <div className="w-full font-mono text-[14px] leading-[1.5] text-[#bdbdbd] relative z-10 flex flex-col h-[200px] overflow-hidden">
+        <div className="w-full font-mono text-[12px] md:text-[14px] leading-[1.5] text-[#bdbdbd] relative z-10 flex flex-col h-[200px] overflow-hidden">
             <AnimatePresence mode="popLayout">
                 {requests.map((req, i) => (
                     <motion.div
@@ -63,7 +63,7 @@ const LiveTerminal = () => {
                         animate={{ opacity: 1 - i * 0.12, x: 0 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="grid grid-cols-[45px_1fr_40px_50px] gap-4 items-center h-8"
+                        className="grid grid-cols-[35px_1fr_30px_40px] md:grid-cols-[45px_1fr_40px_50px] gap-2 md:gap-4 items-center h-8"
                     >
                         <span className={`font-[600] text-left ${req.method === 'GET' ? 'text-[#8052ff]' : req.method === 'POST' ? 'text-[#15846e]' : req.method === 'DEL' ? 'text-[#e845f2]' : 'text-[#ffb829]'}`}>
                             {req.method}
@@ -209,10 +209,16 @@ const MorphingParticles = () => {
 
     useFrame((state) => {
         if (materialRef.current) {
+            const offset = scroll.offset;
+            let target = 0;
+            if (offset < 0.25) target = 0;
+            else if (offset < 0.75) target = 0.5;
+            else target = 1.0;
+
             materialRef.current.uniforms.uProgress.value = THREE.MathUtils.lerp(
                 materialRef.current.uniforms.uProgress.value,
-                scroll.offset,
-                0.1
+                target,
+                0.08
             );
             materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime();
         }
@@ -317,7 +323,7 @@ const MorphingParticles = () => {
     );
 };
 
-const PageNav = () => {
+const ScrollNav = () => {
     const scroll = useScroll();
     const [active, setActive] = useState(0);
 
@@ -329,19 +335,44 @@ const PageNav = () => {
         if (active !== index) setActive(index);
     });
 
+    const handleScroll = (dir) => {
+        const target = active + dir;
+        if (target >= 0 && target <= 2) {
+            scroll.el.scrollTo({ top: scroll.el.clientHeight * target, behavior: 'smooth' });
+        }
+    };
+
     return (
         <Scroll html>
-            <div className="fixed right-[16px] md:right-[32px] top-1/2 -translate-y-1/2 flex flex-col gap-[12px] z-[100] pointer-events-auto">
-                {[0, 1, 2].map((i) => (
-                    <button
-                        key={i}
-                        onClick={() => {
-                            scroll.el.scrollTo({ top: scroll.el.clientHeight * i, behavior: 'smooth' });
-                        }}
-                        className={`w-[8px] h-[8px] rounded-full transition-all duration-300 ${active === i ? 'bg-[#8052ff] scale-150' : 'bg-[#ffffff]/30 hover:bg-[#ffffff]/60'}`}
-                        aria-label={`Go to section ${i + 1}`}
-                    />
-                ))}
+            <div className="fixed bottom-[24px] md:bottom-[40px] left-1/2 -translate-x-1/2 flex items-center gap-[24px] z-[100] pointer-events-auto bg-[#000000]/60 backdrop-blur-md border border-[#1a1a1a] rounded-full px-[20px] py-[10px]">
+                <button
+                    onClick={() => handleScroll(-1)}
+                    disabled={active === 0}
+                    className={`p-[8px] transition-all duration-300 ${active === 0 ? 'opacity-30 cursor-not-allowed' : 'opacity-100 hover:text-[#8052ff]'}`}
+                    aria-label="Scroll Up"
+                >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6" /></svg>
+                </button>
+
+                <div className="flex gap-[12px]">
+                    {[0, 1, 2].map((i) => (
+                        <button
+                            key={i}
+                            onClick={() => scroll.el.scrollTo({ top: scroll.el.clientHeight * i, behavior: 'smooth' })}
+                            className={`w-[6px] h-[6px] rounded-full transition-all duration-300 ${active === i ? 'bg-[#8052ff] scale-150' : 'bg-[#ffffff]/30 hover:bg-[#ffffff]/60'}`}
+                            aria-label={`Go to section ${i + 1}`}
+                        />
+                    ))}
+                </div>
+
+                <button
+                    onClick={() => handleScroll(1)}
+                    disabled={active === 2}
+                    className={`p-[8px] transition-all duration-300 ${active === 2 ? 'opacity-30 cursor-not-allowed' : 'opacity-100 hover:text-[#8052ff]'}`}
+                    aria-label="Scroll Down"
+                >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                </button>
             </div>
         </Scroll>
     );
@@ -350,18 +381,18 @@ const PageNav = () => {
 export default function Page() {
     return (
         <main className="w-full h-screen bg-[#000000] overflow-hidden relative selection:bg-[#8052ff] selection:text-white">
-            <nav className="fixed top-0 left-0 w-full z-50 py-[24px] px-[24px] md:px-[60px] flex justify-between items-center mix-blend-difference pointer-events-auto">
+            <nav className="fixed top-0 left-0 w-full z-50 py-[20px] md:py-[24px] px-[20px] md:px-[60px] flex justify-between items-center mix-blend-difference pointer-events-auto">
                 <div className="flex items-center gap-[12px]">
                     <DalaLogo />
                     <span className="text-[14px] font-[600] tracking-[0.35px] text-[#ffffff] uppercase">ProxyPulse</span>
                 </div>
                 <div className="hidden md:flex items-center gap-[36px]">
-                    <Link href="#manifesto" className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">Manifesto</Link>
-                    <Link href="#docs" className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">Docs</Link>
-                    <Link href="#github" className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">GitHub</Link>
+                    <Link href="#manifesto" className="text-[12px] lg:text-[14px] font-[600] uppercase tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">Manifesto</Link>
+                    <Link href="#docs" className="text-[12px] lg:text-[14px] font-[600] uppercase tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">Docs</Link>
+                    <Link href="#github" className="text-[12px] lg:text-[14px] font-[600] uppercase tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">GitHub</Link>
                 </div>
                 <div className="flex items-center">
-                    <button className="bg-[#8052ff] text-[#ffffff] text-[14px] font-[600] uppercase tracking-[0.35px] rounded-[24px] px-[16px] py-[14.4px] hover:bg-[#6c40e6] transition-colors">
+                    <button className="bg-[#8052ff] text-[#ffffff] text-[12px] md:text-[14px] font-[600] uppercase tracking-[0.35px] rounded-[24px] px-[16px] py-[12px] md:py-[14.4px] hover:bg-[#6c40e6] transition-colors">
                         Request Access
                     </button>
                 </div>
@@ -372,39 +403,39 @@ export default function Page() {
                     <color attach="background" args={['#000000']} />
                     <ScrollControls pages={3} damping={0.25}>
                         <MorphingParticles />
-                        <PageNav />
+                        <ScrollNav />
 
                         <Scroll html style={{ width: '100%', height: '100%' }}>
                             <div className="relative w-full h-[300vh] text-[#ffffff] font-sans pointer-events-none">
 
-                                <div className="absolute top-0 left-0 w-full h-screen flex flex-col justify-start pt-[140px] md:pt-0 md:justify-center px-[24px] md:px-[60px]">
+                                <div className="absolute top-0 left-0 w-full h-screen flex flex-col justify-start pt-[120px] md:pt-0 md:justify-center px-[20px] md:px-[60px]">
                                     <div className="max-w-[540px] pointer-events-auto mix-blend-difference">
-                                        <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829] mb-[24px] block">
+                                        <span className="text-[12px] md:text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829] mb-[20px] md:mb-[24px] block">
                                             Network Observability
                                         </span>
-                                        <h1 className="text-[56px] md:text-[78px] lg:text-[113px] font-[400] leading-[1.0] tracking-[-2.2px] md:tracking-[-3.12px] lg:tracking-[-4.52px] text-[#ffffff] mb-[30px]">
+                                        <h1 className="text-[56px] md:text-[78px] lg:text-[113px] font-[400] leading-[1.0] tracking-[-2.2px] md:tracking-[-3.12px] lg:tracking-[-4.52px] text-[#ffffff] mb-[24px] md:mb-[30px]">
                                             See your network. Live.
                                         </h1>
-                                        <p className="text-[16px] md:text-[18px] font-[200] leading-[1.5] text-[#ffffff] max-w-[480px] mb-[48px]">
+                                        <p className="text-[14px] md:text-[18px] font-[200] leading-[1.5] text-[#ffffff] max-w-[480px] mb-[36px] md:mb-[48px]">
                                             Stop reading dead logs. ProxyPulse visualizes every HTTP request in real-time. Connect the lightweight agent and watch your backend traffic breathe, flow, and break—instantly.
                                         </p>
-                                        <button className="bg-[#8052ff] text-[#ffffff] text-[14px] font-[600] uppercase tracking-[0.35px] rounded-[24px] px-[24px] py-[16px] hover:bg-[#6c40e6] transition-colors">
+                                        <button className="bg-[#8052ff] text-[#ffffff] text-[12px] md:text-[14px] font-[600] uppercase tracking-[0.35px] rounded-[24px] px-[20px] md:px-[24px] py-[14px] md:py-[16px] hover:bg-[#6c40e6] transition-colors">
                                             Deploy Proxy
                                         </button>
                                     </div>
                                 </div>
 
-                                <div className="absolute top-[100vh] left-0 w-full h-screen flex flex-col justify-start pt-[120px] md:pt-0 md:justify-center px-[24px] md:px-[60px]">
+                                <div className="absolute top-[100vh] left-0 w-full h-screen flex flex-col justify-start pt-[120px] md:pt-0 md:justify-center px-[20px] md:px-[60px]">
                                     <div className="max-w-[500px] pointer-events-auto">
-                                        <h2 className="text-[36px] md:text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
+                                        <h2 className="text-[40px] md:text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[20px] md:mb-[24px]">
                                             Global traffic layer.
                                         </h2>
-                                        <p className="text-[16px] md:text-[18px] font-[200] leading-[1.5] text-[#bdbdbd] mb-[48px]">
+                                        <p className="text-[14px] md:text-[18px] font-[200] leading-[1.5] text-[#bdbdbd] mb-[36px] md:mb-[48px]">
                                             Traditional tools force you to search through massive text files. ProxyPulse turns your traffic into an interactive global map. See where your requests bottleneck geographically.
                                         </p>
 
-                                        <div className="bg-[#000000]/40 backdrop-blur-md border border-[#1a1a1a] rounded-[24px] p-[24px] w-full max-w-[460px]">
-                                            <span className="text-[12px] font-[600] text-[#15846e] uppercase tracking-[0.35px] mb-[16px] block border-b border-[#1a1a1a] pb-3">
+                                        <div className="bg-[#000000]/40 backdrop-blur-md border border-[#1a1a1a] rounded-[20px] md:rounded-[24px] p-[20px] md:p-[24px] w-full max-w-[460px]">
+                                            <span className="text-[10px] md:text-[12px] font-[600] text-[#15846e] uppercase tracking-[0.35px] mb-[16px] block border-b border-[#1a1a1a] pb-3">
                                                 Agent Proxy Activity
                                             </span>
                                             <LiveTerminal />
@@ -412,47 +443,47 @@ export default function Page() {
                                     </div>
                                 </div>
 
-                                <div className="absolute top-[200vh] left-0 w-full h-screen flex flex-col justify-start pt-[120px] md:pt-0 md:justify-center px-[24px] md:px-[60px]">
+                                <div className="absolute top-[200vh] left-0 w-full h-screen flex flex-col justify-start pt-[120px] md:pt-0 md:justify-center px-[20px] md:px-[60px] pb-[100px]">
                                     <div className="w-full flex flex-col lg:flex-row items-start md:items-center gap-[40px] md:gap-[60px] lg:gap-[120px] pointer-events-auto">
                                         <div className="flex-1 w-full max-w-[520px]">
-                                            <h2 className="text-[36px] md:text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[24px]">
+                                            <h2 className="text-[40px] md:text-[42px] lg:text-[48px] font-[400] leading-[1.1] tracking-[-1.68px] text-[#ffffff] mb-[20px] md:mb-[24px]">
                                                 Connect every microservice.
                                             </h2>
-                                            <p className="text-[16px] md:text-[18px] font-[200] leading-[1.5] text-[#bdbdbd]">
+                                            <p className="text-[14px] md:text-[18px] font-[200] leading-[1.5] text-[#bdbdbd]">
                                                 Whether you are writing distributed services in Go or enterprise backends in C#. ProxyPulse maps dependencies dynamically, revealing the hidden neural network of your architecture.
                                             </p>
                                         </div>
 
-                                        <div className="flex-1 w-full flex flex-col gap-[36px] md:gap-[48px]">
+                                        <div className="flex-1 w-full flex flex-col gap-[32px] md:gap-[48px]">
                                             <div className="flex flex-col gap-[6px]">
-                                                <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829]">Backend & Frontend</span>
-                                                <p className="text-[24px] md:text-[27px] font-[400] leading-[1.0] text-[#ffffff]">Debug APIs instantly.</p>
+                                                <span className="text-[12px] md:text-[14px] font-[600] uppercase tracking-[0.35px] text-[#ffb829]">Backend & Frontend</span>
+                                                <p className="text-[20px] md:text-[27px] font-[400] leading-[1.0] text-[#ffffff]">Debug APIs instantly.</p>
                                             </div>
                                             <div className="flex flex-col gap-[6px]">
-                                                <span className="text-[14px] font-[600] uppercase tracking-[0.35px] text-[#8052ff]">DevOps / Infra</span>
-                                                <p className="text-[24px] md:text-[27px] font-[400] leading-[1.0] text-[#bdbdbd]">Monitor proxy layer health.</p>
+                                                <span className="text-[12px] md:text-[14px] font-[600] uppercase tracking-[0.35px] text-[#8052ff]">DevOps / Infra</span>
+                                                <p className="text-[20px] md:text-[27px] font-[400] leading-[1.0] text-[#bdbdbd]">Monitor proxy layer health.</p>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <footer className="absolute bottom-0 left-0 w-full px-[24px] md:px-[60px] py-[40px] md:py-[60px] flex flex-col md:flex-row justify-between items-start md:items-center gap-[36px] border-t border-[#1a1a1a] bg-[#000000] pointer-events-auto">
+                                    <footer className="absolute bottom-0 left-0 w-full px-[20px] md:px-[60px] pt-[40px] md:pt-[60px] pb-[100px] md:pb-[40px] flex flex-col md:flex-row justify-between items-start md:items-center gap-[36px] border-t border-[#1a1a1a] bg-[#000000] pointer-events-auto">
                                         <div className="flex flex-col gap-[16px]">
                                             <div className="flex items-center gap-[12px]">
                                                 <DalaLogo />
-                                                <span className="text-[20px] md:text-[24px] font-[400] tracking-[-0.5px] text-[#ffffff]">ProxyPulse</span>
+                                                <span className="text-[18px] md:text-[24px] font-[400] tracking-[-0.5px] text-[#ffffff]">ProxyPulse</span>
                                             </div>
-                                            <p className="text-[14px] font-[400] text-[#9a9a9a] max-w-[300px]">
+                                            <p className="text-[12px] md:text-[14px] font-[400] text-[#9a9a9a] max-w-[300px]">
                                                 The observability platform built for high-performance engineering teams.
                                             </p>
                                         </div>
 
                                         <div className="flex flex-wrap gap-[36px] md:gap-[48px] text-[12px] md:text-[14px] font-[600] text-[#9a9a9a] uppercase tracking-[0.35px]">
-                                            <div className="flex flex-col gap-[16px]">
+                                            <div className="flex flex-col gap-[12px] md:gap-[16px]">
                                                 <Link href="#" className="hover:text-[#ffffff] transition-colors">Manifesto</Link>
                                                 <Link href="#" className="hover:text-[#ffffff] transition-colors">Documentation</Link>
                                                 <Link href="#" className="hover:text-[#ffffff] transition-colors">Agent GitHub</Link>
                                             </div>
-                                            <div className="flex flex-col gap-[16px]">
+                                            <div className="flex flex-col gap-[12px] md:gap-[16px]">
                                                 <Link href="#" className="hover:text-[#ffffff] transition-colors">Twitter (X)</Link>
                                                 <Link href="#" className="hover:text-[#ffffff] transition-colors">LinkedIn</Link>
                                                 <Link href="#" className="hover:text-[#ffffff] transition-colors">Contact</Link>
