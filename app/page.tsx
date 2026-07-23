@@ -10,17 +10,14 @@ import { BlendFunction } from "postprocessing";
 import * as THREE from "three";
 import { portfolioProjects } from "../data/projects";
 
-// Глобальное состояние для синхронизации осей и фигуры
 const sharedRotation = new THREE.Euler();
 const sharedState = {
   manualX: 0,
   manualY: 0,
-  autoRotY: 0,
   isDragging: false,
 };
 let forceResetRotation = false;
 
-// 1. Идеальная монолитная буква Y 
 function SolidGlassY({ color, scaleMult, speed }) {
   const group = useRef<THREE.Group>(null);
   const { viewport } = useThree();
@@ -48,17 +45,14 @@ function SolidGlassY({ color, scaleMult, speed }) {
     }).center();
   }, []);
 
-  useFrame((state, delta) => {
+  useFrame((state) => {
     if (group.current) {
       if (forceResetRotation) {
         sharedState.manualX = THREE.MathUtils.lerp(sharedState.manualX, 0, 0.1);
         sharedState.manualY = THREE.MathUtils.lerp(sharedState.manualY, 0, 0.1);
-        sharedState.autoRotY = 0;
         if (Math.abs(sharedState.manualX) < 0.01 && Math.abs(sharedState.manualY) < 0.01) {
           forceResetRotation = false;
         }
-      } else if (!sharedState.isDragging) {
-        sharedState.autoRotY += delta * speed;
       }
 
       const isMobile = viewport.width < 5;
@@ -66,11 +60,13 @@ function SolidGlassY({ color, scaleMult, speed }) {
       const ptrY = (state.pointer.x * Math.PI) / (isMobile ? 6 : 4);
 
       const targetX = ptrX + sharedState.manualX;
-      const targetY = ptrY + sharedState.manualY + sharedState.autoRotY;
+      const targetY = ptrY + sharedState.manualY;
 
-      group.current.rotation.x = THREE.MathUtils.lerp(group.current.rotation.x, targetX, 0.08);
-      group.current.rotation.y = THREE.MathUtils.lerp(group.current.rotation.y, targetY, 0.08);
-      group.current.rotation.z = THREE.MathUtils.lerp(group.current.rotation.z, 0, 0.08);
+      const lerpFactor = Math.max(0.01, speed * 0.15);
+
+      group.current.rotation.x = THREE.MathUtils.lerp(group.current.rotation.x, targetX, lerpFactor);
+      group.current.rotation.y = THREE.MathUtils.lerp(group.current.rotation.y, targetY, lerpFactor);
+      group.current.rotation.z = THREE.MathUtils.lerp(group.current.rotation.z, 0, lerpFactor);
 
       sharedRotation.copy(group.current.rotation);
     }
@@ -102,7 +98,6 @@ function SolidGlassY({ color, scaleMult, speed }) {
   );
 }
 
-// 2. ФОН: LED Билборды
 const LedBillboardWall = () => {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const mouseInit = useRef(false);
@@ -192,7 +187,6 @@ const LedBillboardWall = () => {
   );
 };
 
-// 3. Интерактивные оси
 function TrackingAxes() {
   const { size } = useThree();
   const axesRef = useRef<THREE.Group>(null);
@@ -304,7 +298,6 @@ export default function Portfolio() {
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isCursorHovered, setIsCursorHovered] = useState(false);
 
-  // Настройки модели
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [modelSettings, setModelSettings] = useState({
     color: "#ffffff",
@@ -430,7 +423,6 @@ export default function Portfolio() {
         }
       `}</style>
 
-      {/* КАСТОМНЫЙ КУРСОР */}
       <motion.div
         className="hidden md:flex fixed top-0 left-0 border rounded-full pointer-events-none z-[999] mix-blend-difference items-center justify-center backdrop-invert-[0.1]"
         style={{ x: cursorX, y: cursorY }}
@@ -445,7 +437,6 @@ export default function Portfolio() {
         <motion.div className="bg-white rounded-full" animate={{ width: isCursorHovered ? 0 : 4, height: isCursorHovered ? 0 : 4 }} />
       </motion.div>
 
-      {/* ПРЕЛОАДЕР */}
       <AnimatePresence>
         {isLoading && (
           <motion.div
@@ -477,7 +468,6 @@ export default function Portfolio() {
         )}
       </AnimatePresence>
 
-      {/* 3D СЦЕНА */}
       <div className="fixed inset-0 z-10 pointer-events-none">
         <Canvas camera={{ position: [0, 0, 15], fov: 40 }} dpr={[1, 1.5]} performance={{ min: 0.5 }}>
           <LedBillboardWall />
@@ -485,9 +475,6 @@ export default function Portfolio() {
           <directionalLight position={[10, 10, 10]} intensity={4} color="#ffffff" />
           <directionalLight position={[-10, -10, -10]} intensity={2} color="#ffffff" />
           <Environment preset="studio" environmentIntensity={1.0} />
-
-          {/* <BackgroundText /> Раскомментируй эту строку, чтобы вернуть текст YSM на фон */}
-
           <SolidGlassY color={modelSettings.color} scaleMult={modelSettings.scale} speed={modelSettings.speed} />
           <PostEffects />
           <Hud>
@@ -498,7 +485,6 @@ export default function Portfolio() {
         </Canvas>
       </div>
 
-      {/* ЗАТЕМНЕНИЕ ФОНА */}
       <AnimatePresence>
         {activeSection !== 'hero' && (
           <motion.div
@@ -511,10 +497,8 @@ export default function Portfolio() {
         )}
       </AnimatePresence>
 
-      {/* ==== АРХИТЕКТУРА UI ==== */}
       <div className="fixed inset-0 z-50 flex flex-col pointer-events-none">
 
-        {/* ШАПКА / МЕНЮ */}
         <header className="w-full shrink-0 bg-[#050505]/95 backdrop-blur-xl border-b border-white/10 pointer-events-auto shadow-lg shadow-black/50">
           <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex justify-between items-center w-full md:w-auto">
@@ -541,10 +525,8 @@ export default function Portfolio() {
           </div>
         </header>
 
-        {/* ОСНОВНОЙ КОНТЕНТ */}
         <main className="flex-1 relative w-full overflow-hidden">
 
-          {/* НИЖНЯЯ ПАНЕЛЬ С GITHUB И НАСТРОЙКАМИ */}
           <AnimatePresence>
             {activeSection === 'hero' && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute bottom-0 left-0 w-full p-6 md:p-8 flex justify-between items-end pointer-events-none">
@@ -603,11 +585,11 @@ export default function Portfolio() {
 
                           <div className="mb-2">
                             <label className="text-[9px] uppercase text-gray-500 flex justify-between mb-2 tracking-widest">
-                              <span>Auto Rotation Speed</span>
+                              <span>Tracking Speed</span>
                               <span className="text-[#00ffcc]">{modelSettings.speed.toFixed(1)}x</span>
                             </label>
                             <input
-                              type="range" min="0" max="3" step="0.1"
+                              type="range" min="0.1" max="3" step="0.1"
                               value={modelSettings.speed}
                               onChange={(e) => setModelSettings(s => ({ ...s, speed: parseFloat(e.target.value) }))}
                               onMouseEnter={() => setIsCursorHovered(true)}
@@ -640,7 +622,6 @@ export default function Portfolio() {
             )}
           </AnimatePresence>
 
-          {/* BIO */}
           <AnimatePresence mode="wait">
             {activeSection === 'bio' && (
               <motion.section
@@ -694,7 +675,6 @@ export default function Portfolio() {
             )}
           </AnimatePresence>
 
-          {/* PROJECTS С БАЗОЙ ИЗ ФАЙЛА */}
           <AnimatePresence mode="wait">
             {activeSection === 'projects' && (
               <motion.section
@@ -738,7 +718,6 @@ export default function Portfolio() {
         </main>
       </div>
 
-      {/* МОДАЛКА КОНТАКТОВ */}
       <AnimatePresence>
         {isContactOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-md pointer-events-auto cursor-auto md:cursor-none px-4" onClick={() => setIsContactOpen(false)}>
