@@ -1,0 +1,56 @@
+export type Locale = "ru" | "en";
+
+export const translations = {
+  ru: {
+    pitch: "Создаю продукты на Go, C# и React — от архитектуры до интерфейса",
+    hire: "Open for work",
+    ctaTelegram: "Написать в Telegram",
+    ctaProjects: "Смотреть кейсы",
+    stack: "Go · C# · React · TypeScript",
+    bootContinue: "Нажмите, чтобы продолжить",
+    projects: "Projects",
+    about: "About Me",
+    contact: "Contact",
+    viewCase: "Открыть кейс",
+    inProgress: "In Progress",
+    contactTitle: "Связаться",
+    contactSub: "Есть проект? Давайте обсудим.",
+    aboutTitle: "Обо мне",
+    nowPlaying: "Сейчас играет",
+    musicBackgroundHint: "Музыка играет в фоне — управление в мини-плеере внизу экрана.",
+    musicTapBoot: "Нажмите «Продолжить» на экране загрузки, чтобы включить фоновую музыку.",
+    musicFileMissing: "Не удалось загрузить трек — проверь файлы в public/music/",
+    openInYandex: "Открыть в Яндекс Музыке",
+    memesTitle: "Мемы",
+    iosSearch: "Поиск",
+    iosGreeting: "Привет",
+  },
+  en: {
+    pitch: "Building products with Go, C# & React — from architecture to UI",
+    hire: "Open for work",
+    ctaTelegram: "Message on Telegram",
+    ctaProjects: "View projects",
+    stack: "Go · C# · React · TypeScript",
+    bootContinue: "Click to continue",
+    projects: "Projects",
+    about: "About Me",
+    contact: "Contact",
+    viewCase: "View case",
+    inProgress: "In Progress",
+    contactTitle: "Get in touch",
+    contactSub: "Have a project? Let's talk.",
+    aboutTitle: "About",
+    nowPlaying: "Now Playing",
+    musicBackgroundHint: "Music plays in the background — use the mini player at the bottom.",
+    musicTapBoot: "Tap Continue on the boot screen to start background music.",
+    musicFileMissing: "Could not load track — check files in public/music/",
+    openInYandex: "Open in Yandex Music",
+    memesTitle: "Memes",
+    iosSearch: "Search",
+    iosGreeting: "Hello",
+  },
+} as const;
+
+export function t(locale: Locale, key: keyof (typeof translations)["ru"]) {
+  return translations[locale][key];
+}
