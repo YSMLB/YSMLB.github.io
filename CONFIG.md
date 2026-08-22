@@ -15,7 +15,12 @@ profile: {
   name: "Amir",           // имя на экране
   title: "...",           // должность
   bio: "...",             // текст в «Обо мне»
-  initials: "AB",         // аватар-заглушка
+  initials: "AB",         // аватар-заглушка (если нет photo)
+  photo: "/my_photo.jpg", // положи файл в public/my_photo.jpg
+  memes: [                // картинки в public/memes/
+    "/memes/meme1.jpg",
+    "/memes/meme2.jpg",
+  ],
   machineName: "Amir's MacBook",  // подпись на рабочем столе macOS
 }
 ```
@@ -40,7 +45,10 @@ contacts: {
 
 ---
 
-## Яндекс Музыка (приложение Music)
+## Яндекс Музыка (фоновый плеер)
+
+Музыка играет **в фоне** после клика «Нажмите, чтобы продолжить» на boot screen.  
+Приложение Music показывает обложку и статус — **без iframe** (чтобы не было 404).
 
 1. Открой [music.yandex.ru](https://music.yandex.ru)
 2. Выбери **свой плейлист** или **альбом**
@@ -53,12 +61,14 @@ music: {
   appName: "Music",
   playlistTitle: "Название плейлиста",   // отображается в UI
   playlistSubtitle: "Яндекс Музыка",
-  yandexShareUrl: "https://music.yandex.ru/users/ТВОЙ_ЮЗЕР/playlists/12345",
+  yandexShareUrl: "https://music.yandex.ru/playlists/UUID-или-users/.../playlists/123",
   yandexEmbedUrl: "",  // оставь пустым — embed соберётся сам
 }
 ```
 
-**Альтернатива:** если скопировал HTML-код, возьми только `src="..."` и вставь в `yandexEmbedUrl`.
+**Если фон не играет:** открой Music → «Поделиться» → **HTML-код** → скопируй `src="..."` в `yandexEmbedUrl`.
+
+**Не используй** `/play` в конце embed-URL для UUID-плейлистов — это даёт 404 «тупик».
 
 Примеры ссылок:
 - Плейлист: `https://music.yandex.ru/users/username/playlists/123`

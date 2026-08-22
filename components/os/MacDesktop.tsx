@@ -5,21 +5,22 @@ import { AnimatePresence } from "framer-motion";
 import MacMenuBar from "./MacMenuBar";
 import MacWindow from "./MacWindow";
 import MacDock, { DesktopIcon } from "./MacDock";
+import { MacNowPlayingBar } from "./MacNowPlayingBar";
 import MacWallpaper from "./wallpapers/MacWallpaper";
+import HeroPitch from "./HeroPitch";
 import { DESKTOP_APPS, DOCK_APPS, type OSAppId } from "@/lib/portfolio/osApps";
 import { getWindowContent } from "./WindowContent";
 import { useWindowManager } from "@/hooks/useWindowManager";
-import { USER_CONFIG } from "@/lib/portfolio/userConfig";
+import { useMusic } from "@/context/MusicContext";
+import { useSettings } from "@/context/SettingsContext";
 
 const WINDOW_OFFSETS: Partial<Record<OSAppId, { x: number; y: number }>> = {
-  safari: { x: 60, y: 48 },
-  about: { x: 100, y: 72 },
-  projects: { x: 140, y: 40 },
-  contact: { x: 180, y: 88 },
-  music: { x: 90, y: 36 },
-  finder: { x: 40, y: 56 },
-  settings: { x: 200, y: 64 },
-  notes: { x: 120, y: 100 },
+  safari: { x: 480, y: 120 },
+  about: { x: 520, y: 160 },
+  projects: { x: 560, y: 100 },
+  contact: { x: 600, y: 180 },
+  music: { x: 440, y: 80 },
+  finder: { x: 400, y: 140 },
 };
 
 export default function MacDesktop() {
@@ -33,41 +34,35 @@ export default function MacDesktop() {
     openAppIds,
     activeApp,
   } = useWindowManager();
+  const { started } = useMusic();
+  const { wallpaperMac, autoOpenSafari } = useSettings();
 
   useEffect(() => {
-    if (USER_CONFIG.autoOpenSafari) {
-      const timer = setTimeout(() => openApp("safari"), 700);
-      return () => clearTimeout(timer);
-    }
-  }, [openApp]);
+    if (!started || !autoOpenSafari) return;
+    const t = setTimeout(() => openApp("safari"), 400);
+    return () => clearTimeout(t);
+  }, [started, openApp, autoOpenSafari]);
 
   const visibleWindows = windows.filter((w) => !w.minimized);
 
   return (
     <div className="fixed inset-0 overflow-hidden select-none">
-      <MacWallpaper />
-
+      <MacWallpaper variant={wallpaperMac} />
       <MacMenuBar activeApp={activeApp} />
 
-      {/* Desktop icons — left column */}
-      <div className="absolute top-9 left-4 md:left-6 flex flex-col gap-1 pt-3 z-20">
+      <HeroPitch variant="mac" onProjects={() => openApp("projects")} />
+
+      <div className="absolute top-9 left-5 flex flex-col gap-0.5 z-20">
         {DESKTOP_APPS.map((app) => (
           <DesktopIcon key={app.id} app={app} onOpen={openApp} />
         ))}
       </div>
 
-      <div className="absolute top-9 right-6 pt-3 hidden xl:block z-10">
-        <p className="text-white/25 text-sm font-medium tracking-wide">
-          {USER_CONFIG.profile.machineName}
-        </p>
-      </div>
-
-      {/* Windows */}
-      <div className="absolute inset-0 top-7 bottom-[72px] pointer-events-none z-30">
+      <div className="absolute inset-0 top-7 bottom-[68px] pointer-events-none z-30">
         <div className="relative w-full h-full">
           <AnimatePresence mode="popLayout">
             {visibleWindows.map((win) => {
-              const offset = WINDOW_OFFSETS[win.id] ?? { x: 80, y: 60 };
+              const offset = WINDOW_OFFSETS[win.id] ?? { x: 120, y: 100 };
               return (
                 <div
                   key={win.id}
@@ -92,6 +87,7 @@ export default function MacDesktop() {
         </div>
       </div>
 
+      <MacNowPlayingBar onOpen={openApp} />
       <MacDock apps={DOCK_APPS} onOpen={openApp} openApps={openAppIds} />
     </div>
   );

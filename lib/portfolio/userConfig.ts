@@ -14,6 +14,14 @@ export const USER_CONFIG = {
     title: "Backend & Full-Stack Developer",
     bio: "Я создаю продукты, которые решают задачи через чистый код и глубокую логику. Full-stack — это проектирование систем, которые работают безупречно под нагрузкой.",
     initials: "AB",
+    /** Фото в «Обо мне» — положи файл в public/ (например public/my_photo.jpg) */
+    photo: "/my_photo.jpg",
+    /** Мемы в «Обо мне» — картинки в public/memes/ */
+    memes: [
+      "/memes/drake-dark-mode.png",
+      "/memes/seoul-vibes.jpg",
+      "/memes/hacking-movies.png",
+    ],
     machineName: "Amir's MacBook",
     status: "Open for work",
   },
@@ -29,20 +37,30 @@ export const USER_CONFIG = {
   },
 
   /**
-   * Музыка — приложение Music + плеер Яндекс Музыки
-   * 1. music.yandex.ru → плейлист/альбом → Поделиться → скопируй ссылку
-   * 2. Вставь в yandexShareUrl (embed соберётся автоматически)
+   * Музыка — два полных трека на повтор (локальные MP3 в public/music/)
    */
   music: {
     enabled: true,
     appName: "Music",
-    playlistTitle: "Мой плейлист",
-    playlistSubtitle: "Яндекс Музыка",
-    yandexShareUrl:
-      "https://music.yandex.ru/playlists/ddb90816-a55a-7b28-bb15-920188cdcaa6",
-    yandexEmbedUrl: "",
-    accentColor: "#FA243C",
-    coverGradient: "linear-gradient(135deg, #1a1a2e 0%, #e94560 100%)",
+    queueTitle: "On Repeat",
+    queueSubtitle: "2 tracks · loop",
+    accentColor: "#1DB954",
+    tracks: [
+      {
+        id: "best-life",
+        title: "Best Life",
+        artist: "SHNTI",
+        src: "/music/best-life.mp3",
+        coverGradient: "linear-gradient(135deg, #1a1a2e 0%, #e94560 100%)",
+      },
+      {
+        id: "dilemma",
+        title: "Dilemma",
+        artist: "Nelly, Kelly Rowland",
+        src: "/music/dilemma.mp3",
+        coverGradient: "linear-gradient(135deg, #0f2027 0%, #2c5364 100%)",
+      },
+    ],
   },
 
   /** Доп. приложения — свои ссылки (icon см. CustomAppIcon) */
@@ -87,11 +105,19 @@ export const USER_CONFIG = {
 
   wallpapers: {
     mac: "sequoia" as const,
-    ios: "ios18" as const,
+    ios: "sequoia" as const,
   },
 
   autoOpenSafari: true,
 } as const;
+
+export type MusicTrack = {
+  id: string;
+  title: string;
+  artist: string;
+  src: string;
+  coverGradient: string;
+};
 
 export type CustomAppIcon =
   | "youtube"
