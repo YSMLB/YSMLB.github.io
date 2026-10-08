@@ -103,7 +103,7 @@ function IOSAppButton({ app, onOpen }: { app: OSApp; onOpen: (id: OSAppId) => vo
 
 function IOSFullScreenApp({ appId, onClose }: { appId: OSAppId; onClose: () => void }) {
   const isMusic = appId === "music";
-  const isScrollable = appId === "settings" || appId === "notes" || appId === "about";
+  const isScrollable = appId !== "music";
   return (
     <motion.div
       initial={{ opacity: 0, y: "100%" }}
@@ -125,7 +125,10 @@ function IOSFullScreenApp({ appId, onClose }: { appId: OSAppId; onClose: () => v
         </p>
         <div className="w-[52px]" />
       </div>
-      <div className={`flex-1 ${isScrollable ? "overflow-y-auto" : "overflow-hidden"} ${isMusic ? "bg-black" : "bg-white"}`}>
+      <div
+        className={`flex-1 ${isScrollable ? "overflow-y-auto overscroll-contain" : "overflow-hidden"} ${isMusic ? "bg-black" : "bg-white"}`}
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
         {getWindowContent(appId)}
       </div>
       <div className="h-[34px] shrink-0 flex items-end justify-center pb-2 bg-inherit">

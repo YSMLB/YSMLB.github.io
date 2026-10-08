@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useDragControls } from "framer-motion";
 import type { OSAppId } from "@/lib/portfolio/osApps";
 import { getWindowSize } from "./WindowContent";
 
@@ -25,6 +25,7 @@ export default function MacWindow({
   onFocus,
   children,
 }: MacWindowProps) {
+  const dragControls = useDragControls();
   const size = getWindowSize(id);
   const isDark = id === "music";
 
@@ -47,12 +48,18 @@ export default function MacWindow({
         isActive ? "ring-1 ring-white/10" : "opacity-[0.97]"
       }`}
       drag
+      dragListener={false}
+      dragControls={dragControls}
       dragMomentum={false}
       dragElastic={0.04}
       onPointerDown={onFocus}
     >
       <div
-        className="h-[52px] flex items-center px-[14px] border-b shrink-0 cursor-grab active:cursor-grabbing"
+        onPointerDown={(e) => {
+          onFocus();
+          dragControls.start(e);
+        }}
+        className="h-[52px] flex items-center px-[14px] border-b shrink-0 cursor-grab active:cursor-grabbing select-none"
         style={{
           background: "rgba(236,236,236,0.85)",
           backdropFilter: "blur(40px) saturate(180%)",
@@ -63,17 +70,17 @@ export default function MacWindow({
         <div className="flex gap-[8px]">
           <button
             onClick={(e) => { e.stopPropagation(); onClose(); }}
-            className="w-[12px] h-[12px] rounded-full bg-[#FF5F57] hover:brightness-95 shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.12)]"
+            className="w-[12px] h-[12px] rounded-full bg-[#FF5F57] hover:brightness-95 shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.12)] cursor-pointer"
             aria-label="Close"
           />
           <button
             onClick={(e) => { e.stopPropagation(); onMinimize(); }}
-            className="w-[12px] h-[12px] rounded-full bg-[#FEBC2E] hover:brightness-95 shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.12)]"
+            className="w-[12px] h-[12px] rounded-full bg-[#FEBC2E] hover:brightness-95 shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.12)] cursor-pointer"
             aria-label="Minimize"
           />
           <div className="w-[12px] h-[12px] rounded-full bg-[#28C840] opacity-90 shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.12)]" />
         </div>
-        <p className="flex-1 text-center text-[13px] font-semibold text-[#3c3c3c] truncate px-4">
+        <p className="flex-1 text-center text-[13px] font-semibold text-[#3c3c3c] truncate px-4 pointer-events-none">
           {title}
         </p>
       </div>
@@ -85,7 +92,7 @@ export default function MacWindow({
         }`}
         style={{
           height: size.h - 52,
-          maxHeight: size.h - 52,
+          maxHeight: "calc(100vh - 160px)",
         }}
       >
         {children}

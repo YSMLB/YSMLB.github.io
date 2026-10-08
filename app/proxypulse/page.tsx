@@ -381,10 +381,21 @@ const ScrollNav = () => {
 export default function Page() {
     return (
         <main className="w-full h-screen bg-[#000000] overflow-hidden relative selection:bg-[#8052ff] selection:text-white">
-            <nav className="fixed top-0 left-0 w-full z-50 py-[20px] md:py-[24px] px-[20px] md:px-[60px] flex justify-between items-center mix-blend-difference pointer-events-auto">
-                <div className="flex items-center gap-[12px]">
-                    <DalaLogo />
-                    <span className="text-[14px] font-[600] tracking-[0.35px] text-[#ffffff] uppercase">ProxyPulse</span>
+            <nav className="fixed top-0 left-0 w-full z-50 py-[16px] md:py-[24px] px-[16px] md:px-[60px] flex justify-between items-center mix-blend-difference pointer-events-auto">
+                <div className="flex items-center gap-[12px] md:gap-[20px]">
+                    <Link
+                        href="/"
+                        className="flex items-center gap-1.5 md:gap-2 text-[#ffffff]/80 hover:text-[#ffffff] transition-colors text-[11px] md:text-[13px] font-[600] uppercase tracking-[0.5px] border border-white/20 hover:border-white/50 rounded-full px-3 py-1.5 md:px-4 md:py-2 bg-white/5 backdrop-blur-md"
+                    >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="m15 18-6-6 6-6" />
+                        </svg>
+                        <span>На главную</span>
+                    </Link>
+                    <div className="flex items-center gap-[10px]">
+                        <DalaLogo />
+                        <span className="text-[14px] font-[600] tracking-[0.35px] text-[#ffffff] uppercase hidden sm:inline">ProxyPulse</span>
+                    </div>
                 </div>
                 <div className="hidden md:flex items-center gap-[36px]">
                     <Link href="#manifesto" className="text-[12px] lg:text-[14px] font-[600] uppercase tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">Manifesto</Link>
@@ -392,7 +403,7 @@ export default function Page() {
                     <Link href="#github" className="text-[12px] lg:text-[14px] font-[600] uppercase tracking-[0.35px] text-[#9a9a9a] hover:text-[#ffffff] transition-colors">GitHub</Link>
                 </div>
                 <div className="flex items-center">
-                    <button className="bg-[#8052ff] text-[#ffffff] text-[12px] md:text-[14px] font-[600] uppercase tracking-[0.35px] rounded-[24px] px-[16px] py-[12px] md:py-[14.4px] hover:bg-[#6c40e6] transition-colors">
+                    <button className="bg-[#8052ff] text-[#ffffff] text-[12px] md:text-[14px] font-[600] uppercase tracking-[0.35px] rounded-[24px] px-[16px] py-[10px] md:py-[14.4px] hover:bg-[#6c40e6] transition-colors">
                         Request Access
                     </button>
                 </div>
