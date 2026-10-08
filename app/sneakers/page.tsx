@@ -250,9 +250,9 @@ const ProductCinematicView = ({ shoe, onClose }: { shoe: any, onClose: () => voi
                         exit={isMobile ? { y: "100%" } : { x: "100%" }}
                         transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
                         onClick={(e) => e.stopPropagation()}
-                        className="absolute right-0 bottom-0 md:top-0 h-[55%] md:h-full w-full md:w-[45%] z-40 flex flex-col justify-center px-6 md:px-10 lg:px-20 bg-white/95 backdrop-blur-xl shadow-[0_-20px_40px_rgba(0,0,0,0.05)] md:shadow-[-30px_0_60px_rgba(0,0,0,0.05)] pointer-events-auto border-t md:border-t-0 md:border-l border-gray-100 rounded-t-[30px] md:rounded-t-none"
+                        className="absolute right-0 bottom-0 md:top-0 h-[65%] md:h-full w-full md:w-[45%] z-40 flex flex-col justify-start md:justify-center overflow-y-auto px-6 md:px-10 lg:px-20 py-6 md:py-0 bg-white/95 backdrop-blur-xl shadow-[0_-20px_40px_rgba(0,0,0,0.05)] md:shadow-[-30px_0_60px_rgba(0,0,0,0.05)] pointer-events-auto border-t md:border-t-0 md:border-l border-gray-100 rounded-t-[30px] md:rounded-t-none"
                     >
-                        <div className="w-12 h-1 bg-gray-200 rounded-full mx-auto mb-6 md:hidden"></div>
+                        <div className="w-12 h-1 bg-gray-200 rounded-full mx-auto mb-6 md:hidden shrink-0"></div>
 
                         <p className="text-gray-400 font-bold text-[10px] tracking-[0.15em] uppercase mb-1 md:mb-2">{shoe.subtitle}</p>
                         <h2 className="text-3xl md:text-5xl lg:text-[70px] font-black italic uppercase leading-[0.9] tracking-tighter mb-2 md:mb-4 text-[#111]">{shoe.name}</h2>

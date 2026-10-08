@@ -28,8 +28,7 @@ body {
   background: var(--bg-primary);
   color: var(--text-primary);
   font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, sans-serif;
-  overflow: hidden;
-  overscroll-behavior: none;
+  overflow-x: hidden;
 }
 
 .safe-area-pt {
